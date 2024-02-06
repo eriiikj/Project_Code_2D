@@ -1,2 +1,0 @@
-/usr/bin/ar qc mflib.a  CMakeFiles/mflib.dir/mf_datatypes.f90.o CMakeFiles/mflib.dir/mf_utils.f90.o
-/usr/bin/ranlib mflib.a

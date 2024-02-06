@@ -1,4 +1,0 @@
-# The fortran modules provided by this target.
-provides
- mf_datatypes.mod
- mf_utils.mod
