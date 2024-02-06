@@ -65,8 +65,8 @@ for i_IMC = 1%1:step_size:IMC_steps
     for g=1:ngrains
 %         plot_mesh(grainArr(g).ex,grainArr(g).ey)
         plot_2D_conc(grainArr(g).ex,grainArr(g).ey,grainArr(g).ed,i_IMC)
-%         hold on
-%         plot_j(grainArr(g).ex,grainArr(g).ey,grainArr(g).j_flux)
+        hold on
+        plot_j(grainArr(g).ex,grainArr(g).ey,grainArr(g).j_flux)
         axis equal  
         box on
     end

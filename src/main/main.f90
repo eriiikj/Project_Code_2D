@@ -63,7 +63,6 @@ program main
    write(*,*)
    write(*,'(A79)') '------------------------------ Starting execution -----------------------------'
 
-   print *, 'Heja AIK'
    ! OMP run
    !$ omp_run = .true.
    write(*,'(A20,L1)'), 'Parallel run      : ', omp_run
@@ -95,7 +94,7 @@ program main
 
    ! Initiate level set
    ngrains   = 5
-   ! IMC_steps = 400
+   IMC_steps = 6
    call allocate_ls_system(lssys,ngrains,mesh%nelm,mesh%nrgp,mesh%nnod,mesh%nodel,mesh%enod)
    call init_ls_system(lssys,mesh,IMC_steps,input_location)
 
