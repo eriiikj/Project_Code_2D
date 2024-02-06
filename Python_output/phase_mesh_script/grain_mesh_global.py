@@ -1112,18 +1112,14 @@ class Solver(object):
         bcnod[:,1] = np.ones((nbc), dtype=np.int32)
         
         
-        # Remove bc cond that is imc/imc interphase
-        
         # Create a boolean mask and remove imc_imc values from bc
         # mask  = np.abs(bcval - self.input_data.imc_imc)>1e-12
-        mask  = np.abs(bcval - mu_imc_imc)>1e-12
+        mask  = np.abs(bcval - mu_imc_imc) > 1e-12
         bcval = bcval[mask]
         bcnod = bcnod[mask]
         
         
-        # Remove bc cond that is sn/sn interphase
-        
-        # Create a boolean mask and remove imc_imc values from bc
+        # Create a boolean mask and remove sn_sn values from bc
         # mask  = np.abs(bcval - self.input_data.imc_imc)>1e-12
         mask  = np.abs(bcval - mu_sn_sn)>1e-12
         bcval = bcval[mask]
