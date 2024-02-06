@@ -1,0 +1,208 @@
+program main
+   ! General info:
+   ! Model size: width = 12 microns, height = 4 microns,
+   ! Origin at lower left corner
+   ! Cu layer from 0 - 1 micron, Sn layer 1 - 4 microns
+   ! An IMC is growing in the interface between the Cu and Sn layer
+   ! Model consists of 4 grains with equal width (3 microns)
+   
+   ! Intrinsic modules
+   ! use, intrinsic:: iso_fortran_env, only: stdin=>input_unit
+
+   ! OpenMP
+   use omp_lib
+
+   ! mflib
+   use mf_datatypes   
+
+   ! whiskerlib
+   use mesh_module
+   use ls_types
+   use level_set
+   use rhapsloop
+   use diffusion_types
+   use diffusion
+
+   implicit none
+
+   ! --- Declere variables ---
+
+   ! Filenames
+   character(len=:),allocatable :: input_location ! Location of input files (mesh and input data)   
+   character(len=255)           :: main_location  ! Location of this Fortran program
+
+   ! Mesh
+   type(mesh_system)            :: mesh
+   
+   ! IMC volume transformation
+   real(dp)                     :: IMC_vol_transf, IMC_eps_star
+
+   ! Level set   
+   integer                      :: ngrains
+   type(ls_system)              :: lssys, lssys_old
+   type(diffusion_system)       :: diffsys  
+   integer                      :: IMC_steps, i_IMC
+   real(dp)                     :: ls_h
+   logical                      :: ls_spatial=.True.
+
+   ! Plot quantities
+   type(plot_system)            :: pq
+
+   ! Time
+   real(dp)                     :: t1, t2, t3, t4, init_time, exec_time
+
+   ! OpenMP   
+   logical                      :: omp_run=.false., newton_loop_conv
+
+
+   ! Initiate times
+   init_time = 0d0
+   exec_time = 0d0
+
+   write(*,*)
+   write(*,*)
+   write(*,'(A79)') '------------------------------ Starting execution -----------------------------'
+
+   print *, 'Heja AIK'
+   ! OMP run
+   !$ omp_run = .true.
+   write(*,'(A20,L1)'), 'Parallel run      : ', omp_run
+   !$ write(*,'(A20,I2)'), 'Number of threads : ', omp_get_max_threads()
+
+   ! Start clock of total execution time and init time
+   call clock_time(t1, omp_run)
+   call clock_time(t3, omp_run)
+   
+   ! Get main location of Fortran program
+   call getcwd(main_location)
+
+   ! --- Read input data from json ---
+   call read_json_input_location(input_location)                                                      ! Loc input files
+   call read_json_mesh(input_location, mesh%coord, mesh%newcoord, mesh%enod, mesh%bcnod, mesh%bcval)  ! Mesh data
+   call read_json_input_2(input_location, IMC_vol_transf, IMC_steps, lssys, diffsys)                  ! Input data
+
+   ! --- Create VTK and Matlab and Python folder in input location. Erase old if exists. Go back. ---
+   call chdir(input_location)
+   call execute_command_line ('rm -rf VTK; mkdir VTK')
+   call execute_command_line ('rm -rf mat_files; mkdir mat_files')   
+   call execute_command_line ('rm -rf phase_meshes; mkdir phase_meshes')
+   call chdir(main_location)
+
+   ! --- Initiate program ---
+
+   ! Initiate mesh system
+   call init_mesh_system(mesh)
+
+   ! Initiate level set
+   ngrains   = 5
+   IMC_steps = 400
+   call allocate_ls_system(lssys,ngrains,mesh%nelm,mesh%nrgp,mesh%nnod,mesh%nodel,mesh%enod)
+   call init_ls_system(lssys,mesh,IMC_steps,input_location)
+
+   ! Initiate Newton loop quantities
+   call init_NewtonEqIter(mesh,lssys)
+
+   ! Initiate diffusion system
+   call init_diffusion_system(diffsys, lssys%ngrains)
+
+   ! Initiate IMC transformation
+   call init_IMC_transf(IMC_eps_star, IMC_vol_transf)
+
+   ! Initiate plot system
+   call init_plot_system(pq, input_location, mesh)   
+
+   ! ----- Find global dofs for boundary condition and loads and print in table format -----
+   call finddof(mesh%bcdof,mesh%bcnod,mesh%dofnod)
+
+   ! Take init time
+   call clock_time(t4, omp_run)
+   init_time = t4-t3
+
+   ! --- Move IMC boundary and thereafter solve mechanical problem ---
+   lssys%h = 0.2d0
+   ls_h    = lssys%h
+   do i_IMC=1,IMC_steps
+
+      ! --- Print info ---
+      write(*,*)
+      write(*,'(A79)') '------------------------------ New IMC interface ------------------------------'
+      write(*,"(A9,I3,A4,I3)") 'IMC step ', i_IMC, ' of ', IMC_steps      
+
+
+      ! Save old level set state
+      lssys_old        = lssys
+      newton_loop_conv = .false.
+
+      ! Evolve interface and solve mechanical problem
+      do while (newton_loop_conv .eqv. .false.)
+
+         ! --- Update level set ---
+         call update_ls_system(lssys, mesh, i_IMC, input_location, omp_run, pq, diffsys, ls_spatial)
+
+         ! --- Solve mechanical problem for the current IMC boundary ---
+         write(*,*)
+         write(*,'(A39)') '-------------- Load loop --------------'
+         write(*,"(A24,G10.3)") 'Volume transformation : ', IMC_vol_transf
+         write(*,"(A6,G15.6)") 'Time: ', lssys%time
+         write(*,"(A12,G10.3)") 'Time step : ', lssys%h
+         call loadloop(mesh, lssys, IMC_eps_star, pq, i_IMC, omp_run, input_location, newton_loop_conv)
+         ! newton_loop_conv = .true.
+
+         ! If Newton loop fail - take shorter time step
+         if (newton_loop_conv .eqv. .false.) then
+            lssys   = lssys_old
+            ls_h    = ls_h/2d0
+            lssys%h = ls_h
+         elseif (ls_h.lt.2d0) then
+            ls_h    = ls_h*1.3d0
+            lssys%h = ls_h
+         endif
+
+         if (lssys%h.lt.1d-6) then
+            print *, 'Time step is zero'
+            ! ls_h = 0d0
+            call exit()
+         endif
+
+      enddo
+
+      ! Update time
+      lssys%time = lssys%time + lssys%h
+
+      ! --- Solve diffusion problem for all grains ---
+      call solve_diffusion_problem_global(diffsys, i_IMC, lssys, mesh, pq, input_location, omp_run)
+
+      ! --- Compute new velocity field --- 
+      print *, 'Entering compute_common_vp'
+      if (ls_spatial) then
+         call compute_common_vp_spatial(lssys,mesh,diffsys)
+      else
+         call compute_common_vp(lssys,mesh,diffsys)
+      endif
+      print *, 'Leaving compute_common_vp'
+
+      ! --- Save output data from level set and diffusion ---
+      print *, 'Entering write_level_set_iter_to_matlab'
+      call write_level_set_iter_to_matlab(lssys, mesh, i_IMC, input_location)
+      print *, 'Leaving write_level_set_iter_to_matlab'
+      
+      ! --- Plot ---
+      print *, 'Entering plot_vtk'
+      call plot_vtk(pq, input_location, mesh%nnodgp, mesh, lssys, i_IMC)
+      print *, 'Leaving plot_vtk'
+
+   enddo
+
+   ! --- Program finish ---
+
+   ! --- Times ---
+
+   ! Compute execution time
+   call clock_time(t2, omp_run)
+   exec_time = t2-t1
+   
+   ! Times
+   call printTimes(exec_time, init_time, diffsys%generate_mesh_time, diffsys%read_mesh_time, diffsys%solve_time, input_location) 
+
+   stop
+end program main

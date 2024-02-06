@@ -1,0 +1,716 @@
+# 1 "/home/er7128ja/Nextcloud/Projekt/Project_Code_2D/src/lib/somelib_ifort/elem_large_cont_3d.f90"
+module elem_large_cont_3d
+
+! Last rev.:
+!  M. Ristinmaa 2011-05-04
+!   - initial version 8-node brick element
+!  M. Ristinmaa 2011-05-06
+!   - changed order of integration points to be consistent with Abaqus
+!  M. Ristinmaa 2011-05-27
+!   - changed location of nodes in c3dtl8
+!  M. Ristinmaa 2011-05-27
+!   - introducing 8 noded Q1P0
+!  M. Ristinmaa 2011-09-11
+!   - debugged 8 noded Q1P0
+!  M. Ristinmaa 2011-10-10
+!   - start to defined parameters
+!  M. Ristinmaa 2011-10-12
+!   - rewrote TL element to use parameters and data definitions
+!     noticable spped increase
+!   - changed such that matrix_util is used, for inv3 order of arguments
+!     had to be changed
+!  M. Ristinmaa 2011-10-13
+!   - rewrote UL element to use paramaters and data definitions
+!  M. Wallin 2014-04-17
+!   - Added a number of subroutines used for SIMP and Helmholtz's filter
+!  M. Ristinmaa 2011-04-21
+!   - renamed routines
+!     updated Lagrange
+!       c3dul8_vi   - calculates volume of undeformed/deformed element
+!       c3dul8_gp   - calculates gauss point values form nodal values
+!     total Lagrange
+!       c3dtl8_vi   - calculates volume of undeformed/deformed element
+!       c3dtl8_gp   - calculates gauss point values form nodal values
+!  M. Ristinmaa 2020-02-24
+!   - cleaning node to gauss-point order
+!
+!------------------------------------------------------------------------------
+
+!
+!  Module elem_large_cont_3d contains element subroutines
+!  large deformations.
+!
+!  8 node brick element node locations
+!
+!              8----------7
+!             /|         /|
+!            / |        / |
+!           5----------6  |
+!           |  |       |  |
+!           |  4-------|--3
+!           | /        | /
+!           |/         |/
+!           1----------2
+!
+!  Trilinear displacement interpolation
+!  2x2x2 gauss integration points (in total 8), note location of gauss points
+!
+!
+!              7----------8          zeta
+!             /|         /|           |
+!            / |        / |           |  eta
+!           5----------6  |           | /
+!           |  |       |  |           |/
+!           |  3-------|--4           o ----- xsi
+!           | /        | /           origon
+!           |/         |/            at cube
+!           1----------2             center
+!
+! the weight for every gauss point is 1 for this scheme,
+! and it therefore omitted in the code
+!
+!------------------------------------------------------------------------------
+
+use matrix_util, only: inv3, det3
+
+implicit none
+
+! This is an attempt to predefine some vectors, to obtain speed
+! Implemented for the TL and UL elements
+double precision  xsi(8), eta(8), zet(8), G1, Ifm(9)
+integer           index(3,8)
+parameter        (G1=0.577350269189626D0)
+parameter        (xsi=(/-1D0,  1D0,-1D0,  1D0, -1D0,  1D0,-1D0,  1D0/)*G1 )
+parameter        (eta=(/-1D0, -1D0, 1D0,  1D0, -1D0, -1D0, 1D0,  1D0/)*G1 )
+parameter        (zet=(/-1D0, -1D0,-1D0, -1D0,  1D0,  1D0, 1D0,  1D0/)*G1 )
+!OLD
+!parameter        (xsi=(/-1D0,  1D0, 1D0, -1D0, -1D0,  1D0, 1D0, -1D0/)*G1 )
+!parameter        (eta=(/-1D0, -1D0, 1D0,  1D0, -1D0, -1D0, 1D0,  1D0/)*G1 )
+!parameter        (zet=(/ 1D0,  1D0, 1D0,  1D0, -1D0, -1D0,-1D0, -1D0/)*G1 )
+parameter        (Ifm=(/1d0,0d0,0d0,0d0,1d0,0d0,0d0,0d0,1d0/))
+parameter        (index=[(/1,2,3/),(/4,5,6/),(/7,8,9/),(/10,11,12/), &
+                         (/13,14,15/),(/16,17,18/),(/19,20,21/),(/22,23,24/)])
+private xsi, eta, zet, G1, Ifm, index
+
+double precision  NR(8,8) ! 8 Gauss points and 8 nodes
+data             (NR(:,1)= (1D0-XSI)*(1D0-ETA)*(1D0-ZET)/8D0)
+data             (NR(:,2)= (1D0+XSI)*(1D0-ETA)*(1D0-ZET)/8D0)
+data             (NR(:,3)= (1D0+XSI)*(1D0+ETA)*(1D0-ZET)/8D0)
+data             (NR(:,4)= (1D0-XSI)*(1D0+ETA)*(1D0-ZET)/8D0)
+data             (NR(:,5)= (1D0-XSI)*(1D0-ETA)*(1D0+ZET)/8D0)
+data             (NR(:,6)= (1D0+XSI)*(1D0-ETA)*(1D0+ZET)/8D0)
+data             (NR(:,7)= (1D0+XSI)*(1D0+ETA)*(1D0+ZET)/8D0)
+data             (NR(:,8)= (1D0-XSI)*(1D0+ETA)*(1D0+ZET)/8D0)
+!OLD
+!data             (NR(:,1)= (1D0+XSI)*(1D0+ETA)*(1D0-ZET)/8D0)
+!data             (NR(:,2)= (1D0-XSI)*(1D0+ETA)*(1D0-ZET)/8D0)
+!data             (NR(:,3)= (1D0-XSI)*(1D0-ETA)*(1D0-ZET)/8D0)
+!data             (NR(:,4)= (1D0+XSI)*(1D0-ETA)*(1D0-ZET)/8D0)
+!data             (NR(:,5)= (1D0+XSI)*(1D0+ETA)*(1D0+ZET)/8D0)
+!data             (NR(:,6)= (1D0-XSI)*(1D0+ETA)*(1D0+ZET)/8D0)
+!data             (NR(:,7)= (1D0-XSI)*(1D0-ETA)*(1D0+ZET)/8D0)
+!data             (NR(:,8)= (1D0+XSI)*(1D0-ETA)*(1D0+ZET)/8D0)
+private NR
+
+double precision  DNR(24,8) ! Maybe one should use DNR(8,24) instead for speed
+! derivate of shape functions with respect to xsi
+data             (DNR(1:24:3,1)= -(1D0-ETA)*(1D0-ZET)/8D0)
+data             (DNR(1:24:3,2)=  (1D0-ETA)*(1D0-ZET)/8D0)
+data             (DNR(1:24:3,3)=  (1D0+ETA)*(1D0-ZET)/8D0)
+data             (DNR(1:24:3,4)= -(1D0+ETA)*(1D0-ZET)/8D0)
+data             (DNR(1:24:3,5)= -(1D0-ETA)*(1D0+ZET)/8D0)
+data             (DNR(1:24:3,6)=  (1D0-ETA)*(1D0+ZET)/8D0)
+data             (DNR(1:24:3,7)=  (1D0+ETA)*(1D0+ZET)/8D0)
+data             (DNR(1:24:3,8)= -(1D0+ETA)*(1D0+ZET)/8D0)
+! derivate of shape functions with respect to eta
+data             (DNR(2:24:3,1)=-(1D0-XSI)*(1D0-ZET)/8D0)
+data             (DNR(2:24:3,2)=-(1D0+XSI)*(1D0-ZET)/8D0)
+data             (DNR(2:24:3,3)= (1D0+XSI)*(1D0-ZET)/8D0)
+data             (DNR(2:24:3,4)= (1D0-XSI)*(1D0-ZET)/8D0)
+data             (DNR(2:24:3,5)=-(1D0-XSI)*(1D0+ZET)/8D0)
+data             (DNR(2:24:3,6)=-(1D0+XSI)*(1D0+ZET)/8D0)
+data             (DNR(2:24:3,7)= (1D0+XSI)*(1D0+ZET)/8D0)
+data             (DNR(2:24:3,8)= (1D0-XSI)*(1D0+ZET)/8D0)
+! derivate of shape functions with respect to zet
+data             (DNR(3:24:3,1)=-(1D0-XSI)*(1D0-ETA)/8D0)
+data             (DNR(3:24:3,2)=-(1D0+XSI)*(1D0-ETA)/8D0)
+data             (DNR(3:24:3,3)=-(1D0+XSI)*(1D0+ETA)/8D0)
+data             (DNR(3:24:3,4)=-(1D0-XSI)*(1D0+ETA)/8D0)
+data             (DNR(3:24:3,5)= (1D0-XSI)*(1D0-ETA)/8D0)
+data             (DNR(3:24:3,6)= (1D0+XSI)*(1D0-ETA)/8D0)
+data             (DNR(3:24:3,7)= (1D0+XSI)*(1D0+ETA)/8D0)
+data             (DNR(3:24:3,8)= (1D0-XSI)*(1D0+ETA)/8D0)
+private DNR
+
+
+!------------------------------------------------------------------------------
+
+interface c3dul8p0_f
+  module procedure c3dul8_f
+end interface
+
+interface c3dul8_d
+  module procedure c3dtl8_d
+end interface
+
+interface c3dul8_vi
+  module procedure c3d8_vol1
+  module procedure c3d8_vol2
+  module procedure c3d8_vol3
+  module procedure c3d8_vol4
+end interface
+
+interface c3dtl8_vi
+  module procedure c3d8_vol1
+  module procedure c3d8_vol2
+  module procedure c3d8_vol3
+  module procedure c3d8_vol4
+end interface
+private c3d8_vol1, c3d8_vol2, c3d8_vol3, c3d8_vol4
+
+interface c3dul8_gp
+  module procedure c3d8_gpval
+end interface
+
+interface c3dtl8_gp
+  module procedure c3d8_gpval
+end interface
+private c3d8_gpval
+
+!------------------------------------------------------------------------------
+contains
+
+
+! 8-node brick Q1P0 element based on updated Lagrangian formulation
+subroutine c3dul8p0_e(ke,coord,Diso,ddWdJJ,ed,es)
+  implicit none
+  double precision                :: ke(:,:), coord(:,:), Diso(:,:,:)
+  double precision                :: ed(:), es(:,:), ddWdJJ(:)
+
+  integer, parameter              :: NGP=8
+  integer                         :: gp_nr
+
+  double precision                :: JT(24,3), JT0(24,3), JTinv(3,3)
+  double precision                :: DetJ, DetJ0
+  double precision                :: DNX(3,8)
+  double precision                :: B(6,24)
+  double precision                :: Dgp(6,6)
+  DOUBLE PRECISION                :: STRESS(3,3)
+  DOUBLE PRECISION                :: HE(9,24)
+  DOUBLE PRECISION                :: R(9,9)
+  double precision                :: ucoord(3,8), Volume0, trS, DW
+  double precision                :: PB(1,24)
+
+  double precision, parameter     :: P(1,6)=(/1d0,1d0,1d0,0d0,0d0,0d0/)
+  double precision, parameter     :: Q(6,6)=(/-1d0, 1d0, 1d0, 0d0, 0d0, 0d0, &
+                                               1d0,-1d0, 1d0, 0d0, 0d0, 0d0, &
+                                               1d0, 1d0,-1d0, 0d0, 0d0, 0d0, &
+                                               0d0, 0d0, 0d0,-1d0, 0d0, 0d0, &
+                                               0d0, 0d0, 0d0, 0d0,-1d0, 0d0, &
+                                               0d0, 0d0, 0d0, 0d0, 0d0,-1d0/)
+
+  ucoord(1,:)=coord(1,:)+ed([1,4,7,10,13,16,19,22])
+  ucoord(2,:)=coord(2,:)+ed([2,5,8,11,14,17,20,23])
+  ucoord(3,:)=coord(3,:)+ed([3,6,9,12,15,18,21,24])
+
+  JT=MATMUL(DNR,transpose(ucoord))
+  JT0=MATMUL(DNR,transpose(coord))
+
+  KE=0D0
+  PB=0d0
+  Volume0=0d0
+  DW=0d0
+  DO GP_NR=1,NGP
+
+    CALL INV3(JTinv,JT(INDEX(:,gp_nr),:))
+    DNX=MATMUL(JTinv,DNR(INDEX(:,gp_nr),:))
+    DETJ=det3(JT(index(:,gp_nr),:)) 
+    DETJ0=det3(JT0(index(:,gp_nr),:)) 
+
+    B=0D0
+    B(1,1:24:3)=dNx(1,:)
+    B(2,2:24:3)=dNx(2,:)
+    B(3,3:24:3)=dNx(3,:)
+    B(4,1:24:3)=dNx(2,:)
+    B(4,2:24:3)=dNx(1,:)
+    B(5,1:24:3)=dNx(3,:)
+    B(5,3:24:3)=dNx(1,:)
+    B(6,2:24:3)=dNx(3,:)
+    B(6,3:24:3)=dNx(2,:)
+  
+    He=0d0
+    He(1:3,1:24:3)=dNx(1:3,:)
+    He(4:6,2:24:3)=dNx(1:3,:)
+    He(7:9,3:24:3)=dNx(1:3,:)
+
+    stress(1,:)=(/es(1,gp_nr), es(4,gp_nr), es(5,gp_nr)/)
+    stress(2,:)=(/es(4,gp_nr), es(2,gp_nr), es(6,gp_nr)/)
+    stress(3,:)=(/es(5,gp_nr), es(6,gp_nr), es(3,gp_nr)/)
+
+    R=0D0
+    R(1:3,1:3)=STRESS(:,:)
+    R(4:6,4:6)=STRESS(:,:)
+    R(7:9,7:9)=STRESS(:,:)
+
+    trS=(es(1,gp_nr)+es(2,gp_nr)+es(3,gp_nr))/3d0
+    Dgp=Diso(:,:,gp_nr)+trS*Q
+  
+    KE=KE+(MATMUL(TRANSPOSE(B),MATMUL(Dgp,B)) &
+           +MATMUL(MATMUL(TRANSPOSE(He),R),He))*DETJ
+
+!   P^T*B
+    PB=PB+matmul(P,B)*DetJ
+    Volume0=Volume0+DetJ0
+!    DW=ddWdJJ(GP_NR)**DetJ0*WP(GP_NR)
+
+  END DO
+
+! Missing part
+  KE=KE+matmul(transpose(PB),PB)*ddWdJJ(1)/Volume0
+!  KE=KE+PB*PB*DW/Volume0/Volume0
+
+  RETURN
+END subroutine c3dul8p0_e
+
+
+! calculates the total deformation gradient
+subroutine c3dul8p0_d(dg,th,coord,ed)
+  implicit none
+
+  double precision                :: dg(:,:), th, coord(:,:), ed(:)
+
+  integer, parameter              :: NGP=8
+  integer                         :: gp_nr
+
+  double precision                :: JT(24,3), JT0(24,3), JTinv(3,3)
+  double precision                :: DNX(3,8), DetJ, DetJ0
+  double precision                :: Volume, Volume0
+  double precision                :: ucoord(3,8), He(9,24)
+
+! current nodal values
+  ucoord(1,:)=coord(1,:)+ed([1,4,7,10,13,16,19,22])
+  ucoord(2,:)=coord(2,:)+ed([2,5,8,11,14,17,20,23])
+  ucoord(3,:)=coord(3,:)+ed([3,6,9,12,15,18,21,24])
+
+  Volume=0d0
+  Volume0=0d0
+
+  JT=MATMUL(DNR,transpose(uCOORD))
+  JT0=MATMUL(DNR,transpose(coord))
+   
+  DO GP_NR=1,NGP
+
+    CALL INV3(JTinv,JT0(INDEX(:,gp_nr),:))
+    DNX=MATMUL(JTinv,DNR(INDEX(:,gp_nr),:))
+    DETJ=det3(JT(index(:,gp_nr),:)) 
+    DETJ0=det3(JT0(index(:,gp_nr),:)) 
+
+    He=0D0
+    He(1:3,1:24:3)=dNx(1:3,:)
+    He(4:6,2:24:3)=dNx(1:3,:)
+    He(7:9,3:24:3)=dNx(1:3,:)
+
+    dg(:,gp_nr)=Ifm+MATMUL(HE,ED)
+ 
+    Volume=Volume+DetJ
+    Volume0=Volume0+DetJ0
+
+  END DO
+  
+  th=Volume/Volume0
+
+  RETURN
+end subroutine c3dul8p0_d
+
+
+! 8-node brick element  based on updated Lagrangian formulation
+subroutine c3dul8_e(ke,coord,D,ed,es)
+  implicit none
+  double precision                :: ke(:,:), coord(:,:), D(:,:,:)
+  double precision                :: ed(:), es(:,:)
+
+  integer, parameter              :: NGP=8
+  integer                         :: gp_nr
+
+  double precision                :: JT(24,3), DetJ, JTinv(3,3)
+  double precision                :: DNX(3,8)
+  double precision                :: BL0(6,24)
+  double precision                :: Dgp(6,6)
+  DOUBLE PRECISION                :: STRESS(3,3)
+  DOUBLE PRECISION                :: HE(9,24)
+  DOUBLE PRECISION                :: R(9,9)
+  double precision                :: ucoord(3,8)
+
+  ucoord(1,:)=coord(1,:)+ed([1,4,7,10,13,16,19,22])
+  ucoord(2,:)=coord(2,:)+ed([2,5,8,11,14,17,20,23])
+  ucoord(3,:)=coord(3,:)+ed([3,6,9,12,15,18,21,24])
+
+  JT=MATMUL(DNR,transpose(ucoord))
+
+  KE=0D0
+  DO GP_NR=1,NGP
+
+    CALL INV3(JTinv,JT(INDEX(:,gp_nr),:))
+    DNX=MATMUL(JTinv,DNR(INDEX(:,gp_nr),:))
+    DETJ=det3(JT(index(:,gp_nr),:)) 
+
+    BL0=0D0
+    BL0(1,1:24:3)=dNx(1,:)
+    BL0(2,2:24:3)=dNx(2,:)
+    BL0(3,3:24:3)=dNx(3,:)
+    BL0(4,1:24:3)=dNx(2,:)
+    BL0(4,2:24:3)=dNx(1,:)
+    BL0(5,1:24:3)=dNx(3,:)
+    BL0(5,3:24:3)=dNx(1,:)
+    BL0(6,2:24:3)=dNx(3,:)
+    BL0(6,3:24:3)=dNx(2,:)
+  
+    He=0d0
+    He(1:3,1:24:3)=dNx(1:3,:)
+    He(4:6,2:24:3)=dNx(1:3,:)
+    He(7:9,3:24:3)=dNx(1:3,:)
+
+    stress(1,:)=(/es(1,gp_nr), es(4,gp_nr), es(5,gp_nr)/)
+    stress(2,:)=(/es(4,gp_nr), es(2,gp_nr), es(6,gp_nr)/)
+    stress(3,:)=(/es(5,gp_nr), es(6,gp_nr), es(3,gp_nr)/)
+    R=0D0
+    R(1:3,1:3)=STRESS(:,:)
+    R(4:6,4:6)=STRESS(:,:)
+    R(7:9,7:9)=STRESS(:,:)
+
+    Dgp=D(:,:,gp_nr)
+  
+    KE=KE+(MATMUL(TRANSPOSE(BL0),MATMUL(Dgp,BL0)) &
+           +MATMUL(MATMUL(TRANSPOSE(He),R),He))*DETJ
+
+  END DO
+  RETURN
+END subroutine c3dul8_e
+
+
+subroutine c3dul8_f(ef,coord,ed,es)
+  implicit none
+
+  double precision                :: eF(:), coord(:,:),  ed(:), es(:,:)
+
+  integer, parameter              :: NGP=8
+  integer                         :: gp_nr
+
+  double precision                :: JT(24,3), JTinv(3,3)
+  double precision                :: TMP(3,8), DNX(3,8), DETJ
+  double precision                :: BL0(6,24)
+  double precision                :: ucoord(3,8)
+
+  ucoord(1,:)=coord(1,:)+ed([1,4,7,10,13,16,19,22])
+  ucoord(2,:)=coord(2,:)+ed([2,5,8,11,14,17,20,23])
+  ucoord(3,:)=coord(3,:)+ed([3,6,9,12,15,18,21,24])
+
+  JT=MATMUL(DNR,transpose(ucoord))
+
+  ef=0D0
+  DO GP_NR=1,NGP
+    CALL INV3(JTinv,JT(INDEX(:,gp_nr),:))
+    DNX=MATMUL(JTinv,DNR(INDEX(:,gp_nr),:))
+    DETJ=det3(JT(index(:,gp_nr),:)) 
+
+    BL0=0D0
+    BL0(1,1:24:3) =dNx(1,:)
+    BL0(2,2:24:3) =dNx(2,:)
+    BL0(3,3:24:3) =dNx(3,:)
+    BL0(4,1:24:3) =dNx(2,:)
+    BL0(4,2:24:3) =dNx(1,:)
+    BL0(5,1:24:3) =dNx(3,:)
+    BL0(5,3:24:3) =dNx(1,:)
+    BL0(6,2:24:3) =dNx(3,:)
+    BL0(6,3:24:3) =dNx(2,:)
+
+    EF=EF+MATMUL(TRANSPOSE(BL0),es(:,gp_nr))*detJ
+
+  END DO
+  RETURN
+END subroutine c3dul8_f
+
+
+! 8-node brick element  based on total Lagrangian formulation
+subroutine c3dtl8_e(ke,coord,D,ed,es)
+  implicit none
+  double precision                :: ke(:,:), coord(:,:), D(:,:,:)
+  double precision                :: ed(:), es(:,:)
+
+  integer, parameter              :: NGP=8, R2=NGP*3
+  integer                         :: GP_NR
+
+  double precision                :: JT(R2,3), DetJ, JTinv(3,3)
+  double precision                :: TMP(3,8), DNX(3,8)
+  double precision                :: BL0(6,24), BL(6,24)
+  double precision                :: Dgp(6,6)
+  DOUBLE PRECISION                :: STRESS(3,3)
+  DOUBLE PRECISION                :: HE(9,24)
+  DOUBLE PRECISION                :: A(6,9)
+  DOUBLE PRECISION                :: dg(9)
+  DOUBLE PRECISION                :: R(9,9)
+
+
+  JT=MATMUL(DNR,transpose(COORD))
+
+  KE=0D0
+  DO GP_NR=1,NGP
+
+    CALL INV3(JTinv,JT(INDEX(:,gp_nr),:))
+    DNX=MATMUL(JTinv,DNR(INDEX(:,gp_nr),:))
+    DETJ=det3(JT(index(:,gp_nr),:)) 
+
+    BL0=0D0
+    BL0(1,1:24:3)=dNx(1,:)
+    BL0(2,2:24:3)=dNx(2,:)
+    BL0(3,3:24:3)=dNx(3,:)
+    BL0(4,1:24:3)=dNx(2,:)
+    BL0(4,2:24:3)=dNx(1,:)
+    BL0(5,1:24:3)=dNx(3,:)
+    BL0(5,3:24:3)=dNx(1,:)
+    BL0(6,2:24:3)=dNx(3,:)
+    BL0(6,3:24:3)=dNx(2,:)
+  
+    He=0d0
+    He(1:3,1:24:3)=dNx(1:3,:)
+    He(4:6,2:24:3)=dNx(1:3,:)
+    He(7:9,3:24:3)=dNx(1:3,:)
+
+! displacement gradient
+    dg=matmul(He,ed)
+    A=0d0
+    A([1,4,5],1)=dg(1:3)
+    A([2,4,6],2)=(/dg(2),dg(1),dg(3)/)
+    A([3,5,6],3)=(/dg(3),dg(1),dg(2)/)
+    A([1,4,5],4)=dg(4:6)
+    A([2,4,6],5)=(/dg(5),dg(4),dg(6)/)
+    A([3,5,6],6)=(/dg(6),dg(4),dg(5)/)
+    A([1,4,5],7)=dg(7:9)
+    A([2,4,6],8)=(/dg(8),dg(7),dg(9)/)
+    A([3,5,6],9)=(/dg(9),dg(7),dg(8)/)
+
+    BL=BL0+MATMUL(A,He)
+
+    stress(1,:)=(/es(1,gp_nr), es(4,gp_nr), es(5,gp_nr)/)
+    stress(2,:)=(/es(4,gp_nr), es(2,gp_nr), es(6,gp_nr)/)
+    stress(3,:)=(/es(5,gp_nr), es(6,gp_nr), es(3,gp_nr)/)
+    R=0D0
+    R(1:3,1:3)=STRESS(:,:)
+    R(4:6,4:6)=STRESS(:,:)
+    R(7:9,7:9)=STRESS(:,:)
+
+    Dgp=D(:,:,gp_nr)
+  
+    KE=KE+(MATMUL(TRANSPOSE(BL),MATMUL(Dgp,BL)) &
+           +MATMUL(MATMUL(TRANSPOSE(He),R),He))*DETJ
+
+  END DO
+  RETURN
+END subroutine c3dtl8_e
+
+
+! calculates the total deformation gradient
+subroutine c3dtl8_d(dg,coord,ed)
+  implicit none
+
+  double precision                :: dg(:,:), coord(:,:),  ed(:)
+
+  integer                         :: gp_nr
+
+  double precision                :: JT(24,3), JTinv(3,3)
+  double precision                :: TMP(3,8), dNx(3,8)
+  double precision                :: He(9,24)
+
+  JT=MATMUL(DNR,transpose(COORD))
+   
+  do GP_NR=1,8
+
+   CALL INV3(JTinv,JT(INDEX(:,gp_nr),:))
+   dNx=MATMUL(JTinv,DNR(INDEX(:,gp_nr),:))
+ 
+   He=0d0
+   He(1:3,1:24:3)=dNx(1:3,:)
+   He(4:6,2:24:3)=dNx(1:3,:)
+   He(7:9,3:24:3)=dNx(1:3,:)
+     
+   dg(:,gp_nr)=Ifm+MATMUL(HE,ED)
+
+  end do
+
+  return
+end subroutine c3dtl8_d
+
+
+subroutine c3dtl8_f(ef,coord,ed,es)
+  implicit none
+
+  double precision                :: eF(:), coord(:,:),  ed(:), es(:,:)
+
+  integer, parameter              :: NGP=8
+  integer                         :: gp_nr
+
+  double precision                :: JT(24,3), JTinv(3,3)
+  double precision                :: TMP(3,8), dNx(3,8), DETJ
+  double precision                :: BL0(6,24), He(9,24)
+  double precision                :: A(6,9), dg(9)
+
+ 
+  JT=MATMUL(DNR,transpose(COORD))
+
+  ef=0D0
+  DO GP_NR=1,NGP
+
+    CALL INV3(JTinv,JT(INDEX(:,gp_nr),:))
+    dNx=MATMUL(JTINV,DNR(INDEX(:,gp_nr),:))
+    DETJ=det3(JT(index(:,gp_nr),:)) 
+
+    BL0=0D0
+    BL0(1,1:24:3) =dNx(1,:)
+    BL0(2,2:24:3) =dNx(2,:)
+    BL0(3,3:24:3) =dNx(3,:)
+    BL0(4,1:24:3) =dNx(2,:)
+    BL0(4,2:24:3) =dNx(1,:)
+    BL0(5,1:24:3) =dNx(3,:)
+    BL0(5,3:24:3) =dNx(1,:)
+    BL0(6,2:24:3) =dNx(3,:)
+    BL0(6,3:24:3) =dNx(2,:)
+
+    He=0d0
+    He(1:3,1:24:3)=dNx(1:3,:)
+    He(4:6,2:24:3)=dNx(1:3,:)
+    He(7:9,3:24:3)=dNx(1:3,:)
+
+! displacement gradient
+    dg=matmul(He,ed)
+    A=0d0
+    A([1,4,5],1)=dg(1:3)
+    A([2,4,6],2)=(/dg(2),dg(1),dg(3)/)
+    A([3,5,6],3)=(/dg(3),dg(1),dg(2)/)
+    A([1,4,5],4)=dg(4:6)
+    A([2,4,6],5)=(/dg(5),dg(4),dg(6)/)
+    A([3,5,6],6)=(/dg(6),dg(4),dg(5)/)
+    A([1,4,5],7)=dg(7:9)
+    A([2,4,6],8)=(/dg(8),dg(7),dg(9)/)
+    A([3,5,6],9)=(/dg(9),dg(7),dg(8)/)
+ 
+    EF=EF+MATMUL(TRANSPOSE(BL0+MATMUL(A,He)),es(:,gp_nr))*detJ
+
+  END DO
+  RETURN
+END subroutine c3dtl8_f
+
+
+! ---CHECK MAYBE MOVED TO A DIFFERENT ROUTINE?????
+! ---ALSO NAMING OF ROUTINES DIFFER
+
+! RENAMED ROUTINES
+
+subroutine c3d8_gpval(rhogp,rho)
+  implicit none
+
+  double precision                ::  rho(:)
+  double precision                ::  rhogp(8)
+ 
+  rhogp=MATMUL(NR,rho)
+
+  RETURN
+END subroutine c3d8_gpval
+
+
+subroutine c3d8_vol1(evol,coord)
+  implicit none
+  double precision                :: evol, coord(:,:)
+
+  integer, parameter              :: NGP=8, R2=NGP*3
+  integer                         :: GP_NR
+
+  double precision                :: JT(R2,3), DetJ
+
+  JT=MATMUL(DNR,transpose(COORD))
+
+  evol=0D0
+  DO GP_NR=1,NGP
+    DETJ=det3(JT(index(:,gp_nr),:)) 
+    evol=evol+DETJ
+  END DO
+  RETURN
+END subroutine c3d8_vol1
+
+
+subroutine c3d8_vol2(evol,coord,efin)
+  implicit none
+  double precision                :: evol, coord(:,:), efin(:,:), ef(9)
+
+  integer, parameter              :: NGP=8, R2=NGP*3
+  integer                         :: GP_NR
+
+  double precision                :: JT(R2,3), DetJ, F(3,3), J
+
+  JT=MATMUL(DNR,transpose(COORD))
+
+  evol=0D0
+  DO GP_NR=1,NGP
+
+    ef=efin(:,gp_nr)
+    F(1,:)=(/ef(1), ef(2), ef(3)/)
+    F(2,:)=(/ef(4), ef(5), ef(6)/)
+    F(3,:)=(/ef(7), ef(8), ef(9)/)
+    J=det3(F)
+
+    DETJ=det3(JT(index(:,gp_nr),:)) 
+    evol=evol+DETJ*J
+  END DO
+  RETURN
+END subroutine c3d8_vol2
+
+
+subroutine c3d8_vol3(evol,coord,efin,gpval)
+  implicit none
+  double precision                :: evol, coord(:,:), efin(:,:), gpval(:)
+
+  integer, parameter              :: NGP=8, R2=NGP*3
+  integer                         :: GP_NR
+
+  double precision                :: JT(R2,3), DetJ, F(3,3), J, ef(9)
+
+  JT=MATMUL(DNR,transpose(COORD))
+
+  evol=0D0
+  DO GP_NR=1,NGP
+
+    ef=efin(:,gp_nr)
+    F(1,:)=(/ef(1), ef(2), ef(3)/)
+    F(2,:)=(/ef(4), ef(5), ef(6)/)
+    F(3,:)=(/ef(7), ef(8), ef(9)/)
+    J=det3(F)
+
+    DETJ=det3(JT(index(:,gp_nr),:)) 
+    evol=evol+DETJ*J*gpval(GP_NR)
+  END DO
+  RETURN
+END subroutine c3d8_vol3
+
+
+subroutine c3d8_vol4(evol,coord,gpval)
+  implicit none
+  double precision                :: evol, coord(:,:), gpval(:)
+
+  integer, parameter              :: NGP=8, R2=NGP*3
+  integer                         :: GP_NR
+
+  double precision                :: JT(R2,3), DetJ
+
+  JT=MATMUL(DNR,transpose(COORD))
+
+  evol=0D0
+  DO GP_NR=1,NGP
+
+    DETJ=det3(JT(index(:,gp_nr),:)) 
+    evol=evol+DETJ*gpval(GP_NR)
+  END DO
+  RETURN
+END subroutine c3d8_vol4
+
+
+
+end module elem_large_cont_3d

@@ -1,0 +1,342 @@
+module readind_util
+
+! Last modified
+! M. Ristinmaa 2020-06-15
+!  -initial version based on old abaqus_util f77 code
+!-----------------------------------------------------------------------------
+
+!use memory_util
+
+implicit none
+
+interface read_indfile
+   module procedure read_indfileH1
+   module procedure read_indfileH2
+end interface
+private read_indfileH1, read_indfileH2
+
+  integer, parameter                :: maxcomlin=5  ! keywords in command line
+
+!-----------------------------------------------------------------------------
+contains
+
+subroutine read_indfileH1(filename,coord,enod,matid,aa,propEM,J0, freq)
+  implicit none
+  double precision, allocatable     :: coord(:,:), aa(:), at(:)
+  double precision, allocatable     :: propTH(:,:), propEM(:,:), J0(:)
+  double precision                  :: freq
+  integer, allocatable              :: enod(:,:), matid(:)
+  character(len=*)                  :: filename
+
+  call read_indfileH2(filename,coord,enod,matid,aa,at,propEM,propTH,J0, freq)
+
+end subroutine read_indfileH1
+
+
+subroutine read_indfileH2(filename,coord,enod,matid,aa,at,propEM,propTH,J0, freq)
+  implicit none
+  double precision, allocatable     :: coord(:,:), aa(:), at(:)
+	double precision, allocatable     :: propTH(:,:), propEM(:,:), J0(:)
+	double precision                  :: freq
+  integer, allocatable              :: enod(:,:), matid(:)
+	character(len=*)                  :: filename
+
+
+	character(len=120)                :: strin, strin_next
+  character(len=120)                :: command(maxcomlin)
+  integer                           :: nrcom, nrele, nrnod
+	integer                           :: matindx
+
+	integer                           :: j, jn, ie, ele, nr, k
+	integer                           :: ierr, mprop, nprop
+	double precision                  :: aa_init
+
+  if (allocated(coord)) deallocate(coord)
+  if (allocated(enod))  deallocate(enod)
+
+  open(unit=21,file=filename,status='UNKNOWN')
+
+10 READ(21,"(A)",END=12,ERR=9999)strin
+
+!--- Resolve line
+
+   if (STRIN(1:1).EQ.'#') then
+!     comment
+
+	 elseif (STRIN(1:1).EQ.'''') then
+         write(*,*)'reading ',strin
+      call parsline(strin,command,nrcom)
+
+! debug
+!      write(*,*)'command ',strin
+     do j=1,nrcom
+        write(*,*)'command ',j,command(j)
+     enddo
+
+!
+! Resolve data line
+!
+
+!
+! Coupled
+!
+     IF (command(1).EQ.'''COUPLED''') THEN
+!
+! Node
+!
+     elseif (command(1).EQ.'''COORD''') THEN
+        READ(command(2),*,ERR=9999)NRNOD
+				allocate(coord(2,nrnod),stat=ierr)
+				do ie=1,NRnod
+   				READ(21,"(A)",END=12,ERR=9999)strin_next
+          READ(strin_next,*,ERR=9999)ele,(coord(j,ie),j=1,2)
+				enddo
+
+!
+! Element
+!
+     ELSEIF (command(1).EQ.'''ELEMENT''') THEN
+		    READ(command(2),*,ERR=9999)nrele
+				!write(*,*)'number of elements ',nrele
+				READ(21,"(A)",END=12,ERR=9999)strin_next
+
+        allocate(enod(4,nrele),stat=ierr)
+				allocate(matid(nrele),stat=ierr)
+				do ie=1,NRELE
+   				READ(21,"(A)",END=12,ERR=9999)strin_next
+          READ(strin_next,*,ERR=9999)ele,matindx,(enod(j,ie),j=1,4)
+					matid(ie)=matindx
+				enddo
+
+
+!
+! Material Properties
+!
+     ELSEIF (command(1).EQ.'''MAT3''') THEN
+		   READ(command(2),*,ERR=9999)nr
+  		   nprop=3
+		   mprop=MAXVAL(matId(:))
+	 	  !Allocate material properties
+		   ALLOCATE(propTH(mprop,nprop))
+		   propTH = 0d0
+		   READ(21,*)(k,propTH(k,:),j=1,nr)
+
+     ELSEIF (command(1).EQ.'''MAT4''') THEN
+		   READ(command(2),*,ERR=9999)nr
+		   nprop=2
+		   mprop=MAXVAL(matId(:))
+		   !Allocate material properties
+		   ALLOCATE(propEM(mprop,nprop))
+		   propEM = 0D0
+		   READ(21,*)(k,propEM(k,:),j=1,nr)
+
+		 !
+!		 DO iel=1,nels
+!				 mu(iel,1:nip)=mu0*propEM(matId(iel),2)
+!				 IF(propEM(matId(iel),2).EQ.-1)THEN
+!						mu(iel,1:nip)=mu0
+!				 ENDIF
+!		 END DO
+
+     ELSEIF (command(1).EQ.'''MAT5''') THEN
+		   stop 'not implemented'
+!
+! Boundary conditions
+!
+     ELSEIF (command(1).EQ.'''FIXA''') THEN
+
+		 ELSEIF (command(1).EQ.'''FIXE''') THEN
+
+     ELSEIF (command(1).EQ.'''FIXT''') THEN
+
+!
+! Initial conditions
+!
+     ELSEIF (command(1).EQ.'''INITA''') THEN
+   		 allocate(aa(nrnod),stat=ierr)
+			 READ(21,*,END=12,ERR=9999)aa_init
+			 aa=aa_init
+
+		 ELSEIF (command(1).EQ.'''INITE''') THEN
+
+		 ELSEIF (command(1).EQ.'''INITT''') THEN
+   		 allocate(at(nrnod),stat=ierr)
+			 READ(21,*,END=12,ERR=9999)aa_init
+			 at=aa_init
+			 write(*,*)'Inital temp ',aa_init
+
+!
+! Load
+!
+     ELSEIF (command(1).EQ.'''CURRDENS''') THEN
+
+		 IF (.not.ALLOCATED(J0)) THEN
+				ALLOCATE(J0(nrele))
+				J0=0d0
+		 ENDIF
+		 !
+		 READ(command(2),*,ERR=9999)nr
+		 READ(21,*)freq
+		 READ(21,*)(k,J0(k),j=1,nr)
+
+!
+! Time steping
+!
+     ELSEIF (command(1).EQ.'''HTIME''') THEN
+		   READ(command(2),*,ERR=9999)jn
+
+			 do j=1,jn
+  		   READ(21,"(A)",END=12,ERR=9999)strin_next
+       enddo
+!
+! W A R N I N G
+!
+     ELSE
+       WRITE(*,*)'WARNING NO MATCH ',command(1),strin
+			 !stop
+     ENDIF
+   ENDIF
+   GOTO 10
+!
+! E R R O R   R E A D
+!
+9999 WRITE(*,*)'   ERROR READING .IND INPUTFILE '
+   STOP
+!
+12 CLOSE (21)
+!
+
+
+!  write(*,*)'Number of nods                :',NRNOD
+!  write(*,*)'Number of dofs                :',NRNOD*NNDIM
+!  write(*,*)'Number of elements            :',NRELE
+!  write(*,*)'Number of boundary conditions :',NRBC
+!  write(*,*)'Number of concentrated loads  :',NRFL
+
+  return
+end subroutine read_indfileH2
+
+
+
+SUBROUTINE ELEMEN(command,eltype,nodel,nndof)
+  implicit none
+  integer                           :: nodel, nndof
+  character(len=*)                  :: command(maxcomlin), eltype
+
+  integer      :: j, jfound
+
+  do j=1,maxcomlin
+    if (command(j).eq.'type') jfound=j
+  enddo
+  nodel=0
+  select case(command(jfound+1))
+  case('CPE3')
+    nodel=3
+    nndof=2
+  case('CPS3')
+    nodel=3
+    nndof=2
+  case('CPE4')
+    nodel=4
+    nndof=2
+  case('CPE8RP')  ! 8node biquadratic displ, bilinear pressure
+    nodel=8
+    nndof=2
+  case('C3D8')
+    nodel=8
+    nndof=3
+  case('C3D4')
+    nodel=4
+    nndof=3
+  case('C3D8T')
+    nodel=8
+    nndof=4
+  end select
+
+  if (nodel.eq.0) write(*,*) command(jfound+1)
+  if (nodel.eq.0) stop 'abaqus_util element not found'
+!write(*,*)'jfound ',jfound, nodel
+
+  eltype=command(jfound+1)
+!
+  return
+end subroutine elemen
+
+
+
+subroutine parsline(line,sym,nsym)
+  implicit none
+  
+! Fungerar inte om tab används  
+!
+!    Separate the individual words in the line for
+!    later interpretation.
+!
+!    INPUT
+!     line   -   line to be parsed
+!     OUTPUT
+!     sym    -   array containing individual words in the line
+!     nsym   -   number of words found in the line
+
+  integer            :: istart, iend, ierr, lline, nsym, lsym, nfnd, iexp, i, j
+  character          :: line*(*),sym(*)*(*), le*120
+
+
+! search for , and = and space as separators
+
+  character (len=3)    :: sep=',= '
+
+!
+  nfnd=maxcomlin
+
+  le=adjustl(line)
+  lsym=len(sym(1))
+  lline=len(le)
+
+  nsym=0
+  ierr=0
+  iend=0
+  istart=1
+
+!  write(*,*)line
+!
+! Loop to find all words (symbols) in the line
+!
+  iend = scan(le,sep)
+  do while (iend.ne.1)
+     nsym=nsym+1
+     sym(nsym)=adjustl(le(1:iend-1))
+     le=adjustl(le((iend+1):lline))
+     iend = scan(le,sep)
+  end do
+  sym((nsym+1):nfnd)=' '
+
+ return
+end subroutine parsline
+
+
+logical function isnumber(str)
+!     check if the string argument contain a number
+  implicit none
+  character        :: str*(*)
+!  logical          :: isnumber
+
+  integer          :: i
+
+  isnumber=.true.
+
+  do i=1,len(str)
+    if((str(i:i).lt.'0'.or.str(i:i).gt.'9').and.  &
+        str(i:i).ne.'.'.and.str(i:i).ne.'-'.and.  &
+        str(i:i).ne.'+'.and.str(i:i).eq.' ')then
+       isnumber=.false.
+       return
+     end if
+   end do
+
+   return
+end function isnumber
+
+
+
+end module readind_util

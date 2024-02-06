@@ -1,0 +1,483 @@
+# -*- coding: mbcs -*-
+#
+# Abaqus/CAE Release 2019 replay file
+# Internal Version: 2020_01_29-08.04.18 159217
+# Run by er7128ja on Fri Jun  3 08:36:50 2022
+#
+
+# from driverUtils import executeOnCaeGraphicsStartup
+# executeOnCaeGraphicsStartup()
+#: Executing "onCaeGraphicsStartup()" in the site directory ...
+from abaqus import *
+from abaqusConstants import *
+session.Viewport(name='Viewport: 1', origin=(0.0, 0.0), width=324.908325195312, 
+    height=208.409271240234)
+session.viewports['Viewport: 1'].makeCurrent()
+session.viewports['Viewport: 1'].maximize()
+from caeModules import *
+from driverUtils import executeOnCaeStartup
+executeOnCaeStartup()
+session.viewports['Viewport: 1'].partDisplay.geometryOptions.setValues(
+    referenceRepresentation=ON)
+openMdb(
+    pathName='/home/er7128ja/Nextcloud/Projekt/Project_Code/abaqus_model/uconst/uconst_fine/uconst_fine.cae')
+#: The model database "/home/er7128ja/Nextcloud/Projekt/Project_Code/abaqus_model/uconst/uconst_fine/uconst_fine.cae" has been opened.
+session.viewports['Viewport: 1'].setValues(displayedObject=None)
+p = mdb.models['Model-1'].parts['Part-1']
+session.viewports['Viewport: 1'].setValues(displayedObject=p)
+session.viewports['Viewport: 1'].partDisplay.setValues(mesh=ON)
+session.viewports['Viewport: 1'].partDisplay.meshOptions.setValues(
+    meshTechnique=ON)
+session.viewports['Viewport: 1'].partDisplay.geometryOptions.setValues(
+    referenceRepresentation=OFF)
+p = mdb.models['Model-1'].parts['Part-1']
+f = p.faces
+pickedRegions = f.getSequenceFromMask(mask=('[#7 ]', ), )
+p.deleteMesh(regions=pickedRegions)
+p = mdb.models['Model-1'].parts['Part-1']
+e = p.edges
+pickedEdges = e.getSequenceFromMask(mask=('[#115 ]', ), )
+p.seedEdgeBySize(edges=pickedEdges, size=0.05, deviationFactor=0.1, 
+    minSizeFactor=0.1, constraint=FINER)
+p = mdb.models['Model-1'].parts['Part-1']
+e = p.edges
+pickedEdges = e.getSequenceFromMask(mask=('[#28a ]', ), )
+p.seedEdgeBySize(edges=pickedEdges, size=0.05, deviationFactor=0.1, 
+    minSizeFactor=0.1, constraint=FINER)
+p = mdb.models['Model-1'].parts['Part-1']
+e = p.edges
+pickedEdges = e.getSequenceFromMask(mask=('[#60 ]', ), )
+p.seedEdgeBySize(edges=pickedEdges, size=0.05, deviationFactor=0.1, 
+    minSizeFactor=0.1, constraint=FINER)
+p = mdb.models['Model-1'].parts['Part-1']
+p.generateMesh()
+p = mdb.models['Model-1'].parts['Part-1']
+f = p.faces
+pickedRegions = f.getSequenceFromMask(mask=('[#7 ]', ), )
+p.deleteMesh(regions=pickedRegions)
+p = mdb.models['Model-1'].parts['Part-1']
+e = p.edges
+pickedEdges = e.getSequenceFromMask(mask=('[#115 ]', ), )
+p.seedEdgeBySize(edges=pickedEdges, size=0.075, deviationFactor=0.1, 
+    minSizeFactor=0.1, constraint=FINER)
+p = mdb.models['Model-1'].parts['Part-1']
+e = p.edges
+pickedEdges = e.getSequenceFromMask(mask=('[#28a ]', ), )
+p.seedEdgeBySize(edges=pickedEdges, size=0.075, deviationFactor=0.1, 
+    minSizeFactor=0.1, constraint=FINER)
+p = mdb.models['Model-1'].parts['Part-1']
+e = p.edges
+pickedEdges = e.getSequenceFromMask(mask=('[#60 ]', ), )
+p.seedEdgeBySize(edges=pickedEdges, size=0.075, deviationFactor=0.1, 
+    minSizeFactor=0.1, constraint=FINER)
+p = mdb.models['Model-1'].parts['Part-1']
+p.generateMesh()
+session.viewports['Viewport: 1'].partDisplay.meshOptions.setValues(
+    nodeLabels=ON)
+session.viewports['Viewport: 1'].view.setValues(nearPlane=24.1718, 
+    farPlane=26.4247, width=12.039, height=6.36158, viewOffsetX=-2.83764, 
+    viewOffsetY=-1.09471)
+session.viewports['Viewport: 1'].view.setValues(nearPlane=24.9245, 
+    farPlane=25.672, width=4.00469, height=2.11614, viewOffsetX=-4.9846, 
+    viewOffsetY=-1.05857)
+session.viewports['Viewport: 1'].view.setValues(nearPlane=24.9318, 
+    farPlane=25.6646, width=4.00587, height=2.11677, viewOffsetX=-4.8919, 
+    viewOffsetY=-0.164801)
+session.viewports['Viewport: 1'].view.setValues(nearPlane=24.3345, 
+    farPlane=26.262, width=10.741, height=5.6757, viewOffsetX=-4.57883, 
+    viewOffsetY=-0.0978501)
+session.viewports['Viewport: 1'].view.setValues(nearPlane=24.3156, 
+    farPlane=26.2809, width=10.7326, height=5.67129, viewOffsetX=1.81384, 
+    viewOffsetY=-0.452656)
+session.viewports['Viewport: 1'].view.setValues(nearPlane=24.3163, 
+    farPlane=26.2801, width=10.7329, height=5.67146, viewOffsetX=7.40538, 
+    viewOffsetY=-0.520918)
+session.viewports['Viewport: 1'].view.setValues(nearPlane=24.3148, 
+    farPlane=26.2817, width=10.9604, height=5.79168, viewOffsetX=7.55474, 
+    viewOffsetY=-0.73543)
+session.viewports['Viewport: 1'].view.fitView()
+a = mdb.models['Model-1'].rootAssembly
+a.regenerate()
+a = mdb.models['Model-1'].rootAssembly
+session.viewports['Viewport: 1'].setValues(displayedObject=a)
+session.viewports['Viewport: 1'].assemblyDisplay.setValues(loads=ON, bcs=ON, 
+    predefinedFields=ON, connectors=ON, optimizationTasks=OFF, 
+    geometricRestrictions=OFF, stopConditions=OFF)
+session.viewports['Viewport: 1'].assemblyDisplay.setValues(mesh=ON)
+a = mdb.models['Model-1'].rootAssembly
+n1 = a.instances['Part-1-1'].nodes
+nodes1 = n1.getSequenceFromMask(mask=('[#0:7 #10000000 ]', ), )
+a.Set(nodes=nodes1, name='midnode_lower')
+#: The set 'midnode_lower' has been edited (1 node).
+session.viewports['Viewport: 1'].assemblyDisplay.setValues(mesh=OFF)
+session.viewports['Viewport: 1'].assemblyDisplay.setValues(loads=OFF, bcs=OFF, 
+    predefinedFields=OFF, connectors=OFF)
+mdb.jobs['Job-1'].writeInput(consistencyChecking=OFF)
+#: The job input file has been written to "Job-1.inp".
+session.viewports['Viewport: 1'].assemblyDisplay.setValues(mesh=ON)
+session.viewports['Viewport: 1'].assemblyDisplay.meshOptions.setValues(
+    meshTechnique=ON)
+session.viewports['Viewport: 1'].assemblyDisplay.setValues(mesh=OFF, loads=ON, 
+    bcs=ON, predefinedFields=ON, connectors=ON)
+session.viewports['Viewport: 1'].assemblyDisplay.meshOptions.setValues(
+    meshTechnique=OFF)
+session.viewports['Viewport: 1'].assemblyDisplay.setValues(mesh=ON, loads=OFF, 
+    bcs=OFF, predefinedFields=OFF, connectors=OFF)
+session.viewports['Viewport: 1'].assemblyDisplay.meshOptions.setValues(
+    meshTechnique=ON)
+session.viewports['Viewport: 1'].assemblyDisplay.meshOptions.setValues(
+    nodeLabels=ON)
+session.viewports['Viewport: 1'].view.setValues(nearPlane=24.1718, 
+    farPlane=26.4247, width=12.039, height=6.36158, viewOffsetX=-1.90451, 
+    viewOffsetY=-0.382767)
+session.viewports['Viewport: 1'].view.setValues(nearPlane=24.1968, 
+    farPlane=26.3996, width=12.0515, height=6.36816, viewOffsetX=2.46543, 
+    viewOffsetY=-0.429142)
+session.viewports['Viewport: 1'].view.setValues(nearPlane=24.1957, 
+    farPlane=26.4008, width=12.0509, height=6.36786, viewOffsetX=7.76344, 
+    viewOffsetY=-0.314179)
+session.viewports['Viewport: 1'].view.setValues(nearPlane=25.0098, 
+    farPlane=25.5866, width=3.09024, height=1.63293, viewOffsetX=6.55476, 
+    viewOffsetY=-0.537615)
+session.viewports['Viewport: 1'].view.setValues(nearPlane=25.0155, 
+    farPlane=25.5809, width=3.09094, height=1.6333, viewOffsetX=6.51109, 
+    viewOffsetY=0.211106)
+session.viewports['Viewport: 1'].view.setValues(nearPlane=25.0039, 
+    farPlane=25.5926, width=3.28254, height=1.73455, viewOffsetX=6.52842, 
+    viewOffsetY=0.20309)
+session.viewports['Viewport: 1'].view.setValues(nearPlane=24.9979, 
+    farPlane=25.5985, width=3.28176, height=1.73414, viewOffsetX=6.6603, 
+    viewOffsetY=-0.819493)
+session.viewports['Viewport: 1'].view.setValues(nearPlane=24.998, 
+    farPlane=25.5985, width=3.28177, height=1.73415, viewOffsetX=6.78334, 
+    viewOffsetY=-1.88377)
+session.viewports['Viewport: 1'].view.setValues(nearPlane=24.998, 
+    farPlane=25.5985, width=3.28177, height=1.73415, viewOffsetX=6.82504, 
+    viewOffsetY=-0.74019)
+session.viewports['Viewport: 1'].view.setValues(nearPlane=24.998, 
+    farPlane=25.5985, width=3.28177, height=1.73415, viewOffsetX=6.78125, 
+    viewOffsetY=0.382521)
+session.viewports['Viewport: 1'].view.setValues(nearPlane=24.998, 
+    farPlane=25.5985, width=3.28177, height=1.73415, viewOffsetX=6.68117, 
+    viewOffsetY=1.57618)
+session.viewports['Viewport: 1'].view.setValues(nearPlane=24.998, 
+    farPlane=25.5985, width=3.28177, height=1.73415, viewOffsetX=6.7875, 
+    viewOffsetY=1.1296)
+session.viewports['Viewport: 1'].view.setValues(nearPlane=24.998, 
+    farPlane=25.5985, width=3.28177, height=1.73415, viewOffsetX=6.83545, 
+    viewOffsetY=0.564071)
+session.viewports['Viewport: 1'].view.setValues(nearPlane=24.998, 
+    farPlane=25.5985, width=3.28177, height=1.73415, viewOffsetX=6.7166, 
+    viewOffsetY=0.267742)
+session.viewports['Viewport: 1'].view.setValues(nearPlane=24.998, 
+    farPlane=25.5985, width=3.28177, height=1.73415, viewOffsetX=6.69992, 
+    viewOffsetY=-0.141275)
+session.viewports['Viewport: 1'].view.setValues(nearPlane=24.998, 
+    farPlane=25.5985, width=3.28177, height=1.73415, viewOffsetX=6.75413, 
+    viewOffsetY=-0.514816)
+session.viewports['Viewport: 1'].view.setValues(nearPlane=24.998, 
+    farPlane=25.5985, width=3.28177, height=1.73415, viewOffsetX=6.81876, 
+    viewOffsetY=-0.934267)
+session.viewports['Viewport: 1'].view.setValues(nearPlane=24.998, 
+    farPlane=25.5985, width=3.28177, height=1.73415, viewOffsetX=6.79165, 
+    viewOffsetY=-1.3412)
+session.viewports['Viewport: 1'].view.setValues(nearPlane=23.1901, 
+    farPlane=27.4063, width=23.4736, height=12.4038, viewOffsetX=11.7637, 
+    viewOffsetY=-0.453274)
+session.viewports['Viewport: 1'].view.setValues(nearPlane=23.1507, 
+    farPlane=27.4457, width=23.4337, height=12.3827, viewOffsetX=-1.26841, 
+    viewOffsetY=-0.571712)
+session.viewports['Viewport: 1'].view.setValues(nearPlane=24.8675, 
+    farPlane=25.729, width=4.61596, height=2.43915, viewOffsetX=-5.28222, 
+    viewOffsetY=-1.53955)
+session.viewports['Viewport: 1'].view.setValues(nearPlane=24.8759, 
+    farPlane=25.7205, width=4.61753, height=2.43998, viewOffsetX=-4.86451, 
+    viewOffsetY=0.20403)
+session.viewports['Viewport: 1'].view.setValues(nearPlane=24.8758, 
+    farPlane=25.7207, width=4.61751, height=2.43997, viewOffsetX=-4.9613, 
+    viewOffsetY=2.08025)
+session.viewports['Viewport: 1'].view.setValues(nearPlane=24.8758, 
+    farPlane=25.7207, width=4.61751, height=2.43997, viewOffsetX=-4.91436, 
+    viewOffsetY=0.882286)
+session.viewports['Viewport: 1'].view.setValues(nearPlane=24.8758, 
+    farPlane=25.7207, width=4.61751, height=2.43997, viewOffsetX=-4.82928, 
+    viewOffsetY=-0.227592)
+session.viewports['Viewport: 1'].view.setValues(nearPlane=24.8758, 
+    farPlane=25.7207, width=4.61751, height=2.43997, viewOffsetX=-4.77354, 
+    viewOffsetY=-1.1613)
+session.viewports['Viewport: 1'].view.setValues(nearPlane=24.1688, 
+    farPlane=26.4276, width=12.5864, height=6.65083, viewOffsetX=-4.2512, 
+    viewOffsetY=-0.338042)
+session.viewports['Viewport: 1'].view.setValues(nearPlane=24.1467, 
+    farPlane=26.4497, width=12.5749, height=6.64476, viewOffsetX=2.99082, 
+    viewOffsetY=-0.85748)
+session.viewports['Viewport: 1'].view.setValues(nearPlane=24.9968, 
+    farPlane=25.5996, width=3.22947, height=1.70651, viewOffsetX=5.3008, 
+    viewOffsetY=-1.66007)
+session.viewports['Viewport: 1'].view.setValues(nearPlane=25.0028, 
+    farPlane=25.5937, width=3.23024, height=1.70691, viewOffsetX=5.5155, 
+    viewOffsetY=-0.619062)
+session.viewports['Viewport: 1'].view.setValues(nearPlane=25.0027, 
+    farPlane=25.5937, width=3.23023, height=1.7069, viewOffsetX=5.52984, 
+    viewOffsetY=-0.243171)
+session.viewports['Viewport: 1'].view.setValues(nearPlane=25.0027, 
+    farPlane=25.5937, width=3.23023, height=1.7069, viewOffsetX=4.12611, 
+    viewOffsetY=-0.226739)
+session.viewports['Viewport: 1'].view.setValues(nearPlane=25.0027, 
+    farPlane=25.5937, width=3.23023, height=1.7069, viewOffsetX=2.04514, 
+    viewOffsetY=-0.200037)
+session.viewports['Viewport: 1'].view.setValues(nearPlane=25.0027, 
+    farPlane=25.5937, width=3.23023, height=1.7069, viewOffsetX=0.372562, 
+    viewOffsetY=-0.200037)
+session.viewports['Viewport: 1'].view.setValues(nearPlane=25.0027, 
+    farPlane=25.5937, width=3.23023, height=1.7069, viewOffsetX=-1.97931, 
+    viewOffsetY=-0.210307)
+session.viewports['Viewport: 1'].view.setValues(nearPlane=25.0027, 
+    farPlane=25.5937, width=3.23023, height=1.7069, viewOffsetX=-4.32708, 
+    viewOffsetY=-0.216469)
+session.viewports['Viewport: 1'].view.setValues(nearPlane=25.0027, 
+    farPlane=25.5937, width=3.23023, height=1.7069, viewOffsetX=-5.76365, 
+    viewOffsetY=-0.216469)
+session.viewports['Viewport: 1'].view.setValues(nearPlane=25.0027, 
+    farPlane=25.5937, width=3.23023, height=1.7069, viewOffsetX=-5.51533, 
+    viewOffsetY=0.894762)
+session.viewports['Viewport: 1'].view.setValues(nearPlane=25.0027, 
+    farPlane=25.5937, width=3.23023, height=1.7069, viewOffsetX=-5.41272, 
+    viewOffsetY=1.82729)
+session.viewports['Viewport: 1'].view.setValues(nearPlane=25.0027, 
+    farPlane=25.5937, width=3.23023, height=1.7069, viewOffsetX=-3.28249, 
+    viewOffsetY=1.82524)
+session.viewports['Viewport: 1'].view.setValues(nearPlane=25.0027, 
+    farPlane=25.5937, width=3.23023, height=1.7069, viewOffsetX=-1.45394, 
+    viewOffsetY=1.74924)
+session.viewports['Viewport: 1'].view.setValues(nearPlane=25.0027, 
+    farPlane=25.5937, width=3.23023, height=1.7069, viewOffsetX=0.832259, 
+    viewOffsetY=1.88481)
+session.viewports['Viewport: 1'].view.setValues(nearPlane=25.0027, 
+    farPlane=25.5937, width=3.23023, height=1.7069, viewOffsetX=3.19234, 
+    viewOffsetY=1.88481)
+session.viewports['Viewport: 1'].view.setValues(nearPlane=25.0027, 
+    farPlane=25.5937, width=3.23023, height=1.7069, viewOffsetX=6.28507, 
+    viewOffsetY=1.84989)
+session.viewports['Viewport: 1'].view.setValues(nearPlane=25.0514, 
+    farPlane=25.545, width=2.64447, height=1.39738, viewOffsetX=6.26642, 
+    viewOffsetY=1.82683)
+session.viewports['Viewport: 1'].view.setValues(nearPlane=25.0563, 
+    farPlane=25.5402, width=2.64499, height=1.39766, viewOffsetX=6.44913, 
+    viewOffsetY=1.08379)
+session.viewports['Viewport: 1'].view.setValues(nearPlane=25.0562, 
+    farPlane=25.5402, width=2.64498, height=1.39766, viewOffsetX=6.52305, 
+    viewOffsetY=0.244521)
+session.viewports['Viewport: 1'].view.setValues(nearPlane=25.0562, 
+    farPlane=25.5402, width=2.64498, height=1.39766, viewOffsetX=6.53314, 
+    viewOffsetY=-0.424876)
+session.viewports['Viewport: 1'].view.setValues(nearPlane=25.0562, 
+    farPlane=25.5402, width=2.64498, height=1.39766, viewOffsetX=6.51131, 
+    viewOffsetY=-1.13464)
+session.viewports['Viewport: 1'].view.setValues(nearPlane=25.0562, 
+    farPlane=25.5402, width=2.64498, height=1.39766, viewOffsetX=6.56173, 
+    viewOffsetY=-1.96382)
+session.viewports['Viewport: 1'].view.setValues(nearPlane=24.8488, 
+    farPlane=25.7477, width=5.01121, height=2.64801, viewOffsetX=7.01871, 
+    viewOffsetY=-1.90884)
+session.viewports['Viewport: 1'].view.setValues(nearPlane=24.8398, 
+    farPlane=25.7567, width=5.0094, height=2.64705, viewOffsetX=3.39756, 
+    viewOffsetY=-1.94637)
+session.viewports['Viewport: 1'].view.setValues(nearPlane=24.8399, 
+    farPlane=25.7565, width=5.00943, height=2.64706, viewOffsetX=0.390013, 
+    viewOffsetY=-1.95912)
+session.viewports['Viewport: 1'].view.setValues(nearPlane=24.8399, 
+    farPlane=25.7565, width=5.00944, height=2.64706, viewOffsetX=-2.46161, 
+    viewOffsetY=-1.96231)
+session.viewports['Viewport: 1'].view.setValues(nearPlane=24.8399, 
+    farPlane=25.7565, width=5.00944, height=2.64706, viewOffsetX=-5.1923, 
+    viewOffsetY=-1.86675)
+session.viewports['Viewport: 1'].view.setValues(nearPlane=24.9966, 
+    farPlane=25.5999, width=3.23217, height=1.70793, viewOffsetX=-5.46493, 
+    viewOffsetY=-1.8916)
+session.viewports['Viewport: 1'].view.setValues(nearPlane=25.0025, 
+    farPlane=25.594, width=3.23293, height=1.70833, viewOffsetX=-3.44512, 
+    viewOffsetY=-1.74197)
+session.viewports['Viewport: 1'].view.setValues(nearPlane=24.6032, 
+    farPlane=25.9933, width=7.74818, height=4.09426, viewOffsetX=-3.92775, 
+    viewOffsetY=-2.12394)
+session.viewports['Viewport: 1'].view.setValues(nearPlane=24.5894, 
+    farPlane=26.0071, width=7.74383, height=4.09197, viewOffsetX=0.256323, 
+    viewOffsetY=-2.12275)
+session.viewports['Viewport: 1'].view.setValues(nearPlane=24.5898, 
+    farPlane=26.0067, width=7.74395, height=4.09203, viewOffsetX=5.22544, 
+    viewOffsetY=-1.76824)
+session.viewports['Viewport: 1'].view.setValues(nearPlane=24.5898, 
+    farPlane=26.0067, width=7.74394, height=4.09202, viewOffsetX=6.05198, 
+    viewOffsetY=-1.56634)
+session.viewports['Viewport: 1'].view.setValues(nearPlane=24.8114, 
+    farPlane=25.785, width=5.21652, height=2.75649, viewOffsetX=6.12153, 
+    viewOffsetY=-1.27233)
+session.viewports['Viewport: 1'].view.setValues(nearPlane=24.821, 
+    farPlane=25.7755, width=5.21853, height=2.75755, viewOffsetX=6.11393, 
+    viewOffsetY=-0.78502)
+session.viewports['Viewport: 1'].view.setValues(nearPlane=24.8208, 
+    farPlane=25.7756, width=5.21849, height=2.75753, viewOffsetX=6.14703, 
+    viewOffsetY=0.920605)
+session.viewports['Viewport: 1'].view.setValues(nearPlane=24.8208, 
+    farPlane=25.7756, width=5.21849, height=2.75753, viewOffsetX=6.13708, 
+    viewOffsetY=1.02679)
+session.viewports['Viewport: 1'].view.setValues(nearPlane=24.8208, 
+    farPlane=25.7756, width=5.21849, height=2.75753, viewOffsetX=6.33932, 
+    viewOffsetY=-0.356952)
+session.viewports['Viewport: 1'].view.setValues(nearPlane=24.9509, 
+    farPlane=25.6455, width=3.721, height=1.96624, viewOffsetX=6.30484, 
+    viewOffsetY=-0.210967)
+session.viewports['Viewport: 1'].view.setValues(nearPlane=24.9578, 
+    farPlane=25.6386, width=3.72202, height=1.96678, viewOffsetX=6.42481, 
+    viewOffsetY=1.45991)
+session.viewports['Viewport: 1'].view.setValues(viewOffsetX=6.43897, 
+    viewOffsetY=0.470601)
+session.viewports['Viewport: 1'].view.setValues(viewOffsetX=6.62814, 
+    viewOffsetY=-0.54947)
+session.viewports['Viewport: 1'].view.setValues(viewOffsetX=6.42241, 
+    viewOffsetY=-1.42517)
+session.viewports['Viewport: 1'].view.setValues(viewOffsetX=6.36802, 
+    viewOffsetY=-1.3447)
+session.viewports['Viewport: 1'].view.setValues(viewOffsetX=6.50044, 
+    viewOffsetY=-0.589705)
+session.viewports['Viewport: 1'].view.setValues(viewOffsetX=6.6305, 
+    viewOffsetY=0.581838)
+session.viewports['Viewport: 1'].view.setValues(viewOffsetX=6.64232, 
+    viewOffsetY=1.79598)
+session.viewports['Viewport: 1'].view.setValues(viewOffsetX=6.65414, 
+    viewOffsetY=0.823244)
+session.viewports['Viewport: 1'].view.setValues(viewOffsetX=6.69198, 
+    viewOffsetY=1.34156)
+session.viewports['Viewport: 1'].view.setValues(viewOffsetX=6.61158, 
+    viewOffsetY=0.316755)
+session.viewports['Viewport: 1'].view.setValues(viewOffsetX=6.51699, 
+    viewOffsetY=-0.831121)
+session.viewports['Viewport: 1'].view.setValues(viewOffsetX=6.61158, 
+    viewOffsetY=-1.05123)
+session.viewports['Viewport: 1'].view.setValues(viewOffsetX=6.64232, 
+    viewOffsetY=-1.22874)
+session.viewports['Viewport: 1'].view.setValues(viewOffsetX=6.61394, 
+    viewOffsetY=-1.24294)
+session.viewports['Viewport: 1'].view.setValues(viewOffsetX=4.84043)
+session.viewports['Viewport: 1'].view.setValues(nearPlane=24.8478, 
+    farPlane=25.7486, width=5.0215, height=2.65344, viewOffsetX=5.22164, 
+    viewOffsetY=-1.11545)
+session.viewports['Viewport: 1'].view.setValues(nearPlane=24.8388, 
+    farPlane=25.7576, width=5.01967, height=2.65248, viewOffsetX=1.96046, 
+    viewOffsetY=-1.31295)
+session.viewports['Viewport: 1'].view.setValues(nearPlane=24.839, 
+    farPlane=25.7575, width=5.01971, height=2.6525, viewOffsetX=-0.887428, 
+    viewOffsetY=-1.41191)
+session.viewports['Viewport: 1'].view.setValues(nearPlane=24.839, 
+    farPlane=25.7575, width=5.01971, height=2.6525, viewOffsetX=-3.7449, 
+    viewOffsetY=-1.297)
+session.viewports['Viewport: 1'].view.setValues(nearPlane=24.839, 
+    farPlane=25.7575, width=5.01971, height=2.6525, viewOffsetX=-5.60098, 
+    viewOffsetY=-1.51086)
+session.viewports['Viewport: 1'].view.setValues(nearPlane=24.0981, 
+    farPlane=26.4983, width=12.8433, height=6.78661, viewOffsetX=-5.79381, 
+    viewOffsetY=-1.46073)
+session.viewports['Viewport: 1'].view.fitView()
+session.viewports['Viewport: 1'].view.setValues(nearPlane=24.522, 
+    farPlane=26.0745, width=8.32017, height=4.39651, viewOffsetX=0.0568898, 
+    viewOffsetY=0.0334209)
+session.viewports['Viewport: 1'].view.fitView()
+session.viewports['Viewport: 1'].view.setValues(nearPlane=24.1718, 
+    farPlane=26.4247, width=12.039, height=6.36158, viewOffsetX=-2.50875, 
+    viewOffsetY=-0.666014)
+session.viewports['Viewport: 1'].view.setValues(nearPlane=25.0573, 
+    farPlane=25.5392, width=2.58137, height=1.36404, viewOffsetX=-5.26424, 
+    viewOffsetY=-1.60717)
+session.viewports['Viewport: 1'].view.fitView()
+session.viewports['Viewport: 1'].assemblyDisplay.meshOptions.setValues(
+    nodeLabels=OFF)
+p = mdb.models['Model-1'].parts['Part-1']
+session.viewports['Viewport: 1'].setValues(displayedObject=p)
+p = mdb.models['Model-1'].parts['Part-1']
+f = p.faces
+pickedRegions = f.getSequenceFromMask(mask=('[#7 ]', ), )
+p.deleteMesh(regions=pickedRegions)
+p = mdb.models['Model-1'].parts['Part-1']
+e = p.edges
+pickedEdges = e.getSequenceFromMask(mask=('[#115 ]', ), )
+p.seedEdgeBySize(edges=pickedEdges, size=0.05, deviationFactor=0.1, 
+    minSizeFactor=0.1, constraint=FINER)
+p = mdb.models['Model-1'].parts['Part-1']
+e = p.edges
+pickedEdges = e.getSequenceFromMask(mask=('[#28a ]', ), )
+p.seedEdgeBySize(edges=pickedEdges, size=0.05, deviationFactor=0.1, 
+    minSizeFactor=0.1, constraint=FINER)
+p = mdb.models['Model-1'].parts['Part-1']
+e = p.edges
+pickedEdges = e.getSequenceFromMask(mask=('[#60 ]', ), )
+p.seedEdgeBySize(edges=pickedEdges, size=0.05, deviationFactor=0.1, 
+    minSizeFactor=0.1, constraint=FINER)
+p = mdb.models['Model-1'].parts['Part-1']
+p.generateMesh()
+session.viewports['Viewport: 1'].partDisplay.meshOptions.setValues(
+    nodeLabels=OFF)
+a1 = mdb.models['Model-1'].rootAssembly
+a1.regenerate()
+a = mdb.models['Model-1'].rootAssembly
+session.viewports['Viewport: 1'].setValues(displayedObject=a)
+session.viewports['Viewport: 1'].assemblyDisplay.setValues(mesh=OFF, loads=ON, 
+    bcs=ON, predefinedFields=ON, connectors=ON)
+session.viewports['Viewport: 1'].assemblyDisplay.meshOptions.setValues(
+    meshTechnique=OFF)
+session.viewports['Viewport: 1'].assemblyDisplay.setValues(mesh=ON)
+a = mdb.models['Model-1'].rootAssembly
+n1 = a.instances['Part-1-1'].nodes
+nodes1 = n1.getSequenceFromMask(mask=('[#0:11 #800000 ]', ), )
+a.Set(nodes=nodes1, name='midnode_lower')
+#: The set 'midnode_lower' has been edited (1 node).
+session.viewports['Viewport: 1'].assemblyDisplay.setValues(mesh=OFF)
+session.viewports['Viewport: 1'].assemblyDisplay.setValues(mesh=ON, loads=OFF, 
+    bcs=OFF, predefinedFields=OFF, connectors=OFF)
+session.viewports['Viewport: 1'].assemblyDisplay.meshOptions.setValues(
+    meshTechnique=ON)
+session.viewports['Viewport: 1'].assemblyDisplay.setValues(mesh=OFF)
+session.viewports['Viewport: 1'].assemblyDisplay.meshOptions.setValues(
+    meshTechnique=OFF)
+mdb.jobs['Job-1'].writeInput(consistencyChecking=OFF)
+#: The job input file has been written to "Job-1.inp".
+session.viewports['Viewport: 1'].assemblyDisplay.setValues(mesh=ON)
+session.viewports['Viewport: 1'].assemblyDisplay.meshOptions.setValues(
+    meshTechnique=ON)
+session.viewports['Viewport: 1'].assemblyDisplay.meshOptions.setValues(
+    nodeLabels=ON)
+session.viewports['Viewport: 1'].view.setValues(nearPlane=24.1718, 
+    farPlane=26.4247, width=12.039, height=6.36158, viewOffsetX=6.56253, 
+    viewOffsetY=-2.44205)
+session.viewports['Viewport: 1'].view.setValues(nearPlane=25.0845, 
+    farPlane=25.512, width=2.38356, height=1.25951, viewOffsetX=6.20102, 
+    viewOffsetY=-2.0281)
+session.viewports['Viewport: 1'].view.fitView()
+session.viewports['Viewport: 1'].view.setValues(nearPlane=24.373, 
+    farPlane=26.2235, width=9.91859, height=5.24114, viewOffsetX=-1.05135, 
+    viewOffsetY=-0.359788)
+session.viewports['Viewport: 1'].view.setValues(nearPlane=24.3908, 
+    farPlane=26.2056, width=9.92585, height=5.24498, viewOffsetX=-4.09168, 
+    viewOffsetY=-1.05433)
+session.viewports['Viewport: 1'].view.setValues(nearPlane=25.1233, 
+    farPlane=25.4731, width=1.95056, height=1.03071, viewOffsetX=-5.61986, 
+    viewOffsetY=-1.79495)
+session.viewports['Viewport: 1'].view.fitView()
+session.viewports['Viewport: 1'].view.setValues(nearPlane=24.1718, 
+    farPlane=26.4247, width=12.039, height=6.36158, viewOffsetX=5.35405, 
+    viewOffsetY=-1.00285)
+session.viewports['Viewport: 1'].view.setValues(nearPlane=25.1369, 
+    farPlane=25.4596, width=1.72882, height=0.913535, viewOffsetX=5.9357, 
+    viewOffsetY=-1.778)
+session.viewports['Viewport: 1'].view.fitView()
+session.viewports['Viewport: 1'].view.setValues(nearPlane=24.1718, 
+    farPlane=26.4247, width=12.039, height=6.36158, viewOffsetX=-4.19145, 
+    viewOffsetY=-1.04112)
+session.viewports['Viewport: 1'].view.setValues(nearPlane=25.2063, 
+    farPlane=25.3901, width=0.984641, height=0.5203, viewOffsetX=-5.87229, 
+    viewOffsetY=-1.89603)
+session.viewports['Viewport: 1'].view.setValues(nearPlane=25.2081, 
+    farPlane=25.3883, width=0.984712, height=0.520338, viewOffsetX=-5.80202, 
+    viewOffsetY=-1.63568)
+mdb.save()
+#: The model database has been saved to "/home/er7128ja/Nextcloud/Projekt/Project_Code/abaqus_model/uconst/uconst_fine/uconst_fine.cae".

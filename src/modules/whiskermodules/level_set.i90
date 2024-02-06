@@ -1,0 +1,460 @@
+# 1 "/home/er7128ja/Nextcloud/Projekt/Project_Code_2D/src/modules/whiskermodules/level_set.f90"
+module level_set
+! Last modified
+! E. Jacobsson 2023-02-10
+      
+! mf_datatypes
+    use mf_datatypes
+
+! Somelib
+    use matrix_util
+    use fem_system
+
+! whiskerlib
+    use mesh_module
+    use gp_util
+    use output_data
+    use ls_utils
+    use ls_update_routines
+    use ls_types
+    use diffusion_types
+
+! OpenMP
+    use omp_lib
+
+    implicit none
+
+contains
+    
+
+subroutine allocate_ls_system(lssys,ngrains,nelm,nrgp,nnod,nodel,enod)
+! --- Allocate the arrays of all level sets ---
+
+! Intent inout
+  type(ls_system), intent(inout) :: lssys
+
+! Intent in
+  integer, intent(in)            :: ngrains, nelm, nrgp, nnod, nodel, enod(:,:)  
+
+! Subroutine variables
+  integer                        :: ierr, nseg_alloc
+
+! Number of grains
+  lssys%ngrains    = ngrains
+
+! Number of line segments to allocate
+  nseg_alloc       = nint(nnod/3d0)
+  lssys%nseg_alloc = nseg_alloc
+
+! Allocate all variables in lssys
+  allocate(lssys%a(nnod,ngrains),stat=ierr)
+  allocate(lssys%a_prev(nnod,ngrains),stat=ierr)
+  allocate(lssys%ed(nodel,nelm,ngrains),stat=ierr)
+  allocate(lssys%a_gp(nrgp,nelm,ngrains),stat=ierr)
+  allocate(lssys%jnod(nnod,ngrains),stat=ierr)
+  allocate(lssys%bcval(nnod,ngrains),stat=ierr)
+  allocate(lssys%line_ex(nseg_alloc,2*ngrains),stat=ierr)
+  allocate(lssys%line_ey(nseg_alloc,2*ngrains),stat=ierr)  
+  allocate(lssys%tplines(nseg_alloc,ngrains),stat=ierr)  
+  allocate(lssys%jed(nodel,nelm,ngrains),stat=ierr)
+  allocate(lssys%line_seg(ngrains),stat=ierr)  
+  allocate(lssys%line_elms(nseg_alloc,ngrains),stat=ierr)
+  allocate(lssys%closest_line(nnod,ngrains),stat=ierr)
+  allocate(lssys%int_elms(nelm,ngrains),stat=ierr)
+  allocate(lssys%line_seg_cc(ngrains),stat=ierr)
+  allocate(lssys%rm_lines(nseg_alloc,ngrains),stat=ierr)
+  allocate(lssys%rm_lines_tmp(nseg_alloc,ngrains),stat=ierr)
+  allocate(lssys%sep_lines(nseg_alloc,2*ngrains),stat=ierr)
+  allocate(lssys%nsep_lines(ngrains),stat=ierr)
+
+! Material
+  allocate(lssys%material(ngrains),stat=ierr)
+  
+! Other
+  allocate(lssys%xvec(ngrains),stat=ierr)
+  allocate(lssys%yvec(ngrains),stat=ierr)
+  allocate(lssys%rvec(ngrains),stat=ierr)
+  allocate(lssys%EEvec(ngrains),stat=ierr)
+
+! Velocity
+  allocate(lssys%vp(2,nrgp,nelm),stat=ierr)
+  allocate(lssys%vpm(2,nelm),stat=ierr)
+
+! Phi
+  allocate(lssys%phi(nnod,ngrains),stat=ierr)
+  allocate(lssys%phi_ed(nodel,nelm,ngrains),stat=ierr)
+  allocate(lssys%phi_gp(nrgp,nelm,ngrains),stat=ierr)
+
+! hphi
+  allocate(lssys%hphi_sum(nnod),stat=ierr)
+  allocate(lssys%hphi(nnod,ngrains),stat=ierr)
+  allocate(lssys%hphi_ed(nodel,nelm,ngrains),stat=ierr)
+  allocate(lssys%hphi_gp(nrgp,nelm,ngrains),stat=ierr)
+
+! Sn plot grain
+  allocate(lssys%sn_a(nnod),stat=ierr)
+  allocate(lssys%sn_ed(nodel,nelm),stat=ierr)
+  allocate(lssys%sn_a_gp(nrgp,nelm),stat=ierr)
+  allocate(lssys%sn_hphi_plot(nnod),stat=ierr)
+  allocate(lssys%sn_hphi_ed_plot(nodel,nelm),stat=ierr)
+  allocate(lssys%sn_hphi_gp_plot(nrgp,nelm),stat=ierr)
+  allocate(lssys%sn_hphi_gp_plot2(nrgp,nelm),stat=ierr)
+
+! Old IMC flag
+  allocate(lssys%old_IMC_gp_flag(nrgp,nelm), stat=ierr)
+
+! Define sparse level set matrices C_hat and K_hat used in update of level set
+  call spaTopDef(lssys%C_hat,enod,1)
+  call spaTopDef(lssys%K_hat,enod,1)
+
+! vk
+  lssys%vk  = 2*lssys%m*lssys%gamma
+
+! mzeta
+  lssys%mzeta = 1d0
+
+! D matrix used in update of level set
+  lssys%D = lssys%vk*reshape([1d0, 0d0, 0d0, 1d0], [2,2])
+
+! Assign material to each level set function. Cu=1, IMC=2, Sn=3.
+  lssys%material(1) = 1
+  lssys%material(2) = 2
+  lssys%material(3) = 2
+  lssys%material(4) = 2
+  lssys%material(5) = 3
+! lssys%material(6) = 3
+! lssys%material(7) = 3
+! lssys%material(8) = 3
+
+! IMC area
+  lssys%IMC_area      = 0d0
+  lssys%IMC_area_init = 0d0
+
+
+
+  return
+end subroutine allocate_ls_system
+
+
+
+subroutine init_ls_system(lssys,mesh,IMC_steps, input_location)
+! --- Routine for initiating all level set functions ---
+  implicit none
+
+! Intent inout
+  type(ls_system), intent(inout)            :: lssys
+  
+
+! Intent in
+  type(mesh_system), intent(in)             :: mesh
+  integer,intent(in)                        :: IMC_steps
+  character(len=:), allocatable, intent(in) :: input_location
+
+! Subroutine variables
+  real(dp)                                  :: x0, y0, x_min, x_max, y_min, y_max, r_min, r_max, EE_min, EE_max, r, cu_height
+  integer                                   :: ngrains
+
+
+! Short form
+  ngrains = lssys%ngrains
+
+! Init random number
+  call init_random_seed()
+  call random_seed()
+  
+! Initiatial level set data
+  x0     = (mesh%axisbc(1) + mesh%axisbc(2))/2d0
+  y0     = (mesh%axisbc(3) + mesh%axisbc(4))/2d0
+  x_min  = 0.2d0*x0
+  x_max  = 1.8d0*x0
+  y_min  = 0.2d0*x0
+  y_max  = 1.8d0*x0
+  r_min  = 1.65d-3
+  r_max  = 1.70d-3
+  EE_min = 1d-5
+  EE_max = 2d-5  
+! call rand_vec(lssys%xvec , x_min, x_max)
+! call rand_vec(lssys%yvec , y_min, y_max)
+! call rand_vec(lssys%rvec , r_min, r_max)
+! call rand_vec(lssys%EEvec, EE_min, EE_max)
+  lssys%xvec  = [0.56d0, 1.31d0, 1.0d0, 0.4d0]*x0
+  lssys%yvec  = [0.71d0, 0.71d0, 1.4d0, 0.5d0]*y0
+! lssys%rvec  = 0.35d-3
+! lssys%EEvec = 3d-5
+  
+! print *, 'xvec: ', lssys%xvec
+! print *, 'yvec: ', lssys%yvec
+! print *, 'rvec: ', lssys%rvec
+
+! Simulation 1
+! lssys%a = 1d0
+! where (mesh%coord(2,:).lt.y0/3d0) lssys%a(:,1) = -1d0                                        ! Cu
+! where (mesh%coord(2,:).gt.y0/3d0 .and. mesh%coord(2,:).lt.1.07d0*y0/3d0) lssys%a(:,2) = -1d0 ! IMC
+! where (mesh%coord(2,:).gt.1.07d0*y0/3d0) lssys%a(:,3) = -1d0                                 ! Sn
+
+! Simulation 2 ngrains = 4
+! lssys%a = 1d0
+! r       = 0.1d-3
+! cu_height = 0.6d-3!y0/3d0
+! where (mesh%coord(2,:).lt.cu_height) lssys%a(:,1) = -1d0                                    ! Cu
+! call init_level_set_function_ellips(lssys%a(:,2), x0/2d0   ,cu_height+r,r*5d0,r*1d0,mesh%coord) ! IMC 1
+! call init_level_set_function_ellips(lssys%a(:,3),x0*3d0/2d0,cu_height+r,r*5d0,r*1d0,mesh%coord) ! IMC 2
+! lssys%a(:,4) = -minval(lssys%a(:,2:ngrains-1),dim=2) + 1e-2
+! where (mesh%coord(2,:).lt.cu_height+r) lssys%a(:,4) = 1d0                                   ! Sn
+
+
+! ! Simulation 2 ngrains = 5 (Good - article!)
+  lssys%a = 1d0
+  r       = 0.1d-3
+  cu_height = 0.6d-3
+  where (mesh%coord(2,:).lt.cu_height) lssys%a(:,1) = -1d0                                    ! Cu
+  call init_level_set_function_ellips(lssys%a(:,2), x0/3d0    , cu_height,r*5d0,r*0.5d0,mesh%coord) ! IMC 1
+  call init_level_set_function_ellips(lssys%a(:,3), x0        , cu_height,r*5d0,r*0.5d0,mesh%coord) ! IMC 2
+  call init_level_set_function_ellips(lssys%a(:,4), x0*5d0/3d0, cu_height,r*5d0,r*0.5d0,mesh%coord) ! IMC 3
+  lssys%a(:,5) = -minval(lssys%a(:,2:ngrains-1),dim=2) + 1e-2
+  where (mesh%coord(2,:).lt.cu_height) lssys%a(:,5) = 1d0                                   ! Sn
+
+! ! Simulation 3: ngrains = 6 (Good - from pp)
+! lssys%a   = 1d0
+! r         = 0.1d-3
+! cu_height = 0.6d-3
+! where (mesh%coord(2,:).lt.cu_height) lssys%a(:,1) = -1d0                                    ! Cu
+! call init_level_set_function_ellips(lssys%a(:,2), 0d0       , cu_height+r, r*10d0, r*1d0, mesh%coord) ! IMC 1
+! call init_level_set_function_ellips(lssys%a(:,3), x0*0.75d0 , cu_height+r, r*10d0, r*1d0, mesh%coord) ! IMC 2
+! call init_level_set_function_ellips(lssys%a(:,4), x0*1.25d0 , cu_height+r, r*10d0, r*1d0, mesh%coord) ! IMC 3
+! call init_level_set_function_ellips(lssys%a(:,5), 2d0*x0    , cu_height+r, r*10d0, r*1d0, mesh%coord) ! IMC 4
+! lssys%a(:,6) = -minval(lssys%a(:,2:ngrains-1),dim=2) + 1e-2
+! where (mesh%coord(2,:).lt.cu_height+r) lssys%a(:,6) = 1d0                                   ! Sn
+
+
+! Simulation 4: ngrains = 6 (Good - article)
+! lssys%a   = 1d0
+! r         = 0.1d-3
+! cu_height = 0.6d-3
+! where (mesh%coord(2,:).lt.cu_height) lssys%a(:,1) = -1d0                                            ! Cu
+! call init_level_set_function_ellips(lssys%a(:,2), 0d0       , cu_height, r*10d0, r*0.3d0, mesh%coord) ! IMC 1
+! call init_level_set_function_ellips(lssys%a(:,3), x0*0.75d0 , cu_height, r*10d0, r*0.3d0, mesh%coord) ! IMC 2
+! call init_level_set_function_ellips(lssys%a(:,4), x0*1.25d0 , cu_height, r*10d0, r*0.3d0, mesh%coord) ! IMC 3
+! call init_level_set_function_ellips(lssys%a(:,5), 2d0*x0    , cu_height, r*10d0, r*0.3d0, mesh%coord) ! IMC 4
+
+! call init_level_set_function_ellips(lssys%a(:,6), 0d0   , cu_height+8*r, r*15d0, r*7d0, mesh%coord) ! Sn 1
+! call init_level_set_function_ellips(lssys%a(:,7), x0    , cu_height+8*r, r*8d0,  r*7d0, mesh%coord) ! Sn 2
+! call init_level_set_function_ellips(lssys%a(:,8), 2d0*x0, cu_height+8*r, r*15d0, r*7d0, mesh%coord) ! Sn 3
+
+! ! Sn plot grain
+! lssys%sn_a = -minval(lssys%a(:,1:5),dim=2)
+
+
+! Simulation 6 (Brown) ngrains = 4
+! lssys%a   = 1d0
+! r         = 0.1d-3
+! cu_height = 0.601d-3
+! where (mesh%coord(2,:).lt.cu_height) lssys%a(:,1) = -1d0                                  ! Cu
+! call init_level_set_function_ellips(lssys%a(:,2), 0d0  ,cu_height,r*1d0,r*1d0,mesh%coord) ! IMC 1
+! call init_level_set_function_ellips(lssys%a(:,3),x0*2d0,cu_height,r*1d0,r*1d0,mesh%coord) ! IMC 2
+! lssys%a(:,4) = -minval(lssys%a(:,2:ngrains-1),dim=2) + 1e-2
+! where (mesh%coord(2,:).lt.cu_height) lssys%a(:,4) = 1d0                                   ! Sn
+
+
+! ! Initialize all level set functions except the last one
+! do g=1,ngrains - 1
+!   call init_level_set_function(lssys%a(:,g),lssys%xvec(g),lssys%yvec(g),lssys%rvec(g),mesh%coord)
+! enddo
+
+! ! Init last level set function (given implicitly by the others)
+! lssys%a(:,ngrains) = -minval(lssys%a(:,2:ngrains-1),dim=2) + 1d-12
+
+  
+! Save init ls output data
+  call write_level_set_init_to_matlab(mesh, IMC_steps, ngrains, input_location)
+
+
+
+  return
+end subroutine init_ls_system
+
+
+subroutine update_ls_system(lssys,mesh,i_IMC,input_location, omp_run, pq, diffsys, ls_spatial)
+! --- Routine for updating all level set functions with the previously computed vp ---
+  implicit none
+
+! Intent inout
+  type(ls_system), intent(inout)            :: lssys
+  
+
+! Intent in
+  type(mesh_system), intent(in)             :: mesh
+  integer,intent(in)                        :: i_IMC
+  character(len=:), allocatable, intent(in) :: input_location
+  logical, intent(in)                       :: omp_run
+  type(plot_system), intent(inout)          :: pq
+  type(diffusion_system), intent(in)        :: diffsys
+  logical, intent(in)                       :: ls_spatial
+
+! Subroutine variables
+  integer                                   :: g, g_rows(2), nindecies, counter, i, inod
+  integer, allocatable                      :: indecies(:), indecies2(:), uniqueIndices(:)  
+
+! !
+! integer  :: ie
+! real(dp) :: vpvec1(2,4), vpvec2(2,4), x0, y0, cu_height, r, P1(2), P2(2)
+
+  allocate(indecies2(size(lssys%a(:,g))))  
+
+! 1) --- Update level set functions ---
+  if (i_IMC.gt.1) then
+    do g=1,lssys%ngrains
+      if (ls_spatial) then
+        call update_level_set_function_spatial(lssys, mesh, g)
+      else
+        call update_level_set_function(lssys, mesh, g)
+      endif
+    enddo
+
+! Make sure that IMC is not decreasing
+! do g=1,lssys%ngrains
+!   if (lssys%material(g).eq.2) then
+!     indecies  = pack([(i, i=1, size(lssys%a(:,g)))], lssys%a(:,g).gt.(lssys%a_prev(:,g)) .and. (abs(lssys%a(:,1)).lt.4d-5 &
+!     .or. abs(lssys%a(:,4)).lt.4d-5))
+!     lssys%a(indecies,g) = lssys%a_prev(indecies,g) - 5d-6  ! To prevent being lowered by inetraction-correction
+!   endif
+! enddo
+  endif
+
+! 2) --- Remove level set function if it is zero everywhere ---
+  call remove_ls(lssys)
+
+! 3) --- Interaction-correction step ---
+  call interaction_correction(lssys%a, lssys%ngrains)
+
+! Update ed
+  do g=1,lssys%ngrains
+    call extract(lssys%ed(:,:,g),lssys%a(:,g),mesh%enod,1)
+  enddo
+  
+! 4) --- Interpolate interfaces ---
+  lssys%line_ex     = 0d0
+  lssys%line_ey     = 0d0
+  lssys%line_elms   = 0
+  lssys%line_seg    = 0
+  lssys%line_seg_cc = .false.
+  lssys%int_elms    = .false.
+  lssys%sep_lines   = 0
+  lssys%jnod        = 0d0  
+  lssys%vp          = 0d0
+  lssys%vpm         = 0d0
+
+! Interpolate line segments in deformed configuration
+  do g = 1, lssys%ngrains
+    g_rows = [2*(g-1) + 1, 2*(g-1) + 2]
+    if (ls_spatial) then
+      call get_interface_spatial(lssys%line_ex(:, g_rows(1):g_rows(2)), lssys%line_ey(:, g_rows(1):g_rows(2)), &
+      lssys%line_elms(:, g), lssys%line_seg(g), lssys%ed(:,:,g), mesh)
+    else
+      call get_interface(lssys%line_ex(:, g_rows(1):g_rows(2)), lssys%line_ey(:, g_rows(1):g_rows(2)), &
+      lssys%line_elms(:, g), lssys%line_seg(g), lssys%ed(:,:,g), mesh)
+    endif
+    
+! Obtain logical array with a true bool if the element contains a line
+    lssys%int_elms(lssys%line_elms(1:lssys%line_seg(g),g),g) = .true.
+  end do
+
+! 5) --- Interface reconstruction (post-processing step) ---
+  if (ls_spatial) then
+    call interface_reconstruction_spatial(lssys, mesh)
+  else
+    call interface_reconstruction(lssys, mesh)
+  endif
+  
+  
+! 6) --- Sort line segments ---
+  do g = 1,lssys%ngrains
+    g_rows = [2*(g-1) + 1, 2*(g-1) + 2]
+    call sort_lines(lssys%line_ex(:,g_rows(1):g_rows(2)),lssys%line_ey(:,g_rows(1):g_rows(2)),lssys%tplines(:,g), &
+    lssys%line_seg(g),lssys%sep_lines(:,g_rows(1):g_rows(2)),lssys%nsep_lines(g),mesh)
+  enddo
+
+! 7) --- Reinitialize level set function ---
+  do g = 1,lssys%ngrains
+    g_rows = [2*(g-1) + 1, 2*(g-1) + 2]
+    if (ls_spatial) then
+      call reinit_level_set_spatial(lssys%a(:,g),lssys%line_ex(:,g_rows(1):g_rows(2)),lssys%line_ey(:,g_rows(1):g_rows(2)), &
+      lssys%closest_line(:,g),lssys%line_seg(g),mesh)
+    else
+      call reinit_level_set(lssys%a(:,g),lssys%line_ex(:,g_rows(1):g_rows(2)),lssys%line_ey(:,g_rows(1):g_rows(2)), &
+      lssys%closest_line(:,g),lssys%line_seg(g),mesh)
+    endif
+    
+! Update ed
+    call extract(lssys%ed(:,:,g),lssys%a(:,g),mesh%enod,1)
+    call elm2D4_nodmat_to_gpmat(lssys%a_gp(:,:,g), lssys%ed(:,:,g), mesh%nelm)
+  enddo
+
+! 8) --- Output data ---
+
+! Save output data (for diffusion script to load)
+  call write_level_set_iter_to_matlab(lssys, mesh, i_IMC, input_location)
+
+! Velocity field acc to Brown
+! x0     = (mesh%axisbc(1) + mesh%axisbc(2))/2d0
+! y0     = (mesh%axisbc(3) + mesh%axisbc(4))/2d0
+! r         = 0.1d-3
+! cu_height = 0.601d-3
+! P1 = [0d0   ,cu_height]
+! P2 = [x0*2d0,cu_height]
+! do ie=1,mesh%nelm
+!   call lvlset2D4vp_exp_brown(vpvec1,mesh%coord(:,mesh%enod(:,ie)),lssys%ed(:,ie,2),P1, 2*x0, cu_height)
+!   call lvlset2D4vp_exp_brown(vpvec2,mesh%coord(:,mesh%enod(:,ie)),lssys%ed(:,ie,3),P2, 2*x0, cu_height)
+!   lssys%vp(:,:,ie) = vpvec1 + vpvec2
+! enddo
+
+! Compute phi in nods and gauss points
+  do g=1,lssys%ngrains
+    lssys%phi(:,g) = 0.5d0*(1d0 - tanh(lssys%a(:,g)/(lssys%w/2d0)))
+    call extract(lssys%phi_ed(:,:,g),lssys%phi(:,g),mesh%enod,1)
+    call elm2D4_nodmat_to_gpmat(lssys%phi_gp(:,:,g), lssys%phi_ed(:,:,g), mesh%nelm)
+  enddo
+
+! Compute hphi
+  lssys%hphi_sum = sum(lssys%phi**2, dim = 2)
+  do g = 1, lssys%ngrains    
+    lssys%hphi(:, g) = (lssys%phi(:, g)**2) / lssys%hphi_sum
+    call extract(lssys%hphi_ed(:,:,g),lssys%hphi(:,g),mesh%enod,1)
+    call elm2D4_nodmat_to_gpmat(lssys%hphi_gp(:,:,g), lssys%hphi_ed(:,:,g), mesh%nelm)
+  enddo
+
+! Compute sn_hphi_plot
+  lssys%sn_a = lssys%a(:,5)
+  lssys%sn_hphi_plot = 0.5d0*(1d0 - tanh((lssys%sn_a+lssys%w*0.4d0)/(lssys%w/6d0)))
+  call extract(lssys%sn_hphi_ed_plot,lssys%sn_hphi_plot,mesh%enod,1)
+  call elm2D4_nodmat_to_gpmat(lssys%sn_hphi_gp_plot, lssys%sn_hphi_ed_plot, mesh%nelm)
+
+! Compute sn_hphi_plot2
+  lssys%sn_hphi_plot = 0.5d0*(1d0 - tanh((lssys%sn_a+lssys%w*0.5d0)/(lssys%w/6d0)))
+  call extract(lssys%sn_hphi_ed_plot,lssys%sn_hphi_plot,mesh%enod,1)
+  call elm2D4_nodmat_to_gpmat(lssys%sn_hphi_gp_plot2, lssys%sn_hphi_ed_plot, mesh%nelm)
+
+! Define old IMC gps at first IMC step (3 IMC grains)
+  if (i_IMC.eq.1) then
+    lssys%old_IMC_gp_flag = .false.
+    where (lssys%hphi_gp(:,:,2).gt.0.04d0 .or. lssys%hphi_gp(:,:,3).gt.0.04d0 .or. lssys%hphi_gp(:,:,4).gt.0.04d0) &
+     lssys%old_IMC_gp_flag = .true.
+  endif
+
+! Define initial IMC (4 IMC grains)
+! if (i_IMC.eq.1) then
+!   lssys%old_IMC_gp_flag = .false.
+!   where (lssys%hphi_gp(:,:,2).gt.0.05d0 .or. lssys%hphi_gp(:,:,3).gt.0.05d0 .or. lssys%hphi_gp(:,:,4).gt.0.05d0 &
+!   .or. lssys%hphi_gp(:,:,5).gt.0.05d0) &
+!   lssys%old_IMC_gp_flag = .true.
+! endif
+
+! a_prev
+  lssys%a_prev = lssys%a
+
+  return
+end subroutine update_ls_system
+
+
+
+end module level_set

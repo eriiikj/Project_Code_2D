@@ -1,0 +1,261 @@
+module ls_update_routines
+    ! Last modified 
+    ! E. Jacobsson 2023-09-13
+      
+    ! mf_datatypes
+    use mf_datatypes
+
+    ! Somelib
+    use matrix_util
+
+
+    ! Whiskerlib
+    use ls_sorting_routines
+    use ls_reconstruction_routines
+    use ls_vp_routines
+    use ls_types
+    use mesh_module
+
+    implicit none
+
+
+    ! This is an attempt to predefine some vectors for the 4-node element, to obtain speed
+    double precision, parameter  :: G1=0.577350269189626D0
+    double precision, parameter  :: xsi4(4)=(/-1D0,  1D0, -1D0, 1D0/)*G1
+    double precision, parameter  :: eta4(4)=(/-1D0, -1D0,  1D0, 1D0/)*G1
+    private xsi4, eta4, G1
+
+    integer, parameter          :: index4(2,4)=reshape([(/1,2/),(/3,4/),(/5,6/),(/7,8/)], [2,4])
+    double precision, parameter :: Ifm(4)=(/1d0,0d0,0d0,1d0/)
+    private index4, Ifm
+
+    ! 4 Gauss points and 4 nodes
+    double precision, parameter :: NR4_col11(4) = (1D0-XSI4)*(1D0-ETA4)/4D0
+    double precision, parameter :: NR4_col22(4) = (1D0+XSI4)*(1D0-ETA4)/4D0
+    double precision, parameter :: NR4_col33(4) = (1D0+XSI4)*(1D0+ETA4)/4D0
+    double precision, parameter :: NR4_col44(4) = (1D0-XSI4)*(1D0+ETA4)/4D0
+    double precision, parameter :: NR4(4,4)    = reshape([NR4_col11, NR4_col22, NR4_col33, NR4_col44], [4,4])
+    private NR4
+    private NR4_col11, NR4_col22, NR4_col33, NR4_col44
+    
+    ! derivate of shape functions with respect to xsi
+    double precision, parameter :: DNR4_182_col1(4) = -(1D0-ETA4)/4D0
+    double precision, parameter :: DNR4_182_col2(4) =  (1D0-ETA4)/4D0
+    double precision, parameter :: DNR4_182_col3(4) =  (1D0+ETA4)/4D0
+    double precision, parameter :: DNR4_182_col4(4) = -(1D0+ETA4)/4D0
+
+    ! derivate of shape functions with respect to eta
+    double precision, parameter :: DNR4_282_col1(4) = -(1D0-XSI4)/4D0
+    double precision, parameter :: DNR4_282_col2(4) = -(1D0+XSI4)/4D0
+    double precision, parameter :: DNR4_282_col3(4) =  (1D0+XSI4)/4D0
+    double precision, parameter :: DNR4_282_col4(4) =  (1D0-XSI4)/4D0
+
+    ! Collect in DNR4
+    double precision, parameter :: DNR4(8,4)=reshape([DNR4_182_col1(1), DNR4_282_col1(1), DNR4_182_col1(2), DNR4_282_col1(2), &
+                                                    DNR4_182_col1(3), DNR4_282_col1(3), DNR4_182_col1(4), DNR4_282_col1(4), &
+                                                    DNR4_182_col2(1), DNR4_282_col2(1), DNR4_182_col2(2), DNR4_282_col2(2), &
+                                                    DNR4_182_col2(3), DNR4_282_col2(3), DNR4_182_col2(4), DNR4_282_col2(4), &
+                                                    DNR4_182_col3(1), DNR4_282_col3(1), DNR4_182_col3(2), DNR4_282_col3(2), &
+                                                    DNR4_182_col3(3), DNR4_282_col3(3), DNR4_182_col3(4), DNR4_282_col3(4), &
+                                                    DNR4_182_col4(1), DNR4_282_col4(1), DNR4_182_col4(2), DNR4_282_col4(2), &
+                                                    DNR4_182_col4(3), DNR4_282_col4(3), DNR4_182_col4(4), DNR4_282_col4(4)], [8,4])
+    private DNR4
+    private DNR4_182_col1, DNR4_182_col2, DNR4_182_col3, DNR4_182_col4
+    private DNR4_282_col1, DNR4_282_col2, DNR4_282_col3, DNR4_282_col4 
+
+contains
+
+
+subroutine update_level_set_function(lssys, mesh, g)
+    ! --- Routine for updating one level set function. Moreover, the tanh function phi of the 
+    !     level set function a is computed ---
+    implicit none
+
+    ! Intent inout
+    type(ls_system), intent(inout) :: lssys
+    
+    ! Intent in
+    type(mesh_system), intent(in)  :: mesh
+    integer                        :: g
+
+    ! Subroutine variables  
+    real(dp)                                  :: ce_ls(4,4), kce_ls(4,4), kpe_ls(4,4)
+    integer                                   :: ie, i, j
+
+  
+    ! Take one time step level set
+    lssys%C_hat%a = 0d0
+    lssys%K_hat%a = 0d0
+    do j=1,mesh%nset
+        !!$omp parallel do private(ie,ce_ls,kce_ls,kpe_ls,i) shared(mesh,j,lssys) schedule(guided)
+        do i=1,mesh%counter_set(j)
+            ie = mesh%set_groups(i,j)
+            call lvlset2D4c(ce_ls,mesh%coord(:,mesh%enod(:,ie)))
+            call lvlset2D4kc(kce_ls,mesh%coord(:,mesh%enod(:,ie)), lssys%D)
+            call lvlset2D4kp(kpe_ls,mesh%coord(:,mesh%enod(:,ie)), lssys%vp(:,:,ie))
+            call assem(lssys%C_hat,ce_ls + lssys%theta*lssys%h*(kce_ls+kpe_ls),mesh%enod(:,ie),1)
+            call assem(lssys%K_hat,ce_ls + (lssys%theta-1d0)*lssys%h*(kce_ls+kpe_ls),mesh%enod(:,ie),1)
+        enddo
+        !!$omp end parallel do
+    enddo
+
+    ! Compute new value of a
+    lssys%a(:,g) = matmul(lssys%K_hat, lssys%a(:,g))
+    call solveq(lssys%C_hat,lssys%a(:,g))
+
+
+    return
+end subroutine update_level_set_function
+
+
+subroutine update_level_set_function_spatial(lssys, mesh, g)
+    ! --- Routine for updating one level set function. Moreover, the tanh function phi of the 
+    !     level set function a is computed ---
+    implicit none
+
+    ! Intent inout
+    type(ls_system), intent(inout) :: lssys
+    
+    ! Intent in
+    type(mesh_system), intent(in)  :: mesh
+    integer                        :: g
+
+    ! Subroutine variables  
+    real(dp)                                  :: ce_ls(4,4), kce_ls(4,4), kpe_ls(4,4)
+    integer                                   :: ie, i, j
+
+  
+    ! Take one time step level set
+    lssys%C_hat%a = 0d0
+    lssys%K_hat%a = 0d0
+    do j=1,mesh%nset
+        !!$omp parallel do private(ie,ce_ls,kce_ls,kpe_ls,i) shared(mesh,j,lssys) schedule(guided)
+        do i=1,mesh%counter_set(j)
+            ie = mesh%set_groups(i,j)
+            call lvlset2D4c(ce_ls,mesh%newcoord(:,mesh%enod(:,ie)))
+            call lvlset2D4kc(kce_ls,mesh%newcoord(:,mesh%enod(:,ie)), lssys%D)
+            call lvlset2D4kp(kpe_ls,mesh%newcoord(:,mesh%enod(:,ie)), lssys%vp(:,:,ie))
+            call assem(lssys%C_hat,ce_ls + lssys%theta*lssys%h*(kce_ls+kpe_ls),mesh%enod(:,ie),1)
+            call assem(lssys%K_hat,ce_ls + (lssys%theta-1d0)*lssys%h*(kce_ls+kpe_ls),mesh%enod(:,ie),1)
+        enddo
+        !!$omp end parallel do
+    enddo
+
+    ! Compute new value of a
+    lssys%a(:,g) = matmul(lssys%K_hat, lssys%a(:,g))
+    call solveq(lssys%C_hat,lssys%a(:,g))
+
+
+    return
+end subroutine update_level_set_function_spatial
+
+
+
+subroutine lvlset2D4c(Ce,coord)
+    ! Routine for computing the capacity matrix Ce
+    implicit none
+ 
+    double precision, intent(in)  :: coord(:,:)
+    double precision, intent(out) :: Ce(:,:)
+ 
+    double precision              :: JT(8,2), N(1,4)
+    double precision              :: DetJ
+    integer                       :: GP_NR, indx(2)
+    integer, parameter            :: NGP=4
+ 
+    JT=matmul(DNR4,transpose(coord))
+    Ce=0D0
+    do GP_NR=1,NGP
+ 
+      indx = (/ 2*gp_nr-1, 2*gp_nr /)
+      detJ = det2(JT(indx,:))
+
+      ! N
+      N(1,:) = NR4(GP_NR,:)
+ 
+      Ce = Ce + matmul(transpose(N),N)*detJ
+ 
+    enddo
+    
+    return
+end subroutine lvlset2D4c
+
+
+subroutine lvlset2D4kc(Kce,coord,D)
+    ! Routine for computing the element stiffness due to curvature motion
+    implicit none
+
+    double precision, intent(in)  :: coord(:,:), D(:,:)
+    double precision, intent(out) :: Kce(:,:)
+
+    double precision              :: JT(8,2), JTinv(2,2), DNX(2,4), B(2,4), Dgp(2,2)
+    double precision              :: DetJ
+    integer                       :: GP_NR, indx(2)
+    integer, parameter            :: NGP=4
+
+
+    JT=MATMUL(DNR4,transpose(coord))
+    Kce=0D0
+    do GP_NR=1,NGP
+
+        indx = (/ 2*gp_nr-1, 2*gp_nr /)
+        detJ = det2(JT(indx,:))
+        call inv2(JTinv,JT(indx,:))
+        dNX  = matmul(JTinv,DNR4(indx,:))
+
+        B   = dNX
+
+        Dgp = D
+
+        Kce = Kce+MATMUL(TRANSPOSE(B),MATMUL(Dgp,B))*detJ
+
+    enddo
+
+    return
+end subroutine lvlset2D4kc
+
+
+subroutine lvlset2D4kp(Kpe,coord,vpvec)
+    ! Routine for computing the element stiffness due to normal motion
+    implicit none
+
+    real(dp), intent(in)          :: vpvec(:,:)
+
+    double precision, intent(in)  :: coord(:,:)
+    double precision, intent(out) :: Kpe(:,:)
+
+    double precision              :: JT(8,2), JTinv(2,2), DNX(2,4), B(2,4), N(1,4), vpgp(2), Brow1(1,4), Brow2(1,4)
+    double precision              :: DetJ
+    integer                       :: GP_NR, indx(2)
+    integer, parameter            :: NGP=4
+
+
+    JT = MATMUL(DNR4,transpose(coord))
+    Kpe = 0d0
+    do GP_NR=1,NGP
+
+        indx = (/ 2*gp_nr-1, 2*gp_nr /)
+        detJ = det2(JT(indx,:))
+
+        ! N
+        N(1,:) = NR4(GP_NR,:)
+
+        call inv2(JTinv,JT(indx,:))
+        dNX = matmul(JTinv,DNR4(indx,:))
+
+        B = dNX
+        Brow1(1,:) = B(1,:)
+        Brow2(1,:) = B(2,:)
+
+        ! vpgp
+        vpgp = vpvec(:,GP_NR)
+
+        ! Kp
+        Kpe = Kpe + (vpgp(1)*matmul(transpose(N),Brow1) + vpgp(2)*matmul(transpose(N),Brow2))*detJ
+
+    enddo
+
+return
+end subroutine lvlset2D4kp
+
+end module ls_update_routines

@@ -1,0 +1,67 @@
+# -*- coding: mbcs -*-
+#
+# Abaqus/CAE Release 2019 replay file
+# Internal Version: 2020_01_29-08.04.18 159217
+# Run by er7128ja on Wed Jun  1 13:39:39 2022
+#
+
+# from driverUtils import executeOnCaeGraphicsStartup
+# executeOnCaeGraphicsStartup()
+#: Executing "onCaeGraphicsStartup()" in the site directory ...
+from abaqus import *
+from abaqusConstants import *
+session.Viewport(name='Viewport: 1', origin=(0.0, 0.0), width=324.908325195312, 
+    height=208.409271240234)
+session.viewports['Viewport: 1'].makeCurrent()
+session.viewports['Viewport: 1'].maximize()
+from caeModules import *
+from driverUtils import executeOnCaeStartup
+executeOnCaeStartup()
+session.viewports['Viewport: 1'].partDisplay.geometryOptions.setValues(
+    referenceRepresentation=ON)
+openMdb(
+    pathName='/home/er7128ja/Nextcloud/Projekt/Project_Code/abaqus_model/uconst/uconst_fine/uconst_fine.cae')
+#: The model database "/home/er7128ja/Nextcloud/Projekt/Project_Code/abaqus_model/uconst/uconst_fine/uconst_fine.cae" has been opened.
+session.viewports['Viewport: 1'].setValues(displayedObject=None)
+p = mdb.models['Model-1'].parts['Part-1']
+session.viewports['Viewport: 1'].setValues(displayedObject=p)
+session.viewports['Viewport: 1'].partDisplay.setValues(mesh=ON)
+session.viewports['Viewport: 1'].partDisplay.meshOptions.setValues(
+    meshTechnique=ON)
+session.viewports['Viewport: 1'].partDisplay.geometryOptions.setValues(
+    referenceRepresentation=OFF)
+session.viewports['Viewport: 1'].view.setValues(nearPlane=24.1718, 
+    farPlane=26.4247, width=12.039, height=6.36158, viewOffsetX=1.43029, 
+    viewOffsetY=-1.19423)
+session.viewports['Viewport: 1'].view.setValues(nearPlane=24.1968, 
+    farPlane=26.3996, width=12.0515, height=6.36816, viewOffsetX=0.107181, 
+    viewOffsetY=-1.2721)
+session.viewports['Viewport: 1'].partDisplay.meshOptions.setValues(
+    nodeLabels=ON)
+session.viewports['Viewport: 1'].view.setValues(nearPlane=24.9531, 
+    farPlane=25.6434, width=3.69805, height=1.95411, viewOffsetX=-0.635157, 
+    viewOffsetY=-1.76851)
+session.viewports['Viewport: 1'].view.setValues(nearPlane=24.9598, 
+    farPlane=25.6366, width=3.69905, height=1.95464, viewOffsetX=-0.0783564, 
+    viewOffsetY=-1.73371)
+session.viewports['Viewport: 1'].view.fitView()
+session.viewports['Viewport: 1'].view.setValues(nearPlane=24.1718, 
+    farPlane=26.4247, width=12.039, height=6.36158, viewOffsetX=0.137675)
+session.viewports['Viewport: 1'].view.setValues(nearPlane=24.1968, 
+    farPlane=26.3996, width=12.0515, height=6.36816, viewOffsetX=0.0153125, 
+    viewOffsetY=-0.0153266)
+session.viewports['Viewport: 1'].view.setValues(nearPlane=24.9391, 
+    farPlane=25.6574, width=3.84837, height=2.03354, viewOffsetX=-0.417316, 
+    viewOffsetY=-1.3977)
+session.viewports['Viewport: 1'].view.setValues(nearPlane=24.9461, 
+    farPlane=25.6503, width=3.84946, height=2.03412, viewOffsetX=0.179305, 
+    viewOffsetY=-1.37117)
+session.viewports['Viewport: 1'].view.setValues(nearPlane=23.7982, 
+    farPlane=26.7982, width=16.7104, height=8.83004, viewOffsetX=2.10108, 
+    viewOffsetY=-1.44487)
+session.viewports['Viewport: 1'].view.setValues(nearPlane=23.7694, 
+    farPlane=26.827, width=16.6902, height=8.81936, viewOffsetX=1.3987, 
+    viewOffsetY=-0.774507)
+session.viewports['Viewport: 1'].view.setValues(nearPlane=23.7713, 
+    farPlane=26.8252, width=16.6915, height=8.82006, viewOffsetX=0.868584, 
+    viewOffsetY=-0.403086)

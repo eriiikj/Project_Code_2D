@@ -1,0 +1,29 @@
+Information regarding structure of code (2022-04-09):
+
+Abaqus .inp file needs to be included in ${PROJECT_SOURCE_DIR}/src/main.
+Job must be run from ${PROJECT_BINARY_DIR}/src/main (as this is the dir in the
+binary tree to which the .inp file is copied).
+This is for example accomplished by executing run.sh (which travels into this
+dir before executing the executable). It can also be accomplished by utilising
+CMakeTools in VS Code. 
+
+The modules and libs (not MKL) are added from its own specific directory in the source tree
+by making use of the respective CMakeLists.txt file, see for example
+${PROJECT_SOURCE_DIR}/src/modules/whiskermodules/CMakeLists.txt.
+
+In order to be able to use the Fortran Linter in VS Code, which utilises gfortran,
+module files created by gfortran must be included in the path of VS Code
+("fortran.includePaths" in settings.json).
+
+Allowing lintering with gfortran as compiler:
+Link to the module files in the binary dir.
+
+Allowing lintering with intel as compiler:
+Compile with gfortran (or linter in VS Code which uses gfortran)
+and save mod files in special dir. Link to this dir in VS Code.  
+
+Restraint: In order to make use of all utility in VS Code the fortran
+program must be able to run with both gfortran and intel. Hence,
+special intel statements must not be present.
+
+

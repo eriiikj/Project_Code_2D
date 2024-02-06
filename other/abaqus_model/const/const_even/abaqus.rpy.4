@@ -1,0 +1,264 @@
+# -*- coding: mbcs -*-
+#
+# Abaqus/CAE Release 2019 replay file
+# Internal Version: 2020_01_29-08.04.18 159217
+# Run by er7128ja on Wed Jun  1 08:55:26 2022
+#
+
+# from driverUtils import executeOnCaeGraphicsStartup
+# executeOnCaeGraphicsStartup()
+#: Executing "onCaeGraphicsStartup()" in the site directory ...
+from abaqus import *
+from abaqusConstants import *
+session.Viewport(name='Viewport: 1', origin=(0.0, 0.0), width=324.908325195312, 
+    height=208.409271240234)
+session.viewports['Viewport: 1'].makeCurrent()
+session.viewports['Viewport: 1'].maximize()
+from caeModules import *
+from driverUtils import executeOnCaeStartup
+executeOnCaeStartup()
+session.viewports['Viewport: 1'].partDisplay.geometryOptions.setValues(
+    referenceRepresentation=ON)
+openMdb(
+    pathName='/home/er7128ja/Nextcloud/Projekt/Project_Code/abaqus_model/const/const_sides_even/const_sides.cae')
+#: The model database "/home/er7128ja/Nextcloud/Projekt/Project_Code/abaqus_model/const/const_sides_even/const_sides.cae" has been opened.
+session.viewports['Viewport: 1'].setValues(displayedObject=None)
+p = mdb.models['Model-1'].parts['Part-1']
+session.viewports['Viewport: 1'].setValues(displayedObject=p)
+#--- Recover file: 'const_sides.rec' ---
+# -*- coding: mbcs -*- 
+from part import *
+from material import *
+from section import *
+from assembly import *
+from step import *
+from interaction import *
+from load import *
+from mesh import *
+from optimization import *
+from job import *
+from sketch import *
+from visualization import *
+from connectorBehavior import *
+mdb.models['Model-1'].parts['Part-1'].setMeshControls(elemShape=QUAD, 
+    regions=mdb.models['Model-1'].parts['Part-1'].faces.getSequenceFromMask((
+    '[#7 ]', ), ), technique=STRUCTURED)
+mdb.models['Model-1'].parts['Part-1'].seedEdgeBySize(constraint=FINER, 
+    deviationFactor=0.1, 
+    edges=mdb.models['Model-1'].parts['Part-1'].edges.getSequenceFromMask((
+    '[#115 ]', ), ), size=0.1)
+mdb.models['Model-1'].parts['Part-1'].seedEdgeBySize(constraint=FINER, 
+    deviationFactor=0.1, 
+    edges=mdb.models['Model-1'].parts['Part-1'].edges.getSequenceFromMask((
+    '[#28a ]', ), ), size=0.1)
+mdb.models['Model-1'].parts['Part-1'].Set(
+    edges=mdb.models['Model-1'].parts['Part-1'].edges.getSequenceFromMask((
+    '[#115 ]', ), ), name='horiz_lines')
+mdb.models['Model-1'].parts['Part-1'].Set(
+    edges=mdb.models['Model-1'].parts['Part-1'].edges.getSequenceFromMask((
+    '[#28a ]', ), ), name='vert_lines_coarse')
+mdb.models['Model-1'].parts['Part-1'].Set(
+    edges=mdb.models['Model-1'].parts['Part-1'].edges.getSequenceFromMask((
+    '[#60 ]', ), ), name='vert_lines_fine')
+mdb.models['Model-1'].parts['Part-1'].deleteSeeds(
+    regions=mdb.models['Model-1'].parts['Part-1'].edges.getSequenceFromMask((
+    '[#3ff ]', ), ))
+mdb.models['Model-1'].parts['Part-1'].seedEdgeBySize(constraint=FINER, 
+    deviationFactor=0.1, 
+    edges=mdb.models['Model-1'].parts['Part-1'].edges.getSequenceFromMask((
+    '[#115 ]', ), ), minSizeFactor=0.1, size=0.1)
+mdb.models['Model-1'].parts['Part-1'].seedEdgeBySize(constraint=FINER, 
+    deviationFactor=0.1, 
+    edges=mdb.models['Model-1'].parts['Part-1'].edges.getSequenceFromMask((
+    '[#28a ]', ), ), minSizeFactor=0.1, size=0.1)
+mdb.models['Model-1'].parts['Part-1'].seedEdgeBySize(constraint=FINER, 
+    deviationFactor=0.1, 
+    edges=mdb.models['Model-1'].parts['Part-1'].edges.getSequenceFromMask((
+    '[#60 ]', ), ), minSizeFactor=0.1, size=0.02)
+mdb.models['Model-1'].parts['Part-1'].generateMesh()
+mdb.models['Model-1'].parts['Part-1'].deleteMesh(
+    regions=mdb.models['Model-1'].parts['Part-1'].faces.getSequenceFromMask((
+    '[#2 ]', ), ))
+mdb.models['Model-1'].parts['Part-1'].seedEdgeBySize(constraint=FINER, 
+    deviationFactor=0.1, 
+    edges=mdb.models['Model-1'].parts['Part-1'].edges.getSequenceFromMask((
+    '[#60 ]', ), ), minSizeFactor=0.1, size=0.05)
+mdb.models['Model-1'].parts['Part-1'].generateMesh()
+mdb.models['Model-1'].rootAssembly.regenerate()
+mdb.Job(activateLoadBalancing=False, atTime=None, contactPrint=OFF, 
+    description='', echoPrint=OFF, explicitPrecision=SINGLE, 
+    getMemoryFromAnalysis=True, historyPrint=OFF, memory=90, 
+    memoryUnits=PERCENTAGE, model='Model-1', modelPrint=OFF, 
+    multiprocessingMode=DEFAULT, name='Job-1', nodalOutputPrecision=SINGLE, 
+    numCpus=1, numDomains=1, numGPUs=0, parallelizationMethodExplicit=DOMAIN, 
+    queue=None, resultsFormat=ODB, scratch='', type=ANALYSIS, 
+    userSubroutine='', waitHours=0, waitMinutes=0)
+mdb.models['Model-1'].parts['Part-1'].deleteMesh(
+    regions=mdb.models['Model-1'].parts['Part-1'].faces.getSequenceFromMask((
+    '[#2 ]', ), ))
+mdb.models['Model-1'].parts['Part-1'].seedEdgeBySize(constraint=FINER, 
+    deviationFactor=0.1, 
+    edges=mdb.models['Model-1'].parts['Part-1'].edges.getSequenceFromMask((
+    '[#60 ]', ), ), minSizeFactor=0.1, size=0.025)
+mdb.models['Model-1'].parts['Part-1'].generateMesh()
+mdb.models['Model-1'].rootAssembly.regenerate()
+mdb.models['Model-1'].parts['Part-1'].deleteMesh(
+    regions=mdb.models['Model-1'].parts['Part-1'].faces.getSequenceFromMask((
+    '[#2 ]', ), ))
+mdb.models['Model-1'].parts['Part-1'].seedEdgeBySize(constraint=FINER, 
+    deviationFactor=0.1, 
+    edges=mdb.models['Model-1'].parts['Part-1'].edges.getSequenceFromMask((
+    '[#60 ]', ), ), minSizeFactor=0.1, size=0.05)
+mdb.models['Model-1'].parts['Part-1'].generateMesh()
+mdb.models['Model-1'].parts['Part-1'].setElementType(elemTypes=(ElemType(
+    elemCode=CPE4, elemLibrary=STANDARD), ElemType(elemCode=CPE3, 
+    elemLibrary=STANDARD)), regions=(
+    mdb.models['Model-1'].parts['Part-1'].faces.getSequenceFromMask(('[#7 ]', 
+    ), ), ))
+mdb.models['Model-1'].parts['Part-1'].generateMesh()
+mdb.models['Model-1'].rootAssembly.regenerate()
+mdb.models['Model-1'].parts['Part-1'].deleteMesh(
+    regions=mdb.models['Model-1'].parts['Part-1'].faces.getSequenceFromMask((
+    '[#2 ]', ), ))
+mdb.models['Model-1'].parts['Part-1'].seedEdgeBySize(constraint=FINER, 
+    deviationFactor=0.1, 
+    edges=mdb.models['Model-1'].parts['Part-1'].edges.getSequenceFromMask((
+    '[#60 ]', ), ), minSizeFactor=0.1, size=0.025)
+mdb.models['Model-1'].parts['Part-1'].generateMesh()
+mdb.models['Model-1'].rootAssembly.regenerate()
+mdb.models['Model-1'].ConstrainedSketch(name='__edit__', 
+    objectToCopy=mdb.models['Model-1'].parts['Part-1'].features['Partition face-1'].sketch)
+mdb.models['Model-1'].parts['Part-1'].projectReferencesOntoSketch(
+    filter=COPLANAR_EDGES, sketch=mdb.models['Model-1'].sketches['__edit__'], 
+    upToFeature=mdb.models['Model-1'].parts['Part-1'].features['Partition face-1'])
+mdb.models['Model-1'].sketches['__edit__'].dimensions[1].setValues(value=0.5)
+mdb.models['Model-1'].parts['Part-1'].features['Partition face-1'].setValues(
+    sketch=mdb.models['Model-1'].sketches['__edit__'])
+del mdb.models['Model-1'].sketches['__edit__']
+mdb.models['Model-1'].parts['Part-1'].regenerate()
+#: Warning: Mesh deleted in 2 regions due to geometry association failure.
+mdb.models['Model-1'].parts['Part-1'].regenerate()
+mdb.models['Model-1'].ConstrainedSketch(name='__edit__', 
+    objectToCopy=mdb.models['Model-1'].parts['Part-1'].features['Partition face-1'].sketch)
+mdb.models['Model-1'].parts['Part-1'].projectReferencesOntoSketch(
+    filter=COPLANAR_EDGES, sketch=mdb.models['Model-1'].sketches['__edit__'], 
+    upToFeature=mdb.models['Model-1'].parts['Part-1'].features['Partition face-1'])
+mdb.models['Model-1'].sketches['__edit__'].dimensions[0].setValues(value=2)
+del mdb.models['Model-1'].sketches['__edit__']
+mdb.models['Model-1'].parts['Part-1'].regenerate()
+mdb.models['Model-1'].parts['Part-1'].regenerate()
+mdb.models['Model-1'].ConstrainedSketch(name='__edit__', 
+    objectToCopy=mdb.models['Model-1'].parts['Part-1'].features['Partition face-1'].sketch)
+mdb.models['Model-1'].parts['Part-1'].projectReferencesOntoSketch(
+    filter=COPLANAR_EDGES, sketch=mdb.models['Model-1'].sketches['__edit__'], 
+    upToFeature=mdb.models['Model-1'].parts['Part-1'].features['Partition face-1'])
+mdb.models['Model-1'].sketches['__edit__'].dimensions[0].setValues(value=2)
+mdb.models['Model-1'].parts['Part-1'].features['Partition face-1'].setValues(
+    sketch=mdb.models['Model-1'].sketches['__edit__'])
+del mdb.models['Model-1'].sketches['__edit__']
+mdb.models['Model-1'].parts['Part-1'].regenerate()
+#: Warning: Failed to attach mesh to part geometry.
+mdb.models['Model-1'].rootAssembly.regenerate()
+mdb.models['Model-1'].parts['Part-1'].seedEdgeBySize(constraint=FINER, 
+    deviationFactor=0.1, 
+    edges=mdb.models['Model-1'].parts['Part-1'].edges.getSequenceFromMask((
+    '[#115 ]', ), ), minSizeFactor=0.1, size=0.05)
+mdb.models['Model-1'].parts['Part-1'].seedEdgeBySize(constraint=FINER, 
+    deviationFactor=0.1, 
+    edges=mdb.models['Model-1'].parts['Part-1'].edges.getSequenceFromMask((
+    '[#115 ]', ), ), minSizeFactor=0.1, size=0.1)
+mdb.models['Model-1'].parts['Part-1'].seedEdgeBySize(constraint=FINER, 
+    deviationFactor=0.1, 
+    edges=mdb.models['Model-1'].parts['Part-1'].edges.getSequenceFromMask((
+    '[#60 ]', ), ), minSizeFactor=0.1, size=0.05)
+mdb.models['Model-1'].parts['Part-1'].generateMesh()
+mdb.models['Model-1'].parts['Part-1'].generateMesh()
+mdb.models['Model-1'].rootAssembly.regenerate()
+mdb.models['Model-1'].parts['Part-1'].deleteMesh(
+    regions=mdb.models['Model-1'].parts['Part-1'].faces.getSequenceFromMask((
+    '[#2 ]', ), ))
+mdb.models['Model-1'].parts['Part-1'].seedEdgeBySize(constraint=FINER, 
+    deviationFactor=0.1, 
+    edges=mdb.models['Model-1'].parts['Part-1'].edges.getSequenceFromMask((
+    '[#60 ]', ), ), minSizeFactor=0.1, size=0.025)
+mdb.models['Model-1'].parts['Part-1'].generateMesh()
+mdb.models['Model-1'].rootAssembly.regenerate()
+mdb.models['Model-1'].parts['Part-1'].deleteMesh(
+    regions=mdb.models['Model-1'].parts['Part-1'].faces.getSequenceFromMask((
+    '[#7 ]', ), ))
+mdb.models['Model-1'].parts['Part-1'].seedEdgeBySize(constraint=FINER, 
+    deviationFactor=0.1, 
+    edges=mdb.models['Model-1'].parts['Part-1'].edges.getSequenceFromMask((
+    '[#115 ]', ), ), minSizeFactor=0.1, size=0.075)
+mdb.models['Model-1'].parts['Part-1'].seedEdgeBySize(constraint=FINER, 
+    deviationFactor=0.1, 
+    edges=mdb.models['Model-1'].parts['Part-1'].edges.getSequenceFromMask((
+    '[#28a ]', ), ), minSizeFactor=0.1, size=0.075)
+mdb.models['Model-1'].parts['Part-1'].generateMesh()
+#--- End of Recover file ------
+mdb.save()
+#: The model database has been saved to "/home/er7128ja/Nextcloud/Projekt/Project_Code/abaqus_model/const/const_sides_even/const_sides.cae".
+p = mdb.models['Model-1'].parts['Part-1']
+del p.features['Partition face-1']
+#: Warning: Failed to attach mesh to part geometry.
+a = mdb.models['Model-1'].rootAssembly
+a.regenerate()
+a = mdb.models['Model-1'].rootAssembly
+session.viewports['Viewport: 1'].setValues(displayedObject=a)
+session.viewports['Viewport: 1'].assemblyDisplay.setValues(loads=ON, bcs=ON, 
+    predefinedFields=ON, connectors=ON, optimizationTasks=OFF, 
+    geometricRestrictions=OFF, stopConditions=OFF)
+a = mdb.models['Model-1'].rootAssembly
+e1 = a.instances['Part-1-1'].edges
+edges1 = e1.getSequenceFromMask(mask=('[#a ]', ), )
+a.Set(edges=edges1, name='sides')
+#: The set 'sides' has been edited (2 edges).
+session.viewports['Viewport: 1'].assemblyDisplay.setValues(mesh=ON, loads=OFF, 
+    bcs=OFF, predefinedFields=OFF, connectors=OFF)
+session.viewports['Viewport: 1'].assemblyDisplay.meshOptions.setValues(
+    meshTechnique=ON)
+p = mdb.models['Model-1'].parts['Part-1']
+session.viewports['Viewport: 1'].setValues(displayedObject=p)
+session.viewports['Viewport: 1'].partDisplay.setValues(mesh=ON)
+session.viewports['Viewport: 1'].partDisplay.meshOptions.setValues(
+    meshTechnique=ON)
+session.viewports['Viewport: 1'].partDisplay.geometryOptions.setValues(
+    referenceRepresentation=OFF)
+p = mdb.models['Model-1'].parts['Part-1']
+p.seedPart(size=0.05, deviationFactor=0.1, minSizeFactor=0.1)
+p = mdb.models['Model-1'].parts['Part-1']
+p.generateMesh()
+a1 = mdb.models['Model-1'].rootAssembly
+a1.regenerate()
+a = mdb.models['Model-1'].rootAssembly
+session.viewports['Viewport: 1'].setValues(displayedObject=a)
+session.viewports['Viewport: 1'].assemblyDisplay.setValues(mesh=OFF)
+session.viewports['Viewport: 1'].assemblyDisplay.meshOptions.setValues(
+    meshTechnique=OFF)
+mdb.jobs['Job-1'].writeInput(consistencyChecking=OFF)
+#: The job input file has been written to "Job-1.inp".
+session.viewports['Viewport: 1'].assemblyDisplay.setValues(mesh=ON)
+session.viewports['Viewport: 1'].assemblyDisplay.meshOptions.setValues(
+    meshTechnique=ON)
+p = mdb.models['Model-1'].parts['Part-1']
+session.viewports['Viewport: 1'].setValues(displayedObject=p)
+elemType1 = mesh.ElemType(elemCode=CPE4, elemLibrary=STANDARD)
+elemType2 = mesh.ElemType(elemCode=CPE3, elemLibrary=STANDARD)
+p = mdb.models['Model-1'].parts['Part-1']
+f = p.faces
+faces = f.getSequenceFromMask(mask=('[#1 ]', ), )
+pickedRegions =(faces, )
+p.setElementType(regions=pickedRegions, elemTypes=(elemType1, elemType2))
+p = mdb.models['Model-1'].parts['Part-1']
+p.generateMesh()
+a1 = mdb.models['Model-1'].rootAssembly
+a1.regenerate()
+a = mdb.models['Model-1'].rootAssembly
+session.viewports['Viewport: 1'].setValues(displayedObject=a)
+session.viewports['Viewport: 1'].assemblyDisplay.setValues(mesh=OFF)
+session.viewports['Viewport: 1'].assemblyDisplay.meshOptions.setValues(
+    meshTechnique=OFF)
+mdb.jobs['Job-1'].writeInput(consistencyChecking=OFF)
+#: The job input file has been written to "Job-1.inp".
+mdb.save()
+#: The model database has been saved to "/home/er7128ja/Nextcloud/Projekt/Project_Code/abaqus_model/const/const_sides_even/const_sides.cae".

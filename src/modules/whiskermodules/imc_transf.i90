@@ -1,0 +1,87 @@
+# 1 "/home/er7128ja/Nextcloud/Projekt/Project_Code_2D/src/modules/whiskermodules/imc_transf.f90"
+module imc_transf
+
+! Last modified
+! E. Jacobsson 2021-12-06
+!    - Routine init_IMC_vol for initiating imc volume increase parameters IMC_vol_inc, IMC_eps_star, IMC_F_star,...
+
+  use mf_datatypes
+  use mf_utils
+
+  use fem_util
+  use mater_large
+  use matrix_util
+
+  implicit none
+  
+contains
+
+  subroutine init_IMC_transf(IMC_eps_star, IMC_vol_transf)
+    implicit none
+
+    real(dp), intent(in)    :: IMC_vol_transf 
+    real(dp), intent(out)   :: IMC_eps_star
+
+! Fxx, Fyy, and Fzz
+    IMC_eps_star = (IMC_vol_transf)**(1d0/3d0)-1d0 
+
+! Only Fxx and Fyy
+! IMC_eps_star = (IMC_vol_transf)**(1d0/2d0)-1d0
+
+    print *, 'IMC eps star', IMC_eps_star
+
+    return
+  end subroutine init_IMC_transf
+
+
+  subroutine get_dg_ifstar(dg_ifstar, IMC_eps_star, beta)
+    implicit none
+
+    real(dp), intent(inout) :: dg_ifstar(9)
+    real(dp), intent(in)    :: IMC_eps_star, beta
+
+! Fxx, Fyy, and Fzz
+    dg_ifstar    = 0d0
+    dg_ifstar(1) = 1d0/(1d0 + beta*IMC_eps_star)
+    dg_ifstar(5) = 1d0/(1d0 + beta*IMC_eps_star)
+    dg_ifstar(9) = 1d0/(1d0 + beta*IMC_eps_star)
+
+! Only Fxx and Fyy
+! dg_ifstar(9) = 1d0
+
+
+    return
+  end subroutine get_dg_ifstar
+  
+
+  subroutine elastd(dge, dg, dg_ifstar)
+! Extract F^{ep} from F = F^{ep} * F^{v}
+    implicit none
+
+! Intent inout
+    real(dp), intent(inout) :: dge(:)
+
+! Intent in
+    real(dp), intent(in)    :: dg(:)    , dg_ifstar(9)
+
+! Subroutine variables
+    real(dp)                :: iFstar(3,3), F_tot(3,3), Fe(3,3)
+    
+
+! Total deformation gradient
+    F_tot = getF(dg)
+
+! inv(F^{v}) in specific Gauss point
+    iFstar = getF(dg_ifstar)
+
+! Elasto-plastic part of the deformation gradient F^{ep} (F = F^{ep}*F^{v})
+    Fe  = matmul(F_tot, iFstar)
+
+    dge = (/Fe(1,1), Fe(1,2), Fe(1,3), Fe(2,1), Fe(2,2), Fe(2,3), Fe(3,1), Fe(3,2), Fe(3,3)/)
+! dge = (/F_ep(1,1), F_ep(1,2), F_ep(2,1), F_ep(2,2)/)
+    
+    return
+  end subroutine elastd
+
+
+end module imc_transf

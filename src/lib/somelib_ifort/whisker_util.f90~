@@ -1,0 +1,87 @@
+module whisker_util
+
+  ! last modified
+  ! E. Jacobsson 2021-11-22
+  !    - Routine init_IMC for initiating IMC with IMC_start_height, IMC_radius_red, Cu_height, IMC_x_r, IMC_y_r, nelm
+  !    - Routine update_IMC_radius for updating IMC radius
+  !    - Routine get_IMC_radius for sending IMC radius to main program
+  !    - Routine get_IMC_elms for determining which elements belong to IMC
+  !    - Routine elast_d for calculating elastic deformation gradient from invF_star
+
+  use fem_util
+
+  implicit none
+
+  double precision            :: IMC_start_height, IMC_radius_red, Cu_height
+  double precision            :: IMC_x_r, IMC_y_r
+  double precision            :: IMC_radius
+  integer                     :: nelm
+  private IMC_start_height, IMC_radius_red, Cu_height, IMC_x_r, IMC_y_r, IMC_radius, nelm
+
+
+  !------------------------------------------------------------------------------------------
+contains
+
+  subroutine init_IMC(coord, IMC_start_height_in, IMC_radius_red_in, Cu_height_in)
+    double precision, intent(in) :: coord(:,:)
+    double precision, intent(in) :: IMC_start_height_in, IMC_radius_red_in, Cu_height_in
+    double precision             :: tot_width
+
+    IMC_start_height = IMC_start_height_in
+    IMC_radius_red   = IMC_radius_red_in
+    Cu_height        = Cu_height_in
+    
+    tot_width  = maxval(coord(1,:)) - minval(coord(1,:))
+    IMC_x_r    = tot_width/2                                                       ! x-pos of center of circle defining IMC, middle of sample
+    IMC_radius = (4d0*IMC_start_height**2 + tot_width**2)/(8*IMC_start_height)     ! initial IMC_radius of circle defining IMC boundary 
+    IMC_y_r    = IMC_radius + Cu_height                                            ! global y-coord of midpoint of circle
+
+    nelm = size(coord,2)
+
+    return
+  end subroutine init_IMC
+
+  subroutine update_IMC_radius(i_IMC)
+    integer, intent(in) :: i_IMC
+    write(*,*)  'i_IMC:', i_IMC
+    write(*,*) 'updating IMC radius'
+    write(*,*)'old radius:', IMC_radius
+    write(*,*)'IMC_radius_red',IMC_radius_red
+    IMC_radius = IMC_radius - IMC_radius_red*(i_IMC-1) ! Reduce after first iteration
+    write(*,*)'new radius:', IMC_radius
+    return
+  end subroutine update_IMC_radius
+
+  subroutine get_IMC_radius(IMC_radius_out)
+    double precision, intent(out) :: IMC_radius_out
+
+    IMC_radius_out = IMC_radius
+    return
+  end subroutine get_IMC_radius
+    
+  subroutine get_IMC_elms(IMC_elms,coord,enod)
+    implicit none
+    
+    logical, intent(inout)        :: IMC_elms(:)
+    double precision, intent(in)  :: coord(:,:)
+    integer, intent(in)           :: enod(:,:)
+
+    integer                       :: ierr
+    double precision              :: ex(4,nelm), ey(4,nelm), el_avr_midp_dists(2,nelm), el_radiuses(nelm)
+
+    !call updcoord(newcoord,coord,a) ! OBS update coords with displacements?
+    call coordxtr(ex,ey,coord,enod) 
+    el_avr_midp_dists(1,:) = sum(ex,1)/4d0-IMC_x_r
+    el_avr_midp_dists(2,:) = sum(ey,1)/4d0-IMC_y_r
+    el_radiuses            = norm2(el_avr_midp_dists,1)
+    IMC_elms               = (el_radiuses.gt.IMC_radius .and. abs(el_avr_midp_dists(2,:)).lt.abs(IMC_y_r-Cu_height)) ! IMC for el which fulfill IMC_radius<el_radius and above Cu boundary
+    
+    return
+  end subroutine get_IMC_elms
+
+  subroutine elast_d(dg,invF_star)
+    double precision, intent(inout) :: dg(3,3)
+    double precision, intent(in)    :: invF_star
+
+    
+end module whisker_util

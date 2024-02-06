@@ -1,0 +1,487 @@
+# 1 "/home/er7128ja/Nextcloud/Projekt/Project_Code_2D/src/modules/whiskermodules/gp_util.f90"
+module gp_util
+
+! Last modified
+! E. Jacobsson 2022-03-03
+!    - Implemented gpcoordxtr for extracting coordinates of Gauss points for four node isoparametric element
+
+! mf_datatypes
+  use mf_datatypes
+
+! Somelib
+  use matrix_util
+
+! Whiskerlib
+  use ls_types
+  
+  implicit none
+
+! Constants
+  
+! Gauss point numbering:
+!       3---------4
+!       |         |
+!       |         |
+!       |         |
+!       1---------2
+  
+  
+!   Note that element node numbering is arbitrary - gp numbering will follow element numbering?
+  real(dp), parameter  :: G1=0.577350269189626D0
+  real(dp), parameter  :: xsi4(4)=(/-1D0,  1D0, -1D0, 1D0/)*G1
+  real(dp), parameter  :: eta4(4)=(/-1D0, -1D0,  1D0, 1D0/)*G1
+  private xsi4, eta4, G1
+
+! 4 Gauss points and 4 nodes
+  real(dp), parameter :: NR4_col1(4) = (1D0-XSI4)*(1D0-ETA4)/4D0
+  real(dp), parameter :: NR4_col2(4) = (1D0+XSI4)*(1D0-ETA4)/4D0
+  real(dp), parameter :: NR4_col3(4) = (1D0+XSI4)*(1D0+ETA4)/4D0
+  real(dp), parameter :: NR4_col4(4) = (1D0-XSI4)*(1D0+ETA4)/4D0
+  real(dp), parameter :: NR4(4,4)    = reshape([NR4_col1, NR4_col2, NR4_col3, NR4_col4], [4,4])
+  private NR4
+
+! derivate of shape functions with respect to xsi
+  double precision, parameter :: DNR4_182_col1(4) = -(1D0-ETA4)/4D0
+  double precision, parameter :: DNR4_182_col2(4) =  (1D0-ETA4)/4D0
+  double precision, parameter :: DNR4_182_col3(4) =  (1D0+ETA4)/4D0
+  double precision, parameter :: DNR4_182_col4(4) = -(1D0+ETA4)/4D0
+
+! derivate of shape functions with respect to eta
+  double precision, parameter :: DNR4_282_col1(4) = -(1D0-XSI4)/4D0
+  double precision, parameter :: DNR4_282_col2(4) = -(1D0+XSI4)/4D0
+  double precision, parameter :: DNR4_282_col3(4) =  (1D0+XSI4)/4D0
+  double precision, parameter :: DNR4_282_col4(4) =  (1D0-XSI4)/4D0
+
+! Collect in DNR4
+  double precision, parameter :: DNR4(8,4)=reshape([DNR4_182_col1(1), DNR4_282_col1(1), DNR4_182_col1(2), DNR4_282_col1(2), &
+                                                  DNR4_182_col1(3), DNR4_282_col1(3), DNR4_182_col1(4), DNR4_282_col1(4), &
+                                                  DNR4_182_col2(1), DNR4_282_col2(1), DNR4_182_col2(2), DNR4_282_col2(2), &
+                                                  DNR4_182_col2(3), DNR4_282_col2(3), DNR4_182_col2(4), DNR4_282_col2(4), &
+                                                  DNR4_182_col3(1), DNR4_282_col3(1), DNR4_182_col3(2), DNR4_282_col3(2), &
+                                                  DNR4_182_col3(3), DNR4_282_col3(3), DNR4_182_col3(4), DNR4_282_col3(4), &
+                                                  DNR4_182_col4(1), DNR4_282_col4(1), DNR4_182_col4(2), DNR4_282_col4(2), &
+                                                  DNR4_182_col4(3), DNR4_282_col4(3), DNR4_182_col4(4), DNR4_282_col4(4)], [8,4])
+  private DNR4
+  private DNR4_182_col1, DNR4_182_col2, DNR4_182_col3, DNR4_182_col4
+  private DNR4_282_col1, DNR4_282_col2, DNR4_282_col3, DNR4_282_col4
+
+  interface writeArray
+     module procedure writeArrayDouble, writeArrayInteger
+  end interface writeArray
+  
+  
+contains
+  
+  subroutine gpxtr(gpx,gpy,coord,enod)
+! Routine for extracting coordinates of gauss points for each 'element'
+    implicit none
+
+    real(dp), intent(inout) :: gpx(:,:), gpy(:,:)  ! Gauss point coordinates
+    integer,  intent(in)    :: enod(:,:)           ! Element topology
+    real(dp), intent(in)    :: coord(:,:)          ! Node coordinates
+    
+    real(dp)                :: gpelcoord(4,size(enod,2),2)
+    integer                 :: ie, nelm, nods(size(enod,1))
+    
+    nelm=size(enod,2)
+    
+    do ie=1,nelm
+       nods = enod(:,ie)
+       gpelcoord(:,ie,:)=MATMUL(NR4,transpose(coord(:,nods)))
+    enddo
+    gpx = gpelcoord(:,:,1)
+    gpy = gpelcoord(:,:,2)    
+    
+  end subroutine gpxtr
+  
+  subroutine enodxtrlowleft(enod,nelmx,nelmy)
+! Obtain enod from nelm in x and y dir, starting from top right corner
+    implicit none
+    integer, intent(in)    :: nelmx,nelmy
+    integer                :: ie, r, c
+    
+    integer, intent(inout) :: enod(:,:)
+    
+    ie = 1
+    do r=1,nelmy
+       do c=1,nelmx
+          enod(1,ie) = (r-1)*(nelmx+1) + c
+          ie = ie + 1
+       enddo
+    enddo
+    enod(2,:) = enod(1,:) + 1
+    enod(3,:) = enod(1,:) + nelmx + 2
+    enod(4,:) = enod(1,:) + nelmx + 1
+
+  end subroutine enodxtrlowleft
+
+  subroutine enodxtr(enod,nelmx,nelmy)
+! Obtain enod from nelm in x and y dir, starting from lower left corner
+    implicit none
+    integer, intent(in)    :: nelmx,nelmy
+    integer                :: ie, r, c
+    
+    integer, intent(inout) :: enod(:,:)
+
+    ie = 1
+    do r=1,nelmy
+       do c=1,nelmx
+          enod(3,ie) = (r-1)*(nelmx+1) + c
+          ie = ie + 1
+       enddo
+    enddo
+    enod(1,:) = enod(3,:) + nelmx + 2
+    enod(2,:) = enod(3,:) + nelmx + 1
+    enod(4,:) = enod(3,:) + 1
+
+  end subroutine enodxtr
+  
+  subroutine redenod(enodgpred, enodgpfull, nelmx, nelmy, nelmgpxfull)
+    implicit none
+    integer, intent(in)    :: enodgpfull(:,:), nelmx, nelmy, nelmgpxfull
+    integer                :: slicerow1(nelmx), slice(nelmx*nelmy), i, ie, r, nelm
+    
+    integer, intent(inout) :: enodgpred(:,:)
+
+    nelm = nelmx*nelmy
+    
+    ie = 1
+    do i=1,nelmgpxfull,2
+       slicerow1(ie) = i
+       ie = ie+1
+    end do
+
+    slice = 0
+    do r=1,nelmy
+       slice((r-1)*nelmx + 1:r*nelmx) = slicerow1+2*nelmgpxfull*(r-1)
+    end do
+    
+    enodgpred = enodgpfull(:,slice)
+
+    return
+  end subroutine redenod
+
+  subroutine getcoords(coord,ex,ey,enod)
+! Routine for obtaining coord from ex and ey
+! Note that coordxtr gets ex and ey from coord, i.e. the opposite
+
+    real(dp), intent(in)    :: ex(:,:), ey(:,:)
+    integer,  intent(in)    :: enod(:,:)
+    integer                 :: ie, nelm
+
+    real(dp), intent(inout) :: coord(:,:)
+
+    nelm = size(enod,2)
+    do ie=1,nelm
+       coord(1,enod(:,ie)) = ex(:,ie)
+       coord(2,enod(:,ie)) = ey(:,ie)
+    enddo
+    
+  end subroutine getcoords
+
+  subroutine writeArrayDouble(A, spacingopt, decimalopt)
+    real(dp)  :: A(:,:)
+    integer, optional :: spacingopt, decimalopt
+    integer           :: rows, cols, i, j, spacing, decimals
+    character(255)    :: fmt
+
+    if (present(spacingopt)) then
+       spacing = spacingopt
+    else
+       spacing = 9
+    end if
+
+    if (present(decimalopt)) then
+       decimals = decimalopt
+    else
+       decimals = 4
+    end if
+    
+    rows = size(A,1)
+    cols = size(A,2)
+
+    write(fmt, '(A,I1,A,I1,A,I1,A)') '(', cols, 'G', spacing, '.', decimals, ')'
+    
+    do i=1,rows
+       print fmt, (A(i,j), j=1,cols)
+    end do
+
+    return
+
+  end subroutine writeArrayDouble
+
+  subroutine writeArrayInteger(A, spacingopt)
+    integer           :: A(:,:)
+    integer, optional :: spacingopt
+    integer           :: rows, cols, i, j, spacing
+    character(255)    :: fmt
+
+    if (present(spacingopt)) then
+       spacing = spacingopt
+    else
+       spacing = 4
+    end if
+    
+    rows = size(A,1)
+    cols = size(A,2)
+
+
+    write(fmt, '(A,I1,A,I1,A)') '(', cols, 'I', spacing, ')'
+    
+    do i=1,rows
+       print fmt, (A(i,j), j=1,cols)
+    end do
+
+    return
+
+  end subroutine writeArrayInteger
+
+  pure function integrate_trapezoid(x, y) result(r)
+!! Calculates the integral of an array y with respect to x using the trapezoid
+!! approximation. Note that the mesh spacing of x does not have to be uniform.
+    real(dp), intent(in)  :: x(:)         !! Variable x
+    real(dp), intent(in)  :: y(size(x))   !! Function y(x)
+    real(dp)              :: r            !! Integral ∫y(x)·dx
+
+! Integrate using the trapezoidal rule
+    associate(n => size(x))
+      r = sum((y(1+1:n-0) + y(1+0:n-1))*(x(1+1:n-0) - x(1+0:n-1)))/2
+    end associate
+  end function integrate_trapezoid
+
+
+  subroutine linspace(from, to, array)
+   real(dp), intent(in) :: from, to
+   real(dp), intent(out) :: array(:)
+   real(dp) :: range
+   integer :: n, i
+   n = size(array)
+   range = to - from
+
+   if (n == 0) return
+
+   if (n == 1) then
+       array(1) = from
+       return
+   end if
+
+
+   do i=1, n
+       array(i) = from + range * (i - 1) / (n - 1)
+   end do
+ end subroutine
+
+ subroutine elm2D4_nodmat_to_gpmat(gpmat, nodmat, nelm)
+! Routine for interpolating node vals (nodel,nelm) to Gauss point mat(nrgp,nelm)
+   implicit none
+
+! Intent inout
+   real(dp), intent(inout)       :: gpmat(:,:)
+
+! Intent in
+   real(dp), intent(in)          :: nodmat(:,:)
+   integer, intent(in)           :: nelm
+
+! Subroutine variables
+   real(dp)                      :: N(4), nodvals(4)
+   integer                       :: gp_nr, ie
+   integer, parameter            :: ngp=4
+ 
+! Loop over all elms and interpolate node values to gauss points
+   do ie=1,nelm
+
+! Short form
+     nodvals = nodmat(:,ie)
+
+! Loop over all Gauss points and find interpolated value
+     do gp_nr=1,ngp
+ 
+! N evaluated at the specific Gauss point
+       N = NR4(gp_nr,:)
+
+! Interpolated value at Gauss point
+       gpmat(gp_nr,ie) = dot_product(N,nodvals)
+
+     enddo
+   enddo
+
+   return
+ end subroutine elm2D4_nodmat_to_gpmat
+
+
+ subroutine compute_biax_Sn_avg(biax_Sn_avg, coord, enod, nelm, biax_Sn, Sn_elms)
+! Routine for computing the element stiffness due to normal motion
+   implicit none
+
+! Intent inout
+   real(dp), intent(inout)   :: biax_Sn_avg
+
+! Intent in
+   real(dp), intent(in)      :: coord(:,:), biax_Sn(:,:)
+   integer, intent(in)       :: enod(:,:), nelm
+   logical, intent(in)       :: Sn_elms(:)
+
+! Subroutine variables
+   real(dp)                  :: coord_e(2,4), tot_stress, stress_e, tot_area, area_e
+   real(dp)                  :: JT(8,2)
+   real(dp)                  :: DetJ
+   integer                   :: GP_NR, indx(2), ie
+   integer, parameter        :: NGP=4   
+
+! Compute volume averaged biaxial stress in Sn layer
+   tot_stress = 0d0
+   tot_area   = 0d0
+
+   do ie=1,nelm
+
+! Initial area and stress
+      area_e   = 0d0
+      stress_e = 0d0      
+
+! If a_ls < 0 then compute element area and stress
+      if (Sn_elms(ie)) then         
+         coord_e = coord(:,enod(:,ie))
+         JT = MATMUL(DNR4,transpose(coord_e))
+         do GP_NR=1,NGP
+            indx = (/ 2*gp_nr-1, 2*gp_nr /)
+            detJ = det2(JT(indx,:))
+
+! Area
+            area_e = area_e + detJ
+
+! Stress
+            stress_e = stress_e + biax_Sn(GP_NR,ie)
+         enddo
+      endif      
+
+! Stress contribution
+      tot_stress = tot_stress + (stress_e/ngp)*area_e
+
+! Total area
+      tot_area = tot_area + area_e
+
+   enddo
+
+! Average stress
+   biax_Sn_avg = tot_stress/tot_area
+
+
+   return
+ end subroutine compute_biax_Sn_avg
+
+
+ subroutine compute_biax_Sn_avg2(biax_Sn_avg, coord, enod, nelm, biax, lssys)
+! Routine for computing the averaged biaxial stress
+   implicit none
+
+! Intent inout
+   real(dp), intent(inout)     :: biax_Sn_avg
+
+! Intent in
+   real(dp), intent(in)        :: coord(:,:), biax(:,:)
+   integer, intent(in)         :: enod(:,:), nelm
+   type(ls_system), intent(in) :: lssys
+
+! Subroutine variables
+   real(dp)                    :: coord_e(2,4), tot_stress, stress_e, tot_area, area_e, ie
+   real(dp)                    :: JT(8,2)
+   real(dp)                    :: DetJ
+   integer                     :: GP_NR, indx(2)
+   integer, parameter          :: NGP=4   
+
+! Compute volume averaged biaxial stress in Sn layer
+   tot_stress = 0d0
+   tot_area   = 0d0
+
+   do ie=1,nelm
+
+! Initial area and stress
+      area_e   = 0d0
+      stress_e = 0d0
+      
+! If element is in a Sn grain
+      if (any(lssys%sn_hphi_gp_plot2.gt.0.99d0)) then
+         coord_e = coord(:,enod(:,ie))
+         JT = MATMUL(DNR4,transpose(coord_e))
+         do GP_NR=1,NGP
+            indx = (/ 2*gp_nr-1, 2*gp_nr /)
+            detJ = det2(JT(indx,:))
+
+! Area
+            area_e = area_e + detJ
+
+! Stress
+            stress_e = stress_e + biax(GP_NR,ie)
+         enddo
+      endif      
+
+! Stress contribution
+      tot_stress = tot_stress + (stress_e/ngp)*area_e
+
+! Total area
+      tot_area = tot_area + area_e
+
+   enddo
+
+! Average stress
+   biax_Sn_avg = tot_stress/tot_area
+
+
+   return
+ end subroutine compute_biax_Sn_avg2
+
+subroutine setdiff_int_1D(arr1, arr2, diff)
+
+! --- Returns the elements of arr1 not present in arr2 ---
+   implicit none
+   
+! Intent inout
+   integer, allocatable, intent(out) :: diff(:)
+
+! Intent in
+   integer, intent(in)               :: arr1(:), arr2(:)
+   
+! Subroutine variables
+   integer :: i, j, count, n1, n2
+   logical :: is_present
+   
+   n1 = size(arr1)
+   n2 = size(arr2)
+   
+! Initialize the result array with the same size as arr1
+   if (allocated(diff)) then
+      deallocate(diff)
+   endif
+   allocate(diff(n1))
+   diff = arr1
+   
+   count = 0
+   
+! Check each element in arr1
+   do i = 1, n1
+         is_present = .false.
+         
+! Compare with each element in arr2
+         do j = 1, n2
+            if (arr1(i) .eq. arr2(j)) then
+               is_present = .true.
+               exit
+            end if
+         end do
+         
+! If the element is not in arr2, add it to the result
+         if (.not. is_present) then
+            count = count + 1
+            diff(count) = arr1(i)
+         end if
+   end do
+   
+! Resize the result array
+   if (count .lt. n1) then
+         diff = diff(1:count)
+   end if
+   
+end subroutine setdiff_int_1D
+
+
+end module gp_util

@@ -1,0 +1,18 @@
+# 1 "/home/er7128ja/Nextcloud/Projekt/Project_Code_2D/src/lib/somelib_gfortran/testar.f90"
+module testar_module
+    implicit none
+
+contains
+
+subroutine test1in(a)
+    implicit none
+
+    integer :: a
+
+
+    return
+
+end subroutine test1in
+
+
+end module testar_module

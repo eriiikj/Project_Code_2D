@@ -1,0 +1,372 @@
+# -*- coding: mbcs -*-
+#
+# Abaqus/CAE Release 2019 replay file
+# Internal Version: 2020_01_29-08.04.18 159217
+# Run by er7128ja on Mon May 30 11:42:36 2022
+#
+
+# from driverUtils import executeOnCaeGraphicsStartup
+# executeOnCaeGraphicsStartup()
+#: Executing "onCaeGraphicsStartup()" in the site directory ...
+from abaqus import *
+from abaqusConstants import *
+session.Viewport(name='Viewport: 1', origin=(0.0, 0.0), width=338.666656494141, 
+    height=208.409271240234)
+session.viewports['Viewport: 1'].makeCurrent()
+session.viewports['Viewport: 1'].maximize()
+from caeModules import *
+from driverUtils import executeOnCaeStartup
+executeOnCaeStartup()
+session.viewports['Viewport: 1'].partDisplay.geometryOptions.setValues(
+    referenceRepresentation=ON)
+s = mdb.models['Model-1'].ConstrainedSketch(name='__profile__', sheetSize=20.0)
+g, v, d, c = s.geometry, s.vertices, s.dimensions, s.constraints
+s.setPrimaryObject(option=STANDALONE)
+s.rectangle(point1=(0.0, 0.0), point2=(12.0, 4.0))
+p = mdb.models['Model-1'].Part(name='Part-1', dimensionality=TWO_D_PLANAR, 
+    type=DEFORMABLE_BODY)
+p = mdb.models['Model-1'].parts['Part-1']
+p.BaseShell(sketch=s)
+s.unsetPrimaryObject()
+p = mdb.models['Model-1'].parts['Part-1']
+session.viewports['Viewport: 1'].setValues(displayedObject=p)
+del mdb.models['Model-1'].sketches['__profile__']
+session.viewports['Viewport: 1'].view.setValues(width=12.0763, height=6.1621, 
+    viewOffsetX=-0.0737858, viewOffsetY=0.0192949)
+session.viewports['Viewport: 1'].partDisplay.setValues(sectionAssignments=ON, 
+    engineeringFeatures=ON)
+session.viewports['Viewport: 1'].partDisplay.geometryOptions.setValues(
+    referenceRepresentation=OFF)
+mdb.models['Model-1'].Material(name='Material-1')
+mdb.models['Model-1'].HomogeneousSolidSection(name='Section-1', 
+    material='Material-1', thickness=1.0)
+p = mdb.models['Model-1'].parts['Part-1']
+f = p.faces
+faces = f.getSequenceFromMask(mask=('[#1 ]', ), )
+region = p.Set(faces=faces, name='Set-1')
+p = mdb.models['Model-1'].parts['Part-1']
+p.SectionAssignment(region=region, sectionName='Section-1', offset=0.0, 
+    offsetType=MIDDLE_SURFACE, offsetField='', 
+    thicknessAssignment=FROM_SECTION)
+a = mdb.models['Model-1'].rootAssembly
+session.viewports['Viewport: 1'].setValues(displayedObject=a)
+session.viewports['Viewport: 1'].assemblyDisplay.setValues(
+    optimizationTasks=OFF, geometricRestrictions=OFF, stopConditions=OFF)
+a = mdb.models['Model-1'].rootAssembly
+a.DatumCsysByDefault(CARTESIAN)
+p = mdb.models['Model-1'].parts['Part-1']
+a.Instance(name='Part-1-1', part=p, dependent=ON)
+session.viewports['Viewport: 1'].assemblyDisplay.setValues(
+    adaptiveMeshConstraints=ON)
+session.viewports['Viewport: 1'].assemblyDisplay.setValues(interactions=ON, 
+    constraints=ON, connectors=ON, engineeringFeatures=ON, 
+    adaptiveMeshConstraints=OFF)
+a = mdb.models['Model-1'].rootAssembly
+e1 = a.instances['Part-1-1'].edges
+edges1 = e1.getSequenceFromMask(mask=('[#a ]', ), )
+a.Set(edges=edges1, name='sides')
+#: The set 'sides' has been created (2 edges).
+session.viewports['Viewport: 1'].assemblyDisplay.setValues(loads=ON, bcs=ON, 
+    predefinedFields=ON, interactions=OFF, constraints=OFF, 
+    engineeringFeatures=OFF)
+a = mdb.models['Model-1'].rootAssembly
+e1 = a.instances['Part-1-1'].edges
+edges1 = e1.getSequenceFromMask(mask=('[#1 ]', ), )
+a.Set(edges=edges1, name='lower')
+#: The set 'lower' has been created (1 edge).
+a = mdb.models['Model-1'].rootAssembly
+region = a.sets['lower']
+mdb.models['Model-1'].DisplacementBC(name='BC-1', createStepName='Initial', 
+    region=region, u1=UNSET, u2=SET, ur3=UNSET, amplitude=UNSET, 
+    distributionType=UNIFORM, fieldName='', localCsys=None)
+a = mdb.models['Model-1'].rootAssembly
+region = a.sets['sides']
+mdb.models['Model-1'].DisplacementBC(name='BC-2', createStepName='Initial', 
+    region=region, u1=SET, u2=UNSET, ur3=UNSET, amplitude=UNSET, 
+    distributionType=UNIFORM, fieldName='', localCsys=None)
+session.viewports['Viewport: 1'].assemblyDisplay.setValues(mesh=ON, loads=OFF, 
+    bcs=OFF, predefinedFields=OFF, connectors=OFF)
+session.viewports['Viewport: 1'].assemblyDisplay.meshOptions.setValues(
+    meshTechnique=ON)
+session.viewports['Viewport: 1'].view.setValues(width=12.0757, height=6.17692, 
+    viewOffsetX=-0.0259173, viewOffsetY=0.0237404)
+session.viewports['Viewport: 1'].partDisplay.setValues(sectionAssignments=OFF, 
+    engineeringFeatures=OFF)
+session.viewports['Viewport: 1'].partDisplay.geometryOptions.setValues(
+    referenceRepresentation=ON)
+p = mdb.models['Model-1'].parts['Part-1']
+session.viewports['Viewport: 1'].setValues(displayedObject=p)
+p = mdb.models['Model-1'].parts['Part-1']
+e = p.edges
+pickedEdges = e.getSequenceFromMask(mask=('[#8 ]', ), )
+p.PartitionEdgeByParam(edges=pickedEdges, parameter=0.939954698085785)
+session.viewports['Viewport: 1'].view.setValues(nearPlane=24.223, 
+    farPlane=26.3734, width=12.0645, height=6.33083, viewOffsetX=-0.0426476, 
+    viewOffsetY=0.0124665)
+session.viewports['Viewport: 1'].partDisplay.setValues(mesh=ON)
+session.viewports['Viewport: 1'].partDisplay.meshOptions.setValues(
+    meshTechnique=ON)
+session.viewports['Viewport: 1'].partDisplay.geometryOptions.setValues(
+    referenceRepresentation=OFF)
+session.viewports['Viewport: 1'].partDisplay.setValues(mesh=OFF)
+session.viewports['Viewport: 1'].partDisplay.meshOptions.setValues(
+    meshTechnique=OFF)
+session.viewports['Viewport: 1'].partDisplay.geometryOptions.setValues(
+    referenceRepresentation=ON)
+s1 = mdb.models['Model-1'].ConstrainedSketch(name='__profile__', 
+    sheetSize=20.0)
+g, v, d, c = s1.geometry, s1.vertices, s1.dimensions, s1.constraints
+s1.setPrimaryObject(option=STANDALONE)
+s1.rectangle(point1=(-5.625, 2.625), point2=(-1.5, -1.375))
+p = mdb.models['Model-1'].Part(name='Part-2', dimensionality=TWO_D_PLANAR, 
+    type=DEFORMABLE_BODY)
+p = mdb.models['Model-1'].parts['Part-2']
+p.BaseShell(sketch=s1)
+s1.unsetPrimaryObject()
+p = mdb.models['Model-1'].parts['Part-2']
+session.viewports['Viewport: 1'].setValues(displayedObject=p)
+del mdb.models['Model-1'].sketches['__profile__']
+a = mdb.models['Model-1'].rootAssembly
+a.regenerate()
+session.viewports['Viewport: 1'].setValues(displayedObject=a)
+session.viewports['Viewport: 1'].assemblyDisplay.setValues(mesh=OFF)
+session.viewports['Viewport: 1'].assemblyDisplay.meshOptions.setValues(
+    meshTechnique=OFF)
+a1 = mdb.models['Model-1'].rootAssembly
+p = mdb.models['Model-1'].parts['Part-2']
+a1.Instance(name='Part-2-1', part=p, dependent=ON)
+a = mdb.models['Model-1'].rootAssembly
+del a.features['Part-2-1']
+p1 = mdb.models['Model-1'].parts['Part-1']
+session.viewports['Viewport: 1'].setValues(displayedObject=p1)
+p = mdb.models['Model-1'].parts['Part-1']
+f, e, d1 = p.faces, p.edges, p.datums
+t = p.MakeSketchTransform(sketchPlane=f[0], sketchPlaneSide=SIDE1, origin=(6.0, 
+    2.0, 0.0))
+s = mdb.models['Model-1'].ConstrainedSketch(name='__profile__', 
+    sheetSize=25.29, gridSpacing=0.63, transform=t)
+g, v, d, c = s.geometry, s.vertices, s.dimensions, s.constraints
+s.setPrimaryObject(option=SUPERIMPOSE)
+p = mdb.models['Model-1'].parts['Part-1']
+p.projectReferencesOntoSketch(sketch=s, filter=COPLANAR_EDGES)
+s.unsetPrimaryObject()
+del mdb.models['Model-1'].sketches['__profile__']
+p = mdb.models['Model-1'].parts['Part-1']
+del p.features['Partition edge-1']
+p = mdb.models['Model-1'].parts['Part-1']
+f1, e1, d2 = p.faces, p.edges, p.datums
+t = p.MakeSketchTransform(sketchPlane=f1[0], sketchPlaneSide=SIDE1, origin=(
+    6.0, 2.0, 0.0))
+s1 = mdb.models['Model-1'].ConstrainedSketch(name='__profile__', 
+    sheetSize=25.29, gridSpacing=0.63, transform=t)
+g, v, d, c = s1.geometry, s1.vertices, s1.dimensions, s1.constraints
+s1.setPrimaryObject(option=SUPERIMPOSE)
+p = mdb.models['Model-1'].parts['Part-1']
+p.projectReferencesOntoSketch(sketch=s1, filter=COPLANAR_EDGES)
+s1.Line(point1=(-3.3075, 2.52), point2=(-3.3075, -2.52))
+s1.VerticalConstraint(entity=g[6], addUndoState=False)
+p = mdb.models['Model-1'].parts['Part-1']
+f = p.faces
+pickedFaces = f.getSequenceFromMask(mask=('[#1 ]', ), )
+e, d1 = p.edges, p.datums
+p.PartitionFaceBySketch(faces=pickedFaces, sketch=s1)
+s1.unsetPrimaryObject()
+del mdb.models['Model-1'].sketches['__profile__']
+session.viewports['Viewport: 1'].view.setValues(nearPlane=24.1794, 
+    farPlane=26.4171, width=12.0428, height=6.31942, cameraPosition=(5.27814, 
+    2.87298, 25.2982), cameraUpVector=(-0.289908, 0.957054, 0), cameraTarget=(
+    5.27814, 2.87298, 0))
+session.viewports['Viewport: 1'].view.setValues(nearPlane=20.8863, 
+    farPlane=30.3992, width=10.4026, height=5.45874, cameraPosition=(13.1052, 
+    -16.7737, 16.2836), cameraUpVector=(-0.550742, 0.296367, 0.780289), 
+    cameraTarget=(4.08728, 2.49807, 2.59881))
+session.viewports['Viewport: 1'].view.setValues(nearPlane=20.3819, 
+    farPlane=30.7054, width=10.1514, height=5.32692, cameraPosition=(15.8999, 
+    -21.0348, -6.16759), cameraUpVector=(-0.236715, -0.489747, 0.839115), 
+    cameraTarget=(5.10613, -0.0796221, 3.01788))
+session.viewports['Viewport: 1'].view.setValues(nearPlane=18.8704, 
+    farPlane=30.9573, width=9.39859, height=4.93188, cameraPosition=(19.3322, 
+    -17.9614, 7.44627), cameraUpVector=(-0.35745, -0.056014, 0.932251), 
+    cameraTarget=(4.36804, 1.92415, 2.9034))
+session.viewports['Viewport: 1'].view.setValues(nearPlane=18.64, 
+    farPlane=30.293, width=9.28382, height=4.87165, cameraPosition=(20.2167, 
+    -12.5282, 13.8161), cameraUpVector=(-0.311711, 0.369651, 0.875325), 
+    cameraTarget=(4.44019, 3.04169, 1.62272))
+session.viewports['Viewport: 1'].view.previous()
+session.viewports['Viewport: 1'].view.previous()
+session.viewports['Viewport: 1'].view.next()
+session.viewports['Viewport: 1'].view.next()
+session.viewports['Viewport: 1'].view.next()
+#: Warning: You are already at the end of the cycle list.
+session.viewports['Viewport: 1'].view.next()
+#: Warning: You are already at the end of the cycle list.
+session.viewports['Viewport: 1'].view.previous()
+session.viewports['Viewport: 1'].view.previous()
+session.viewports['Viewport: 1'].view.previous()
+session.viewports['Viewport: 1'].view.previous()
+session.viewports['Viewport: 1'].view.previous()
+p = mdb.models['Model-1'].parts['Part-1']
+del p.features['Partition face-1']
+p = mdb.models['Model-1'].parts['Part-1']
+f, e1, d2 = p.faces, p.edges, p.datums
+t = p.MakeSketchTransform(sketchPlane=f[0], sketchPlaneSide=SIDE1, origin=(6.0, 
+    2.0, 0.0))
+s = mdb.models['Model-1'].ConstrainedSketch(name='__profile__', 
+    sheetSize=25.29, gridSpacing=0.63, transform=t)
+g, v, d, c = s.geometry, s.vertices, s.dimensions, s.constraints
+s.setPrimaryObject(option=SUPERIMPOSE)
+p = mdb.models['Model-1'].parts['Part-1']
+p.projectReferencesOntoSketch(sketch=s, filter=COPLANAR_EDGES)
+s.Spot(point=(-6.0, 0.945))
+s.CoincidentConstraint(entity1=v[4], entity2=g[5], addUndoState=False)
+s.VerticalDimension(vertex1=v[4], vertex2=v[3], textPoint=(-6.16485786437988, 
+    1.86579537391663), value=1.0)
+session.viewports['Viewport: 1'].view.setValues(nearPlane=24.1139, 
+    farPlane=26.4826, width=13.0359, height=6.84057)
+session.viewports['Viewport: 1'].view.setValues(nearPlane=24.0641, 
+    farPlane=26.5324, width=13.5844, height=7.1284)
+session.viewports['Viewport: 1'].view.setValues(nearPlane=23.951, 
+    farPlane=26.6454, width=14.8287, height=7.78135)
+session.viewports['Viewport: 1'].view.setValues(nearPlane=23.9026, 
+    farPlane=26.6939, width=15.3618, height=8.06107)
+s.Line(point1=(-6.0, 1.0), point2=(6.615, 1.0))
+s.HorizontalConstraint(entity=g[6], addUndoState=False)
+s.Spot(point=(-6.0, -1.1025))
+s.CoincidentConstraint(entity1=v[7], entity2=g[5], addUndoState=False)
+s.VerticalDimension(vertex1=v[0], vertex2=v[7], textPoint=(-6.31433010101318, 
+    -1.25621056556702), value=1.0)
+s.Line(point1=(-6.0, -1.0), point2=(7.08749999995343, -1.0))
+s.HorizontalConstraint(entity=g[7], addUndoState=False)
+p = mdb.models['Model-1'].parts['Part-1']
+f = p.faces
+pickedFaces = f.getSequenceFromMask(mask=('[#1 ]', ), )
+e, d1 = p.edges, p.datums
+p.PartitionFaceBySketch(faces=pickedFaces, sketch=s)
+s.unsetPrimaryObject()
+del mdb.models['Model-1'].sketches['__profile__']
+session.viewports['Viewport: 1'].partDisplay.setValues(mesh=ON)
+session.viewports['Viewport: 1'].partDisplay.meshOptions.setValues(
+    meshTechnique=ON)
+session.viewports['Viewport: 1'].partDisplay.geometryOptions.setValues(
+    referenceRepresentation=OFF)
+a1 = mdb.models['Model-1'].rootAssembly
+a1.regenerate()
+a = mdb.models['Model-1'].rootAssembly
+session.viewports['Viewport: 1'].setValues(displayedObject=a)
+session.viewports['Viewport: 1'].assemblyDisplay.setValues(mesh=ON)
+session.viewports['Viewport: 1'].assemblyDisplay.meshOptions.setValues(
+    meshTechnique=ON)
+session.viewports['Viewport: 1'].assemblyDisplay.setValues(mesh=OFF, loads=ON, 
+    bcs=ON, predefinedFields=ON, connectors=ON)
+session.viewports['Viewport: 1'].assemblyDisplay.meshOptions.setValues(
+    meshTechnique=OFF)
+del mdb.models['Model-1'].boundaryConditions['BC-2']
+a = mdb.models['Model-1'].rootAssembly
+e1 = a.instances['Part-1-1'].edges
+edges1 = e1.getSequenceFromMask(mask=('[#2ea ]', ), )
+a.Set(edges=edges1, name='sides')
+#: The set 'sides' has been edited (6 edges).
+a = mdb.models['Model-1'].rootAssembly
+region = a.sets['sides']
+mdb.models['Model-1'].DisplacementBC(name='BC-2', createStepName='Initial', 
+    region=region, u1=SET, u2=UNSET, ur3=UNSET, amplitude=UNSET, 
+    distributionType=UNIFORM, fieldName='', localCsys=None)
+session.viewports['Viewport: 1'].assemblyDisplay.setValues(mesh=ON, loads=OFF, 
+    bcs=OFF, predefinedFields=OFF, connectors=OFF)
+session.viewports['Viewport: 1'].assemblyDisplay.meshOptions.setValues(
+    meshTechnique=ON)
+session.viewports['Viewport: 1'].view.setValues(nearPlane=35.2057, 
+    farPlane=38.4998, width=17.6792, height=9.3006, viewOffsetX=4.76365, 
+    viewOffsetY=0.123112)
+session.viewports['Viewport: 1'].view.setValues(nearPlane=35.2425, 
+    farPlane=38.463, width=17.6977, height=9.31032, viewOffsetX=4.39923, 
+    viewOffsetY=0.0896296)
+session.viewports['Viewport: 1'].assemblyDisplay.setValues(mesh=OFF)
+session.viewports['Viewport: 1'].assemblyDisplay.meshOptions.setValues(
+    meshTechnique=OFF)
+session.viewports['Viewport: 1'].assemblyDisplay.setValues(mesh=ON)
+session.viewports['Viewport: 1'].assemblyDisplay.meshOptions.setValues(
+    meshTechnique=ON)
+p = mdb.models['Model-1'].parts['Part-1']
+session.viewports['Viewport: 1'].setValues(displayedObject=p)
+p = mdb.models['Model-1'].parts['Part-1']
+e = p.edges
+pickedEdges = e.getSequenceFromMask(mask=('[#3ff ]', ), )
+p.seedEdgeBySize(edges=pickedEdges, size=1.2, deviationFactor=0.1, 
+    constraint=FINER)
+p = mdb.models['Model-1'].parts['Part-1']
+p.seedPart(size=0.5, minSizeFactor=0.1)
+p = mdb.models['Model-1'].parts['Part-1']
+p.generateMesh()
+p = mdb.models['Model-1'].parts['Part-1']
+p.deleteMesh()
+p = mdb.models['Model-1'].parts['Part-1']
+p.seedPart(size=0.5, deviationFactor=0.1, minSizeFactor=0.1)
+p = mdb.models['Model-1'].parts['Part-1']
+p.generateMesh()
+a = mdb.models['Model-1'].rootAssembly
+a.regenerate()
+session.viewports['Viewport: 1'].setValues(displayedObject=a)
+session.viewports['Viewport: 1'].assemblyDisplay.setValues(mesh=OFF)
+session.viewports['Viewport: 1'].assemblyDisplay.meshOptions.setValues(
+    meshTechnique=OFF)
+session.viewports['Viewport: 1'].assemblyDisplay.setValues(mesh=ON)
+session.viewports['Viewport: 1'].assemblyDisplay.setValues(mesh=OFF)
+a = mdb.models['Model-1'].rootAssembly
+del a.features['Part-1-1']
+session.viewports['Viewport: 1'].partDisplay.setValues(mesh=OFF)
+session.viewports['Viewport: 1'].partDisplay.meshOptions.setValues(
+    meshTechnique=OFF)
+session.viewports['Viewport: 1'].partDisplay.geometryOptions.setValues(
+    referenceRepresentation=ON)
+p1 = mdb.models['Model-1'].parts['Part-2']
+session.viewports['Viewport: 1'].setValues(displayedObject=p1)
+del mdb.models['Model-1'].parts['Part-2']
+p = mdb.models['Model-1'].parts['Part-1']
+session.viewports['Viewport: 1'].setValues(displayedObject=p)
+session.viewports['Viewport: 1'].partDisplay.setValues(mesh=ON)
+session.viewports['Viewport: 1'].partDisplay.meshOptions.setValues(
+    meshTechnique=ON)
+session.viewports['Viewport: 1'].partDisplay.geometryOptions.setValues(
+    referenceRepresentation=OFF)
+p = mdb.models['Model-1'].parts['Part-1']
+p.deleteMesh()
+p = mdb.models['Model-1'].parts['Part-1']
+e = p.edges
+pickedEdges = e.getSequenceFromMask(mask=('[#100 ]', ), )
+p.seedEdgeBySize(edges=pickedEdges, size=0.5, deviationFactor=0.1, 
+    constraint=FINER)
+p = mdb.models['Model-1'].parts['Part-1']
+e = p.edges
+pickedEdges = e.getSequenceFromMask(mask=('[#15 ]', ), )
+p.seedEdgeBySize(edges=pickedEdges, size=0.5, deviationFactor=0.1, 
+    constraint=FINER)
+p = mdb.models['Model-1'].parts['Part-1']
+e = p.edges
+pickedEdges = e.getSequenceFromMask(mask=('[#2ea ]', ), )
+p.seedEdgeBySize(edges=pickedEdges, size=0.5, deviationFactor=0.1, 
+    constraint=FINER)
+p = mdb.models['Model-1'].parts['Part-1']
+p.generateMesh()
+session.viewports['Viewport: 1'].partDisplay.setValues(mesh=OFF)
+session.viewports['Viewport: 1'].partDisplay.meshOptions.setValues(seeds=ON)
+session.viewports['Viewport: 1'].partDisplay.meshOptions.setValues(seeds=OFF)
+session.viewports['Viewport: 1'].partDisplay.meshOptions.setValues(seeds=ON)
+session.viewports['Viewport: 1'].partDisplay.meshOptions.setValues(seeds=OFF)
+session.viewports['Viewport: 1'].partDisplay.meshOptions.setValues(seeds=ON)
+p = mdb.models['Model-1'].parts['Part-1']
+f = p.faces
+pickedRegions = f.getSequenceFromMask(mask=('[#2 ]', ), )
+p.deleteMesh(regions=pickedRegions)
+p = mdb.models['Model-1'].parts['Part-1']
+e = p.edges
+pickedEdges = e.getSequenceFromMask(mask=('[#60 ]', ), )
+p.seedEdgeBySize(edges=pickedEdges, size=0.05, deviationFactor=0.1, 
+    constraint=FINER)
+p = mdb.models['Model-1'].parts['Part-1']
+p.generateMesh()
+session.viewports['Viewport: 1'].view.setValues(width=12.5383, height=7.21192, 
+    viewOffsetX=0.0664201, viewOffsetY=-0.0511169)
+session.viewports['Viewport: 1'].partDisplay.setValues(mesh=ON)
+session.viewports['Viewport: 1'].partDisplay.setValues(mesh=OFF)
+session.viewports['Viewport: 1'].partDisplay.setValues(mesh=ON)

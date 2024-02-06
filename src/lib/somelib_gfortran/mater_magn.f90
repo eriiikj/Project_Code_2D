@@ -1,0 +1,417 @@
+module mater_magn
+
+! Last modified
+! M. Ristinmaa 2021-02-24
+! M. Ristinmaa 2021-03-04
+!   included magnkho model 
+!   introduced nrpar: number of material parameters a model requires
+!
+!-----------------------------------------------------------------------------
+!
+! Interface for magnetic material model handling the situation when 
+! several material models are used in the calculation
+!
+! limitations:
+!
+! same number of gauss points in an element
+! must be used for all materials (this should be changed)
+!
+! the material models need to be changed so that several 
+! materials of the same model using having different gp
+! are allowed
+!  
+! material models implemented
+!  1: linear
+!  2: Jiles-Atherton vector model
+!  3: nonlinear model 1
+!  4: Kwangsoo Ho model
+!  => maxmod=4
+!  => number of material parameters should be in nrpar(model)<20, see maxpar
+! models
+!
+  use mater_magnlin
+  use mater_magnjav
+  use mater_magnnonl1
+  use mater_magnkho
+!
+! these calls must be implemented in modules
+!
+!  call magmater_initModel    - initital model storage
+!  call magmater_tangentModel - calculate algorithmic tangent between dH=K*dB
+!  call magmater_calcModel    - calculate H
+!  call magmater_getModelH    - get H from storage in module
+!  call magmater_acceptModel  - accept the current state
+!
+
+  integer, parameter                :: maxmod=4     ! max number of implemented models 
+  integer, parameter                :: nrpar(maxmod)=(/2,6,5,9/)
+  private maxmod, nrpar
+
+! limits
+  integer, parameter                :: maxmat=20    ! max number of materials in calculation
+  integer, parameter                :: maxone=20    ! max use of a model
+  integer, parameter                :: maxpar=20    ! max number of parameters in model
+  private maxmat, maxone, maxpar
+
+! matId(el)    connecting global element el nummer to material number
+! locmatId(el) connecting local element el nummer to material
+
+  integer, allocatable              :: matId(:), locmatId(:,:), elGtoL(:)
+  private matId, locmatId
+
+! More flexible array structure that could be used allowing different array lengths
+!  type materialpara
+!     double precision, pointer :: a(:)
+!  end type
+!
+!  type(materialpara)    :: modelpara(maxmod)
+  
+  integer                           :: matNr(2,maxmat)=0, matcount(maxmod)
+  integer                           :: NrEl(maxmat)
+  double precision                  :: mpar(maxmod,maxone,maxpar)
+  private matNr, matcount, NrEl, mpar
+
+  interface magmater_tangent
+     module procedure magmater_tangentv1
+     module procedure magmater_tangentv2
+     module procedure magmater_tangentv3
+     module procedure magmater_tangentcall
+  end interface
+  private magmater_tangentv1, magmater_tangentv2
+
+  interface magmater_calcH
+     module procedure magmater_calcH1
+     module procedure magmater_calcH2
+     module procedure magmater_calcH3
+     module procedure magmater_calcHcall
+  end interface
+  private magmater_calcH1, magmater_calcH2, magmater_calcH3, magmater_calcHcall
+
+!-----------------------------------------------------------------------------
+contains
+
+!
+! maybe a routine if all elements are assigned the same material
+! then input must be number of elements and gauss points in element.
+! Two changes must be made
+!
+! call magmater_init(nel,nip)
+! call magmater_model('model',propEM)
+!
+! nip should be found from the element used
+!
+subroutine magmater_init(matIdin,nip)
+implicit none
+
+integer, intent(in)               :: matIdin(:), nip
+
+integer                           :: nels, nmat, ie, ierr, mat, imat, i
+
+  nels=size(matIdin)
+  nmat=maxval(matIdin)
+  write(*,*)'elements ',nels
+  write(*,*)'nrmat    ',nmat
+
+  allocate(matId(nels), stat=ierr)
+  allocate(elGtoL(nels), stat=ierr)
+  allocate(locmatId(maxmod,nels), stat=ierr)
+
+  matId=matIdin
+  
+! establish local element to material for each model
+  Nrel=0
+  do ie=1,nels  
+    mat=matId(ie)
+    imat=matNr(1,mat)                      ! which material model   
+    NrEl(imat)=NrEl(imat)+1                ! number of elements using the model
+    elGtoL(ie)=NrEl(imat)
+    locmatId(imat,NrEl(imat))=matNr(2,mat) ! local material id
+  end do
+  
+ ! write(*,*)'elGtoL ',elGtoL
+
+! initiate material models
+! If new model is implemented
+! new call is needed
+!
+  i=1
+  if (NrEl(i).gt.0) then
+    call magmater_initlin(mpar(i,1:matcount(i),1:nrpar(i)),locmatId(i,1:NrEl(i)),nip)
+  end if
+  
+  i=2
+  if (NrEl(i).gt.0) then
+    call magmater_initjav(mpar(i,1:matcount(i),1:nrpar(i)),locmatId(i,1:NrEl(i)),nip)
+  end if
+
+  i=3
+  if (NrEl(i).gt.0) then
+    call magmater_initnonl1(mpar(i,1:matcount(i),1:nrpar(i)),locmatId(i,1:NrEl(i)),nip)
+  end if
+       
+  i=4
+  if (NrEl(i).gt.0) then
+    call magmater_initkho(mpar(i,1:matcount(i),1:nrpar(i)),locmatId(i,1:NrEl(i)),nip)
+  end if
+       
+  deallocate(locmatId)
+
+end subroutine magmater_init !finalize
+
+
+subroutine magmater_model(matname,mat,matpar)
+implicit none
+
+character(*),intent(in)      :: matname
+double precision, intent(in) :: matpar(:)
+integer, intent(in)          :: mat
+
+integer                      :: i
+
+  if (mat.gt.maxmat) then
+    write(*,*)'max materials to big'
+    stop('In mater_magn model increase maxmat')
+  end if  
+
+! If new model is implemented
+! new elseif is needed
+  if (matname.eq.'lin') then
+     i=1
+  elseif (matname.eq.'jav') then
+     i=2
+  elseif (matname.eq.'nonl1') then
+     i=3
+  elseif (matname.eq.'kho') then
+     i=4
+  else
+    write(*,*)'material model ',matname
+    stop('In mater_magn model is not implemented')
+  end if    
+
+  matNr(1,mat)=i
+  matcount(i)=matcount(i)+1
+  matNr(2,mat)=matcount(i)
+  mpar(i,matcount(i),1:nrpar(i))=matpar
+
+end subroutine magmater_model
+
+subroutine magmater_tangentv1(mu,si,ie)
+implicit none
+
+double precision, intent(out)       :: mu(:,:,:), si(:,:,:)
+integer, intent(in)                 :: ie
+
+double precision                    :: T(size(mu,1)), dt
+
+  T=1d90
+  dt=-1d0
+  call magmater_tangentcall(mu,si,T,dt,ie)
+  
+end subroutine magmater_tangentv1
+
+subroutine magmater_tangentv2(mu,si,dt,ie)
+implicit none
+
+double precision, intent(out)       :: mu(:,:,:), si(:,:,:)
+double precision, intent(in)        :: dt
+integer, intent(in)                 :: ie
+
+double precision                    :: T(size(mu,1))
+
+  T=1d90
+  call magmater_tangentcall(mu,si,T,dt,ie)
+  
+end subroutine magmater_tangentv2
+
+subroutine magmater_tangentv3(mu,si,T,ie)
+implicit none
+
+double precision, intent(out)       :: mu(:,:,:), si(:,:,:)
+double precision, intent(in)        :: T(:)
+integer, intent(in)                 :: ie
+
+double precision                    :: dt
+
+  dt=-1d0
+  call magmater_tangentcall(mu,si,T,dt,ie)
+  
+end subroutine magmater_tangentv3
+
+
+subroutine magmater_tangentcall(mu,si,T,dt,ie)
+implicit none
+
+double precision, intent(out)       :: mu(:,:,:), si(:,:,:)
+double precision, intent(in)        :: T(:), dt
+integer, intent(in)                 :: ie
+
+integer                             :: mat, imat, lel
+
+! find 
+    mat=matId(ie)
+    imat=matNr(1,mat)         ! material model   
+    lel=elGtoL(ie)            ! local element number
+      
+! If new model is implemented
+! new elseif is needed
+    if (imat.eq.1) then 
+       call magmater_tangentlin(mu,si,lel)
+    else if (imat.eq.2) then 
+       call magmater_tangentjav(mu,si,lel)
+    else if (imat.eq.3) then 
+        if (T(1).lt.-1d80) then
+          write(*,*)'Error: For temperature dependent model use call magmater_tangent(B,H,T,ie)'
+          stop
+        end if
+       call magmater_tangentnonl1(mu,si,T,lel)
+    else if (imat.eq.4) then 
+        if (dt.lt.0d0) then
+          write(*,*)'Error: For rate dependent model use call magmater_tangent(B,H,dt,ie)'
+          stop
+        end if
+       call magmater_tangentkho(mu,si,dt,lel)
+    end if
+
+end subroutine magmater_tangentcall
+
+
+subroutine magmater_calcH1(H,B,ie)
+implicit none
+
+double precision, intent(out)       :: H(:,:)
+double precision, intent(in)        :: B(:,:)
+integer, intent(in)                 :: ie
+
+double precision                    :: T(size(H,1)), dt
+
+! check-values if they are needed by the model
+  T=-1d90
+  dt=-1d0
+  call magmater_calcHcall(H,B,T,dt,ie)
+  
+end subroutine magmater_calcH1
+
+subroutine magmater_calcH2(H,B,dt,ie)
+implicit none
+
+double precision, intent(out)       :: H(:,:)
+double precision, intent(in)        :: B(:,:), dt
+integer, intent(in)                 :: ie
+
+double precision                    :: T(size(H,1))
+
+! check-value if they are needed by the model
+  T=-1d90
+  call magmater_calcHcall(H,B,T,dt,ie)
+  
+end subroutine magmater_calcH2
+
+subroutine magmater_calcH3(H,B,T,ie)
+implicit none
+
+double precision, intent(out)       :: H(:,:)
+double precision, intent(in)        :: B(:,:), T(:)
+integer, intent(in)                 :: ie
+
+double precision                    :: dt
+
+! check-value if they are needed by the model
+  dt=-1d0
+  call magmater_calcHcall(H,B,T,dt,ie)
+  
+end subroutine magmater_calcH3
+
+subroutine magmater_calcHcall(H,B,T,dt,ie)
+implicit none
+
+double precision, intent(out)       :: H(:,:)
+double precision, intent(in)        :: B(:,:), T(:), dt
+integer, intent(in)                 :: ie
+
+integer                             :: mat, imat, lel
+
+! find 
+    mat=matId(ie)
+    imat=matNr(1,mat)         ! material model   
+    lel=elGtoL(ie)            ! local element number
+
+! If new model is implemented
+! new elseif is needed
+    if (imat.eq.1) then 
+        call magmater_magfield_get(H,B,lel)   
+    else if (imat.eq.2) then 
+        call magmater_calcjav(H,B,lel)  
+    else if (imat.eq.3) then 
+        if (T(1).lt.-1d80) then
+          write(*,*)'Error: For temperature dependent model use call magmater_calcH(B,H,T,ie)'
+          stop
+        end if
+        call magmater_calcnonl1(H,B,T,lel)  
+    else if (imat.eq.4) then 
+        if (dt.lt.0d0) then
+          write(*,*)'Error: For rate dependent model use call magmater_calcH(B,H,dt,ie)'
+          stop
+        end if
+        call magmater_calckho(H,B,dt,lel)  
+    end if
+
+end subroutine magmater_calcHcall
+
+subroutine magmater_get(field,gval,ie)
+implicit none
+! Get already calculated gauss values H and B 
+! values that are stored
+! in different modules without doing new calculations
+!
+character                           :: field*(*)
+double precision, intent(out)       :: gval(:,:)
+integer, intent(in)                 :: ie
+
+integer                             :: mat, imat, lel
+
+! find 
+    mat=matId(ie)
+    imat=matNr(1,mat)         ! material model   
+    lel=elGtoL(ie)            ! local element number
+ 
+! If new model is implemented
+! new elseif is needed
+    if (imat.eq.1) then 
+        call magmater_getlinH(field,gval,lel)   
+    else if (imat.eq.2) then 
+        call magmater_getjavH(field,gval,lel)  
+    else if (imat.eq.3) then 
+        call magmater_getnonl1H(field,gval,lel)  
+    else if (imat.eq.4) then 
+        call magmater_getkhoH(field,gval,lel)  
+    end if
+
+end subroutine magmater_get
+
+subroutine magmater_accept()
+implicit none
+!
+
+integer                             :: i
+
+  i=2
+  if (NrEl(i).gt.0) then
+    call magmater_acceptjav
+  end if
+       
+  i=3
+  if (NrEl(i).gt.0) then
+    call magmater_acceptnonl1
+  end if
+       
+  i=4
+  if (NrEl(i).gt.0) then
+    call magmater_acceptkho
+  end if
+
+
+end subroutine magmater_accept
+
+
+
+end module  mater_magn

@@ -1,0 +1,161 @@
+# -*- coding: mbcs -*-
+#
+# Abaqus/CAE Release 2019 replay file
+# Internal Version: 2020_01_29-08.04.18 159217
+# Run by er7128ja on Wed Jun  1 16:46:16 2022
+#
+
+# from driverUtils import executeOnCaeGraphicsStartup
+# executeOnCaeGraphicsStartup()
+#: Executing "onCaeGraphicsStartup()" in the site directory ...
+from abaqus import *
+from abaqusConstants import *
+session.Viewport(name='Viewport: 1', origin=(0.0, 0.0), width=324.908325195312, 
+    height=208.409271240234)
+session.viewports['Viewport: 1'].makeCurrent()
+session.viewports['Viewport: 1'].maximize()
+from caeModules import *
+from driverUtils import executeOnCaeStartup
+executeOnCaeStartup()
+session.viewports['Viewport: 1'].partDisplay.geometryOptions.setValues(
+    referenceRepresentation=ON)
+openMdb(
+    pathName='/home/er7128ja/Nextcloud/Projekt/Project_Code/abaqus_model/uconst/uconst_even/uconst_even.cae')
+#: The model database "/home/er7128ja/Nextcloud/Projekt/Project_Code/abaqus_model/uconst/uconst_even/uconst_even.cae" has been opened.
+session.viewports['Viewport: 1'].setValues(displayedObject=None)
+p = mdb.models['Model-1'].parts['Part-1']
+session.viewports['Viewport: 1'].setValues(displayedObject=p)
+a = mdb.models['Model-1'].rootAssembly
+session.viewports['Viewport: 1'].setValues(displayedObject=a)
+session.viewports['Viewport: 1'].assemblyDisplay.setValues(loads=ON, bcs=ON, 
+    predefinedFields=ON, connectors=ON, optimizationTasks=OFF, 
+    geometricRestrictions=OFF, stopConditions=OFF)
+session.viewports['Viewport: 1'].assemblyDisplay.setValues(mesh=ON, loads=OFF, 
+    bcs=OFF, predefinedFields=OFF, connectors=OFF)
+session.viewports['Viewport: 1'].assemblyDisplay.meshOptions.setValues(
+    meshTechnique=ON)
+p = mdb.models['Model-1'].parts['Part-1']
+session.viewports['Viewport: 1'].setValues(displayedObject=p)
+session.viewports['Viewport: 1'].partDisplay.setValues(mesh=ON)
+session.viewports['Viewport: 1'].partDisplay.meshOptions.setValues(
+    meshTechnique=ON)
+session.viewports['Viewport: 1'].partDisplay.geometryOptions.setValues(
+    referenceRepresentation=OFF)
+p = mdb.models['Model-1'].parts['Part-1']
+p.generateMesh()
+session.viewports['Viewport: 1'].view.setValues(nearPlane=24.0104, 
+    farPlane=26.586, width=14.3492, height=7.58234, viewOffsetX=0.988579, 
+    viewOffsetY=-0.44295)
+a = mdb.models['Model-1'].rootAssembly
+a.regenerate()
+a = mdb.models['Model-1'].rootAssembly
+session.viewports['Viewport: 1'].setValues(displayedObject=a)
+session.viewports['Viewport: 1'].assemblyDisplay.setValues(mesh=OFF, loads=ON, 
+    bcs=ON, predefinedFields=ON, connectors=ON)
+session.viewports['Viewport: 1'].assemblyDisplay.meshOptions.setValues(
+    meshTechnique=OFF)
+session.viewports['Viewport: 1'].assemblyDisplay.setValues(mesh=ON)
+a = mdb.models['Model-1'].rootAssembly
+n1 = a.instances['Part-1-1'].nodes
+nodes1 = n1.getSequenceFromMask(mask=('[#0:2 #10000 ]', ), )
+a.Set(nodes=nodes1, name='midnode_lower')
+#: The set 'midnode_lower' has been edited (1 node).
+session.viewports['Viewport: 1'].assemblyDisplay.setValues(mesh=OFF)
+session.viewports['Viewport: 1'].assemblyDisplay.setValues(mesh=ON, loads=OFF, 
+    bcs=OFF, predefinedFields=OFF, connectors=OFF)
+session.viewports['Viewport: 1'].assemblyDisplay.meshOptions.setValues(
+    meshTechnique=ON)
+p = mdb.models['Model-1'].parts['Part-1']
+session.viewports['Viewport: 1'].setValues(displayedObject=p)
+p = mdb.models['Model-1'].parts['Part-1']
+p.generateMesh()
+a1 = mdb.models['Model-1'].rootAssembly
+a1.regenerate()
+a = mdb.models['Model-1'].rootAssembly
+session.viewports['Viewport: 1'].setValues(displayedObject=a)
+session.viewports['Viewport: 1'].assemblyDisplay.setValues(mesh=OFF)
+session.viewports['Viewport: 1'].assemblyDisplay.meshOptions.setValues(
+    meshTechnique=OFF)
+session.viewports['Viewport: 1'].assemblyDisplay.setValues(loads=ON, bcs=ON, 
+    predefinedFields=ON, connectors=ON)
+session.viewports['Viewport: 1'].assemblyDisplay.setValues(mesh=ON)
+session.viewports['Viewport: 1'].view.setValues(width=12.565, height=6.6227, 
+    viewOffsetX=0.0119439, viewOffsetY=0.00757107)
+a = mdb.models['Model-1'].rootAssembly
+n1 = a.instances['Part-1-1'].nodes
+nodes1 = n1.getSequenceFromMask(mask=('[#0:2 #10000 ]', ), )
+a.Set(nodes=nodes1, name='midnode_lower')
+#: The set 'midnode_lower' has been edited (1 node).
+session.viewports['Viewport: 1'].assemblyDisplay.setValues(mesh=OFF)
+session.viewports['Viewport: 1'].assemblyDisplay.setValues(mesh=ON, loads=OFF, 
+    bcs=OFF, predefinedFields=OFF, connectors=OFF)
+session.viewports['Viewport: 1'].assemblyDisplay.meshOptions.setValues(
+    meshTechnique=ON)
+session.viewports['Viewport: 1'].assemblyDisplay.setValues(mesh=OFF)
+session.viewports['Viewport: 1'].assemblyDisplay.meshOptions.setValues(
+    meshTechnique=OFF)
+mdb.jobs['Job-1'].writeInput(consistencyChecking=OFF)
+#: The job input file has been written to "Job-1.inp".
+session.viewports['Viewport: 1'].assemblyDisplay.setValues(mesh=ON)
+session.viewports['Viewport: 1'].assemblyDisplay.meshOptions.setValues(
+    meshTechnique=ON)
+p = mdb.models['Model-1'].parts['Part-1']
+session.viewports['Viewport: 1'].setValues(displayedObject=p)
+p = mdb.models['Model-1'].parts['Part-1']
+p.deleteMesh()
+p = mdb.models['Model-1'].parts['Part-1']
+p.seedPart(size=0.025, deviationFactor=0.1, minSizeFactor=0.1)
+p = mdb.models['Model-1'].parts['Part-1']
+p.generateMesh()
+session.viewports['Viewport: 1'].view.setValues(nearPlane=24.1408, 
+    farPlane=26.4557, width=12.8981, height=6.81557, viewOffsetX=0.162287, 
+    viewOffsetY=-0.285804)
+p = mdb.models['Model-1'].parts['Part-1']
+p.deleteMesh()
+p = mdb.models['Model-1'].parts['Part-1']
+p.seedPart(size=0.025, minSizeFactor=0.1)
+p = mdb.models['Model-1'].parts['Part-1']
+p.generateMesh()
+p = mdb.models['Model-1'].parts['Part-1']
+p.deleteMesh()
+p = mdb.models['Model-1'].parts['Part-1']
+p.deleteSeeds()
+p = mdb.models['Model-1'].parts['Part-1']
+p.seedPart(size=0.05, deviationFactor=0.1, minSizeFactor=0.1)
+p = mdb.models['Model-1'].parts['Part-1']
+p.generateMesh()
+p = mdb.models['Model-1'].parts['Part-1']
+p.deleteMesh()
+p = mdb.models['Model-1'].parts['Part-1']
+p.seedPart(size=0.025, deviationFactor=0.1, minSizeFactor=0.1)
+p = mdb.models['Model-1'].parts['Part-1']
+p.generateMesh()
+session.viewports['Viewport: 1'].view.setValues(nearPlane=24.2269, 
+    farPlane=26.3696, width=11.9393, height=6.30891, viewOffsetX=0.139927, 
+    viewOffsetY=0.00939786)
+a1 = mdb.models['Model-1'].rootAssembly
+a1.regenerate()
+a = mdb.models['Model-1'].rootAssembly
+session.viewports['Viewport: 1'].setValues(displayedObject=a)
+session.viewports['Viewport: 1'].assemblyDisplay.setValues(mesh=OFF, loads=ON, 
+    bcs=ON, predefinedFields=ON, connectors=ON)
+session.viewports['Viewport: 1'].assemblyDisplay.meshOptions.setValues(
+    meshTechnique=OFF)
+session.viewports['Viewport: 1'].assemblyDisplay.setValues(mesh=ON)
+a = mdb.models['Model-1'].rootAssembly
+n1 = a.instances['Part-1-1'].nodes
+nodes1 = n1.getSequenceFromMask(mask=('[#0:2 #10000 ]', ), )
+a.Set(nodes=nodes1, name='midnode_lower')
+#: The set 'midnode_lower' has been edited (1 node).
+session.viewports['Viewport: 1'].assemblyDisplay.setValues(mesh=OFF)
+session.viewports['Viewport: 1'].assemblyDisplay.setValues(loads=OFF, bcs=OFF, 
+    predefinedFields=OFF, connectors=OFF)
+mdb.jobs['Job-1'].writeInput(consistencyChecking=OFF)
+#: The job input file has been written to "Job-1.inp".
+session.viewports['Viewport: 1'].assemblyDisplay.setValues(mesh=ON)
+session.viewports['Viewport: 1'].assemblyDisplay.meshOptions.setValues(
+    meshTechnique=ON)
+p = mdb.models['Model-1'].parts['Part-1']
+session.viewports['Viewport: 1'].setValues(displayedObject=p)
+mdb.save()
+#: The model database has been saved to "/home/er7128ja/Nextcloud/Projekt/Project_Code/abaqus_model/uconst/uconst_even/uconst_even.cae".

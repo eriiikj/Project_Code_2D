@@ -1,0 +1,12 @@
+If compiler Gfort, include these in settings
+"${workspaceFolder}/build/src/lib/mflib",
+"${workspaceFolder}/build/src/lib/somelib_gfortran",
+"${workspaceFolder}/build/src/modules/whiskermodules",
+"${workspaceFolder}/build/src/modules/ejmodules"
+
+
+If compiler Ifort, include these in settings
+"${workspaceFolder}/other/gfort_lintermods/gfort_mflib_lintermods",
+"${workspaceFolder}/other/gfort_lintermods/gfort_somelib_lintermods",
+"${workspaceFolder}/other/gfort_lintermods/gfort_ejlib_lintermods",
+"${workspaceFolder}/other/gfort_lintermods/gfort_whiskerlib_lintermods"

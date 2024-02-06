@@ -1,0 +1,35 @@
+Lib/modules:
+mf_utils       - common datatypes
+somelib        - fem and material routines
+ej_fem_util    - fem and print routines
+whiskermodules - routines for imc volume increase and boundary movement
+
+Program implementations:
+Computation setting: Total Lagrange.
+Deformation setting: Finite Strains.
+
+Geometry:
+  12x4 microns. 4 grains with equal width.
+  Cu height: 0-1 microns.
+  Sn height: 1-4 microns.
+
+Mesh:
+  4-node isoparametric elms
+  0.05 microns square
+
+IMC interface:
+  Circle with decreasing radius, defined per Gauss point.
+  Initiation: Specified side height and lowest start height over Cu.
+ 
+Material:
+  Plane strain
+  Cu  : Plasticity - von Mises
+  IMC : Elasticity - neo Hooke
+  Sn  : Plasticity - von Mises
+
+Defined types in program:
+imc_bound - info on IMC properties
+grains    - info on mesh quantities related to IMC and material of each gp
+
+Preprocessing : Abaqus
+Postprocessing: vtk and matlab

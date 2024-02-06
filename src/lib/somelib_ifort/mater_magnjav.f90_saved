@@ -1,0 +1,404 @@
+module mater_magnjav
+
+! Last modified
+! M. Ristinmaa 2021-02-13
+!
+!-----------------------------------------------------------------------------
+!
+! contains Jiles-Atherton hysteresis model
+!  D.C. Jiles and D.L. Atherton, L. Magn. Magn. Mater, vol 61, 48-60, 1986.
+! based on the vector format by
+!  A. Bergqvist IEEE transaction on magnetics, vol 32, 4213-4215, 1996
+! and inverse format by
+!  J.V. Leite et al IEEE transactions on magnetics, vol 10, 1769-1775, 2004
+
+use mater_large, only: inv3
+
+implicit none
+
+interface magmater_javcalc
+   module procedure magmater_javcalcH1
+   module procedure magmater_javcalcH2
+end interface
+private magmater_javcalcH1, magmater_javcalcH2
+
+private magmater_javodes
+
+  double precision, allocatable     :: propEM(:,:)
+  double precision, allocatable     :: Bold(:,:,:,:), Hold(:,:,:,:)
+
+  integer, allocatable              :: matId(:)
+  integer                           :: New, Old
+
+  double precision, parameter       :: mu0=1.256637061435917d-06
+
+  private propEM, matID, mu0, Bold, Hold
+  private New, Old
+
+!-----------------------------------------------------------------------------
+contains
+
+
+subroutine magmater_javinit(propEMin,matIdin,nip)
+implicit none
+
+double precision                  :: propEMin(:,:)
+integer                           :: matIdin(:), nip
+
+integer                           :: nels, nprp, ierr, nmat
+
+  nels=size(matIdin)
+  nmat=size(propEmin,1)
+  nprp=size(propEMin,2)
+
+! gör så att det går att använda för anisotropi.......
+  allocate(matId(nels), stat=ierr)
+  allocate(propEM(nmat,15), stat=ierr)
+
+  if (nprp.eq.5) then 
+! isotropy
+    propEM(:,1)=propEmin(:,1)    !cx
+    propEM(:,2)=propEmin(:,1)    !cy
+    propEM(:,3)=propEmin(:,1)    !cz
+    propEM(:,4)=propEmin(:,2)    !ax
+    propEM(:,5)=propEmin(:,2)    !ay
+    propEM(:,6)=propEmin(:,2)    !az
+    propEM(:,7)=propEmin(:,3)    !alphax
+    propEM(:,8)=propEmin(:,3)    !alphay
+    propEM(:,9)=propEmin(:,3)    !alphaz
+    propEM(:,10)=propEmin(:,4)   !Msx
+    propEM(:,11)=propEmin(:,4)   !Msy
+    propEM(:,12)=propEmin(:,4)   !Msz
+    propEM(:,13)=propEmin(:,5)   !kx
+    propEM(:,14)=propEmin(:,5)   !ky
+    propEM(:,15)=propEmin(:,5)   !kz
+  else
+    propEM=propEMin
+  end if
+
+  matId=matIdin
+
+  allocate(Bold(2,nels,nip,3), stat=ierr)
+  allocate(Hold(2,nels,nip,3), stat=ierr)
+
+  Bold=0d0
+  Hold=0d0
+  New=2
+  Old=1
+
+end subroutine magmater_javinit
+
+
+subroutine magmater_javaccept
+implicit none
+
+  if (Old.eq.1) then
+    New=1
+    Old=2
+  else
+    New=2
+    Old=1
+  end if
+
+end subroutine magmater_javaccept
+
+
+subroutine magmater_javmater_getH1(mu,si,B,iel)
+! routine for several gauss point
+implicit none
+
+double precision                 :: mu(:,:,:), si(:,:,:), B(:,:)
+integer                          :: iel
+
+integer                          :: ngp, i
+
+  ngp=size(B,1)
+  do i=1,ngp
+    call magmater_javmater_getH2(mu(i,:,:),si(i,:,:),B(i,:),iel)
+
+  end do
+
+
+end subroutine magmater_javmater_getH1
+
+
+subroutine magmater_javmater_getH2(mu,si,B,iel)
+! routine for one gauss point
+implicit none
+
+double precision                 :: mu(:,:), si(:,:), B(:)
+integer                          :: iel
+
+ ! call magmater_javodes(dM,B,B0,Bt,Mold,mpropEm)
+
+end subroutine magmater_javmater_getH2
+
+
+subroutine magmater_javcalcH1(H,B,iel)
+implicit none
+
+double precision                  :: H(:,:), B(:,:)
+integer                           :: iel
+
+integer                           :: igp, ngp
+  
+  ngp=size(B,1)
+  do igp=1,ngp
+    call magmater_javcalcH2(H(igp,:),B(igp,:),iel,igp)
+  end do
+  
+end subroutine magmater_javcalcH1
+
+
+
+subroutine magmater_javcalcH2(H,B,iel,igp)
+! Using ode23 solver for the J-A mode
+! local error control is used to calculate 
+! if sub-steps are needed.
+! ode is  given by dM=f(M)=K*dB
+implicit none
+
+double precision                  :: H(:), B(:)
+integer                           :: iel
+integer, optional                 :: igp
+
+double precision                  :: dB(3), dBstep(3), Bstart(3), Bend(3), Binit(3)
+double precision                  :: Mstart(3), Msin(3), Bsin(3), H3(3), Mold(3), M(3)
+double precision                  :: s1(3), s2(3), s3(3), s4(3), error(3), mpropEM(15)
+double precision                  :: hs
+integer                           :: conv, steps, gp, i
+  
+! special for 3-node element with one gauss point, if call without igp
+  if(present(igp))then
+    gp=igp
+  else
+    gp=1
+  endif
+
+! specific material
+  mpropEM=propEm(matId(iel),:)
+  
+! We should have a general 3D format  
+  if (size(B).eq.3) then
+    dB=B-Bold(old,iel,gp,:)
+  else
+    ! 2D problem
+    dB(1)=B(1)-Bold(old,iel,gp,1)
+    dB(2)=B(2)-Bold(old,iel,gp,2)
+    dB(3)=0d0
+  end if
+  Mold=Bold(old,iel,gp,:)/mu0-Hold(old,iel,gp,:)
+  Binit=Bold(old,iel,gp,:)
+  
+  steps=1
+  conv=0
+
+  do while (conv.eq.0)
+
+    dBstep=dB/dble(steps)
+    M=Mold
+    hs=1d0
+    conv=1
+
+    i=1
+    do while (i.le.steps.and.conv.eq.1) 
+      
+      Mstart=M
+      Bstart=Binit+dBstep*dble(i-1)
+      Bend=Bstart+dBstep
+
+      ! stage 1
+
+      Msin=Mstart
+      Bsin=Bstart
+      call magmater_javodes(s1,Bend,Bstart,Bsin,Msin,mpropEM)
+   
+      ! stage 2
+ 
+      Msin=Mstart+hs/2d0*s1
+      Bsin=Bstart+hs/2d0*dBstep
+      call magmater_javodes(s2,Bend,Bstart,Bsin,Msin,mpropEM)
+
+      ! stage 3
+
+      Msin=Mstart+3d0*hs/4d0*s2
+      Bsin=Bstart+3d0*hs/4d0*dBstep
+      call magmater_javodes(s3,Bend,Bstart,Bsin,Msin,mpropEM)
+
+      ! value
+
+      M=Mstart+hs/9d0*(2d0*s1+3d0*s2+4d0*s3)
+
+      ! error estimate
+
+      call magmater_javodes(s4,Bend,Bstart,Bend,M,mpropEM)
+      error=hs/72d0*(-5d0*s1+6d0*s2+8d0*s3-9d0*s4)
+
+      if (dsqrt(dot_product(error,error)).gt.50d0) then
+        conv=0
+      end if
+
+      i=i+1
+
+    end do
+
+    if (conv.eq.0) then
+      steps=steps+4
+    end if
+
+  end do
+
+  H3=B/mu0-M
+
+! store values
+  Hold(new,iel,gp,:)=H3
+  Bold(new,iel,gp,:)=B
+
+  if (size(B).eq.3) then
+    H=H3
+  else
+    ! 2D problem
+    H(1)=H3(1)
+    H(2)=H3(2)
+  end if
+  
+end subroutine magmater_javcalcH2
+
+
+subroutine magmater_javodes(dM,B,B0,Bt,Mold,mpropEm)
+! Calculate the tangent of the J-A model
+! dM=K*dB where dB is a given steps, in ode-format
+! we have that dM=f(M), i.e. input is M (Mold in call)
+! Note that Bt and Mold must be calculated at the same 
+! time instant, i.e. Bt(t_i) Mold(t_i)
+!  
+implicit none
+
+double precision                  :: dM(:), B(:), B0(:), Bt(:), Mold(:), mpropEM(:)
+
+double precision                  :: dB(3), Hold(3), He(3), Hguess(3), dH(3), dMan(3)
+double precision                  :: normHe, val, Manx, Many, Manz
+
+double precision                  :: ax, ay, az, Msx, Msy, Msz, xsix, xsiy, xsiz
+double precision                  :: chix, chiy, chiz, kx, ky, kz
+double precision                  :: cx, cy, cz, alphax, alphay, alphaz
+double precision                  :: cM(3,3), alphaM(3,3), kM(3,3), xsiM(3,3), chim(3,1)
+
+double precision                  :: tmp1(3,3), tmp2(3,3), tmpinv(3,3), normchi, Id(3,3)
+double precision                  :: tmpv(3)
+
+
+! define useful matrices and material parameters
+  cx=mpropEM(1)
+  cy=mpropEM(2)
+  cz=mpropEM(3)
+  cM(1,:)=[cx, 0d0, 0d0]
+  cM(2,:)=[0d0, cy, 0d0]
+  cM(3,:)=[0d0, 0d0, cz]
+
+  ax=mpropEM(4)
+  ay=mpropEM(5)
+  az=mpropEM(6)
+
+  alphax=mpropEM(7)
+  alphay=mpropEM(8)
+  alphaz=mpropEM(9)
+  alphaM(1,:)=[alphax, 0d0, 0d0]
+  alphaM(2,:)=[0d0, alphay, 0d0]
+  alphaM(3,:)=[0d0, 0d0, alphaz]
+
+  Msx=mpropEM(10)
+  Msy=mpropEM(11)
+  Msz=mpropEM(12)
+
+  kx=mpropEM(13)
+  ky=mpropEM(14)
+  kz=mpropEM(15)
+  kM(1,:)=[kx, 0d0, 0d0]
+  kM(2,:)=[0d0, ky, 0d0]
+  kM(3,:)=[0d0, 0d0, kz]
+
+  Id(1,:)=[1d0, 0d0, 0d0]
+  Id(2,:)=[0d0, 1d0, 0d0]
+  Id(3,:)=[0d0, 0d0, 1d0]
+  
+! calculation
+ 
+  dB=B-B0
+  Hold=Bt/mu0-Mold
+  He=Hold+matmul(alphaM,Mold)
+  normHe=dsqrt(dot_product(He,He))
+
+  if (dabs(normHe).lt.1d-6) normHe=1d-6
+
+  Manx=Msx*(1d0/dtanh(normHe/ax)-ax/normHe)*He(1)/normHe
+  Many=Msy*(1d0/dtanh(normHe/ay)-ay/normHe)*He(2)/normHe
+  Manz=Msz*(1d0/dtanh(normHe/az)-az/normHe)*He(3)/normHe
+
+ 
+  xsix=Msx/ax*(1d0-1d0/dtanh(normHe/ax)**2+(ax/normHe)**2)*He(1)**2/normHe**2 &
+     + Msx*(1d0/tanh(normHe/ax)-ax/normHe)*(1d0/normHe-He(1)**2/normHe**3)
+  xsiy=Msy/ay*(1d0-1d0/dtanh(normHe/ay)**2+(ay/normHe)**2)*He(2)**2/normHe**2 &
+     + Msy*(1d0/tanh(normHe/ay)-ay/normHe)*(1d0/normHe-He(2)**2/normHe**3)
+  xsiz=Msy/az*(1d0-1d0/dtanh(normHe/az)**2+(az/normHe)**2)*He(3)**2/normHe**2 &
+     + Msy*(1d0/dtanh(normHe/az)-az/normHe)*(1d0/normHe-He(3)**2/normHe**3)
+
+  xsiM(1,:)=[xsix, 0d0, 0d0]
+  xsiM(2,:)=[0d0, xsiy, 0d0]
+  xsiM(3,:)=[0d0, 0d0, xsiz]
+
+  chix=1/kx*(Manx-Mold(1))
+  chiy=1/ky*(Many-Mold(2))
+  chiz=1/kz*(Manz-Mold(3))
+  chim(1,1)=chix
+  chim(2,1)=chiy
+  chim(3,1)=chiz
+  normchi=dsqrt(dot_product(reshape(chim,(/3/)),reshape(chim,(/3/))))
+
+! check 
+  Hguess=B/mu0-Mold
+  dH=Hguess-Hold
+  dMan=matmul(xsiM,dH)
+
+  val=dot_product(reshape(chim,(/3/)),dH+matmul(alphaM,matmul(cM,dMan)))
+  if (val.gt.0d0) then
+! irrevesible part exists
+
+    tmp1=matmul(chim,transpose(chim))/normchi+matmul(cM,xsiM)
+    tmp2=Id+matmul(matmul(chim,transpose(chim))/normchi,(Id-alphaM)) & 
+        +matmul(cM,matmul(xsiM,(Id-alphaM)))
+    call inv3(tmpinv,tmp2)
+    dM=1d0/mu0*matmul(tmpinv,matmul(tmp1,dB))
+
+  else
+! rev
+! all matrices are diagonal
+
+    tmpv(1)=1d0/(1d0+cx*xsix*(1d0-alphax))
+    tmpv(2)=1d0/(1d0+cy*xsiy*(1d0-alphay))
+    tmpv(3)=1d0/(1d0+cz*xsiz*(1d0-alphaz))
+    dM(1)=tmpv(1)*cx*xsix*dB(1)/mu0
+    dM(2)=tmpv(2)*cy*xsiy*dB(2)/mu0
+    dM(3)=tmpv(3)*cz*xsiz*dB(3)/mu0
+
+   ! tmp2=Id+matmul(cM,matmul(xsiM,Id-alphaM))
+   ! call inv3(tmpinv,tmp2)
+   ! dM=1d0/mu0*matmul(tmpinv,matmul(matmul(cM,xsiM),dB))
+
+  end if
+
+end subroutine magmater_javodes
+
+
+subroutine magmater_javpara_get(prop,iel)
+implicit none
+
+double precision                  :: prop(:)
+integer                           :: iel
+
+   prop=propEM(matId(iel),:)
+
+end subroutine magmater_javpara_get
+
+
+end module  mater_magnjav

@@ -1,0 +1,897 @@
+# 1 "/home/er7128ja/Nextcloud/Projekt/Project_Code_2D/src/lib/somelib_gfortran/mater_magnkho.f90"
+module mater_magnkho
+
+! Last modified
+! M. Ristinmaa 2021-03-04
+!  initial version
+! M. Ristinmaa 2021-03-10
+!  implementation of N-R and ATS
+!  N-R with substepping if convergence problems
+! M. Ristinmaa 2021-03-17
+!  added new Bintr output to magmater_getkhoH
+!-----------------------------------------------------------------------------
+!
+! contains the Kwangsoon Ho model
+! Kwangsoo Ho "A thermodynamically consistent model for magnetic hysteresis"
+! Journal of Magnetism and Magnetic Materials, Vol. 357, 93-96, (2014)
+!
+
+use matrix_util, only: inv3, inverse
+use fem_system, only: solveq
+
+implicit none
+
+interface magmater_calckho
+   module procedure magmater_khocalcH1
+!   module procedure magmater_khocalcH2   ! ode23 solver (slow)
+   module procedure magmater_khocalcH3   ! N-R solver
+end interface
+private magmater_khocalcH1, magmater_khocalcH2, magmater_khocalcH3, magmater_khocalcH4
+
+interface magmater_tangentkho
+   module procedure magmater_tangentkho1
+   module procedure magmater_tangentkho2
+end interface
+private magmater_tangentkho1, magmater_tangentkho2
+
+private  hamodelodes
+
+  double precision, allocatable     :: propEM(:,:)
+  double precision, allocatable     :: Bsave(:,:,:,:), Hsave(:,:,:,:)
+  double precision, allocatable     :: Gsave(:,:,:,:), Ksave(:,:,:,:)
+  private propEM, Bsave, Hsave, Gsave, Ksave
+
+  integer, allocatable              :: matId(:)
+  integer                           :: New, Old
+
+  private matID
+  private New, Old
+  
+  integer :: debugg_mater_kho=0   ! can be used for trigger debugging from main program
+
+!-----------------------------------------------------------------------------
+contains 
+
+
+subroutine magmater_initkho(propEMin,matIdin,nip)
+implicit none
+
+double precision                  :: propEMin(:,:)
+integer                           :: matIdin(:), nip
+
+integer                           :: nels, nprp, ierr, nmat
+
+  nels=size(matIdin)
+  nmat=size(propEmin,1)
+  nprp=size(propEMin,2)
+
+!  write(*,*)'mater_magnlin'
+!  write(*,*)'nrelem ',nels
+!  write(*,*)'nrmat  ',size(propEMin,1)
+!  write(*,*)'nrprop ',size(propEMin,2)
+!  write(*,*)'prop   ',propEMin(1,:)
+!  write(*,*)'prop   ',propEMin(2,:)
+!  write(*,*)'matId  ',matIdin
+
+  allocate(matId(nels), stat=ierr)
+  allocate(propEM(nmat,9), stat=ierr)
+
+  propEM=0d0
+  propEM=propEMin
+
+  matId=matIdin
+
+  allocate(Bsave(3,nip,nels,2), stat=ierr)
+  IF (ierr /= 0) STOP "*** Not enough memory ***"
+  allocate(Hsave(3,nip,nels,2), stat=ierr)
+  IF (ierr /= 0) STOP "*** Not enough memory ***"
+  allocate(Gsave(3,nip,nels,2), stat=ierr)
+  IF (ierr /= 0) STOP "*** Not enough memory ***"
+  allocate(Ksave(3,nip,nels,2), stat=ierr)
+  IF (ierr /= 0) STOP "*** Not enough memory ***"
+!  allocate(Bsave(2,nels,nip,3), stat=ierr)
+!  allocate(Hsave(2,nels,nip,3), stat=ierr)
+
+  Bsave=0d0
+  Hsave=0d0
+  Gsave=0d0
+  Ksave=0d0
+  New=2
+  Old=1
+
+end subroutine magmater_initkho
+
+
+subroutine magmater_acceptkho
+implicit none
+
+!  if (Old.eq.1) then
+!    New=1
+!    Old=2
+!  else
+!    New=2
+!    Old=1
+!  end if
+
+  Bsave(:,:,:,Old)=Bsave(:,:,:,New)
+  Hsave(:,:,:,Old)=Hsave(:,:,:,New)
+  Gsave(:,:,:,Old)=Gsave(:,:,:,New)
+  Ksave(:,:,:,Old)=Ksave(:,:,:,New)
+
+end subroutine magmater_acceptkho
+
+
+subroutine magmater_tangentkho1(mui,si,dt,iel)
+! Calculate the tangent dH=K*dB
+!
+implicit none
+
+double precision, intent(out)                 :: mui(:,:,:), si(:,:,:)
+double precision, intent(in)                  :: dt
+integer                                       :: iel
+
+integer                                       :: ngp, i
+
+  ngp=size(mui,3)
+  mui=0d0
+  si=0d0
+  do i=1,ngp
+    call magmater_tangentkho2(mui(:,:,i),si(:,:,i),dt,iel,i)
+  end do
+ 
+end subroutine magmater_tangentkho1
+
+
+subroutine magmater_tangentkho2(mui,si,dt,iel,igp)
+! Calculate the tangent dH=mui*dB
+! Derivation is based on the algorithmic tangent
+implicit none
+
+double precision, intent(out)                 :: mui(:,:), si(:,:)
+double precision, intent(in)                  :: dt
+integer                                       :: iel, igp
+
+double precision                 :: psi, mu, mut, D, Go, Zo, n, zeta, F
+double precision                 :: H(3), G(3), K(3), normHG, normG
+double precision                 :: Km(3,3), Kmi(3,3), Id(3,3)
+double precision                 :: Km1(3,3), Km2(3,3), Km3(3,3), Ksys(6,6)
+double precision                 :: K2Gi(3,3), KGH(3,3)
+double precision                 :: phi1, phi2, phi3, Z, Dp, DF
+
+
+  psi =propEm(matId(iel),2)
+  mu  =propEm(matId(iel),3)
+  mut =propEm(matId(iel),4)
+  D   =propEm(matId(iel),5)
+  Go  =propEm(matId(iel),6)
+  Zo  =propEm(matId(iel),7)
+  n   =propEm(matId(iel),8)
+  zeta=propEm(matId(iel),9)
+  F=1d0
+  DF=F*dt
+
+  H=Hsave(:,igp,iel,new)
+  G=Gsave(:,igp,iel,new)
+  K=Ksave(:,igp,iel,new)
+  
+  Id(1,:)=(/1d0,0d0,0d0/)
+  Id(2,:)=(/0d0,1d0,0d0/)
+  Id(3,:)=(/0d0,0d0,1d0/)
+
+
+  if (norm2(H)==norm2(G))  H=H+1e-15
+  normHG=norm2(H-G)
+  normG=norm2(G)
+  if (normG.lt.1d-15)  normG=1e-5
+  if (normHG.lt.1d-15) normHG=1e-5
+
+  Z=Zo*(1d0+dexp((normG/Go)**zeta))  ! we must have a check if number is too big
+  
+! Test for infinity, we can have very large values
+  if (Z-1 .eq. Z) then
+!write(*,*)' !INFINITY!!!'
+     Z=1.0d50
+  endif
+   
+  Dp=DF*(normHG/D)**n
+  phi1=n*Dp/normHG**2
+  phi2=Zo*zeta/normG**2*(normG/Go)**zeta*(Z/Zo-1d0)
+  phi3=1d0+Dp/Z/mut+psi/mut                        
+    
+    
+  Km1(1,:)=Dp/normHG*Id(1,:)+phi1/normHG*(H(1)-G(1))*(/H(1)-G(1),H(2)-G(2),H(3)-G(3)/)
+  Km1(2,:)=Dp/normHG*Id(2,:)+phi1/normHG*(H(2)-G(2))*(/H(1)-G(1),H(2)-G(2),H(3)-G(3)/)
+  Km1(3,:)=Dp/normHG*Id(3,:)+phi1/normHG*(H(3)-G(3))*(/H(1)-G(1),H(2)-G(2),H(3)-G(3)/)
+  Km1(1,:)=Km1(1,:)-Dp/normHG**3*(H(1)-G(1))*(/H(1)-G(1),H(2)-G(2),H(3)-G(3)/)
+  Km1(2,:)=Km1(2,:)-Dp/normHG**3*(H(2)-G(2))*(/H(1)-G(1),H(2)-G(2),H(3)-G(3)/)
+  Km1(3,:)=Km1(3,:)-Dp/normHG**3*(H(3)-G(3))*(/H(1)-G(1),H(2)-G(2),H(3)-G(3)/)
+    
+  Km2(1,:)=(psi+Dp/Z)*Id(1,:)+phi3*Km1(1,:)-Dp*phi2/Z**2*(G(1)-K(1))*(/G(1),G(2),G(3)/)
+  Km2(2,:)=(psi+Dp/Z)*Id(2,:)+phi3*Km1(2,:)-Dp*phi2/Z**2*(G(2)-K(2))*(/G(1),G(2),G(3)/)
+  Km2(3,:)=(psi+Dp/Z)*Id(3,:)+phi3*Km1(3,:)-Dp*phi2/Z**2*(G(3)-K(3))*(/G(1),G(2),G(3)/)
+  Km2(1,:)=Km2(1,:)-phi1/Z*(G(1)-K(1))*(/H(1)-G(1),H(2)-G(2),H(3)-G(3)/)
+  Km2(2,:)=Km2(2,:)-phi1/Z*(G(2)-K(2))*(/H(1)-G(1),H(2)-G(2),H(3)-G(3)/)
+  Km2(3,:)=Km2(3,:)-phi1/Z*(G(3)-K(3))*(/H(1)-G(1),H(2)-G(2),H(3)-G(3)/)
+
+  Km3(1,:)=-phi3*Km1(1,:)+phi1/Z*(G(1)-K(1))*(/H(1)-G(1),H(2)-G(2),H(3)-G(3)/)
+  Km3(2,:)=-phi3*Km1(2,:)+phi1/Z*(G(2)-K(2))*(/H(1)-G(1),H(2)-G(2),H(3)-G(3)/)
+  Km3(3,:)=-phi3*Km1(3,:)+phi1/Z*(G(3)-K(3))*(/H(1)-G(1),H(2)-G(2),H(3)-G(3)/)
+    
+  Ksys(1:3,1:3)=mu*Id+Km1
+  Ksys(1:3,4:6)=-Km1
+  Ksys(4:6,1:3)=Km3
+  Ksys(4:6,4:6)=Km2
+      
+  call inv3(K2Gi,Ksys(4:6,4:6))
+  KGH=matmul(K2Gi,Ksys(4:6,1:3))
+  Kmi=Ksys(1:3,1:3)-matmul(Ksys(1:3,4:6),KGH)
+  call inv3(Km,Kmi)
+
+
+  if (size(mui,2).eq.3) then
+    mui(:,:)=Km
+    si=0d0
+    si(1,1)=propEm(matId(iel),1)
+    si(2,2)=propEm(matId(iel),1)
+    si(3,3)=propEm(matId(iel),1)
+  else
+    mui(1:2,1:2)=Km(1:2,1:2)
+    si(1,1)=propEm(matId(iel),1)
+    si(2,2)=propEm(matId(iel),1)
+  end if 
+ 
+end subroutine magmater_tangentkho2
+
+
+subroutine magmater_khocalcH1(H,B,dt,iel)
+implicit none
+
+double precision                  :: H(:,:), B(:,:), dt
+integer                           :: iel
+
+integer                           :: igp, ngp
+  
+  ngp=size(B,2)
+  do igp=1,ngp
+!    call magmater_khocalcH2(H(:,igp),B(:,igp),dt,iel,igp)  ! ode23
+!    call magmater_khocalcH3(H(:,igp),B(:,igp),dt,iel,igp)  ! Newton-Raphson
+    call magmater_khocalcH4(H(:,igp),B(:,igp),dt,iel,igp)  ! Newton-Raphson with substepping
+  end do
+    
+end subroutine magmater_khocalcH1
+
+
+subroutine magmater_khocalcH2(H,B,dt,iel,igp)
+! Using ode23 solver for the Kho mode
+! local error control is used to calculate
+! if sub-steps are needed.
+! ode is  given by dIv=f(...) calculated in hamodelodes
+
+implicit none
+
+double precision, intent(out)     :: H(:)
+double precision, intent(in)      :: B(:), dt
+integer, intent(in)               :: iel
+integer, optional, intent(in)     :: igp
+
+integer                           :: conv, steps, i
+double precision                  :: dB(3), dBstep(3), Ivold(9), Iv(9), Ivstart(9)
+double precision                  :: Bstart(3), Bend(3), Bs(3), Bold(3), error(9)
+double precision                  :: s1(9), s2(9), s3(9), s4(9), param(9)
+double precision                  :: hs, dtstep, dts
+
+
+!  write(*,*)'Bin ',B
+  
+  if (size(B).eq.3) then
+    dB=B-Bsave(:,igp,iel,old)
+  else
+! 2D problem
+    dB(1)=B(1)-Bsave(1,igp,iel,old)
+    dB(2)=B(2)-Bsave(2,igp,iel,old)
+    dB(3)=0d0
+  end if
+  Bold=Bsave(:,igp,iel,old)
+  Ivold=(/Hsave(:,igp,iel,old), Gsave(:,igp,iel,old), Ksave(:,igp,iel,old)/)
+
+!  write(*,*)'Bold ',Bold
+
+! specific material
+  param=propEm(matId(iel),:)
+ 
+
+! first test one step
+  conv=0
+  steps=1
+
+  do while (conv.eq.0)
+  
+    dBstep=dB/dble(steps)
+    Iv=Ivold
+    hs=1d0
+    dtstep=dt/dble(steps)
+    conv=1
+  
+    i=1
+    do while (i.le.steps.and.conv.eq.1) 
+      
+      Ivstart=Iv
+      Bstart=Bold+dBstep*dble(i-1)
+      Bend=Bstart+dBstep
+
+!Stage 1
+      
+      Iv=Ivstart
+      Bs=Bstart
+      dts=0d0
+      call hamodelodes(s1,Bend,Bs,Bstart,Iv,param,dts)
+
+!Stage 2
+
+      Iv=Ivstart+hs/2d0*s1
+      dts=hs/2d0*dtstep
+      Bs=Bstart+hs/2d0*dBstep
+      call hamodelodes(s2,Bend,Bs,Bstart,Iv,param,dts)
+
+!Stage 3
+
+      Iv=Ivstart+3d0*hs/4d0*s2
+      dts=3d0*hs/4d0*dtstep
+      Bs=Bstart+3d0*hs/4d0*dBstep
+      call hamodelodes(s3,Bend,Bs,Bstart,Iv,param,dts)
+
+!Value
+
+      Iv=Ivstart+hs/9d0*(2d0*s1+3d0*s2+4d0*s3)
+
+!Error estimate
+
+      call hamodelodes(s4,Bend,Bend,Bstart,Iv,param,dtstep)
+      error=hs/72d0*(-5d0*s1+6d0*s2+8d0*s3-9d0*s4)
+
+! Is this a good tolerence level
+! must be checked, by simulations?
+
+      if (norm2(error).gt.(100d0*norm2(dBstep))) then
+          conv=0
+      end if
+      
+      i=i+1
+      
+    end do
+  
+    if (conv.eq.0) then
+      steps=steps+3
+    end if 
+  
+  end do
+
+!  write(*,*)'gGlobal error ',norm2(propEm(matId(iel),3)*Iv(1:2)+Iv(7:8)*propEm(matId(iel),4)-B)
+
+! store values
+
+  if (size(B).eq.3) then
+    H=Iv(1:3)
+    Bsave(:,igp,iel,new)=B
+  else
+! 2D problem
+    H=Iv(1:2)
+    Bsave(1,igp,iel,new)=B(1)
+    Bsave(2,igp,iel,new)=B(2)
+    Bsave(3,igp,iel,new)=0d0
+  end if
+  Hsave(:,igp,iel,new)=Iv(1:3)
+  Gsave(:,igp,iel,new)=Iv(4:6)
+  Ksave(:,igp,iel,new)=Iv(7:9)
+  
+end subroutine magmater_khocalcH2
+
+
+
+
+subroutine magmater_khocalcH3(Hout,Bin,dt,iel,igp)
+! Solving evolutions laws using N-R iterations
+!
+implicit none
+
+double precision, intent(out)     :: Hout(:)
+double precision, intent(in)      :: Bin(:), dt
+integer, intent(in)               :: iel
+integer, optional, intent(in)     :: igp
+
+
+double precision                 :: psi, mu, mut, D, Go, Zo, n, zeta, F
+double precision                 :: B(3), H(3), G(3), K(3), normHG, normG
+double precision                 :: Id(3,3)
+double precision                 :: Km1(3,3), Km2(3,3), Km3(3,3)
+double precision                 :: Ksys(6,6)
+double precision                 :: phi1, phi2, phi3, Z, Dp, DF
+double precision                 :: dB(3)
+double precision                 :: Hold(3), Gold(3), Kold(3), Bold(3)
+double precision                 :: dBirr(3), Res(6)
+integer                          :: i, conv
+
+
+  psi =propEm(matId(iel),2)
+  mu  =propEm(matId(iel),3)
+  mut =propEm(matId(iel),4)
+  D   =propEm(matId(iel),5)
+  Go  =propEm(matId(iel),6)
+  Zo  =propEm(matId(iel),7)
+  n   =propEm(matId(iel),8)
+  zeta=propEm(matId(iel),9)
+  F=1d0
+  DF=F*dt
+  
+  Id(1,:)=(/1d0,0d0,0d0/)
+  Id(2,:)=(/0d0,1d0,0d0/)
+  Id(3,:)=(/0d0,0d0,1d0/)
+
+  Hold=Hsave(:,igp,iel,old)
+  Gold=Gsave(:,igp,iel,old)
+  Kold=Ksave(:,igp,iel,old)
+  Bold=Bsave(:,igp,iel,old)
+  
+  H=Hold
+  G=Gold
+  K=Kold
+
+  if (size(Bin).eq.3) then
+    B=Bin
+  else
+! 2D problem
+    B(1)=Bin(1)
+    B(2)=Bin(2)
+    B(3)=0d0
+  end if
+
+  
+  if (norm2(H)==norm2(G))  H=H+1e-15
+  normHG=norm2(H-G)
+  normG=norm2(G)
+  if (normG.lt.1d-15)  normG=1e-5
+  if (normHG.lt.1d-15) normHG=1e-5
+
+  Dp=DF*(normHG/D)**n
+  Z=Zo*(1d0+dexp((normG/Go)**zeta))  ! we must have a check if number is too big
+  
+! Test for infinity, we can have very large values
+  if (Z-1 .eq. Z) then
+!write(*,*)' !INFINITY!!!'
+     Z=1.0d50
+  endif
+ 
+  DBirr=Dp*(H-G)/normHG;
+  K=Kold+DBirr/mut;
+  DB=B-Bsave(:,igp,iel,old)
+
+  Res(1:3)=mu*(H-Hold)+DBirr-DB
+!Res(4:6)=psi*(G-Gold)-DBirr+Dp/Z*(G-K)+psi*DBirr/mut
+  Res(4:6)=DBirr-norm2(DBirr)/Z*(G-K)+psi*DBirr/mut-psi*(G-Gold)
+  Res(4:6)=-Res(4:6)
+
+  
+  i=0
+  conv=1
+  do while ((norm2(Res).gt.1e-8.or.i.eq.0).and.conv.eq.1)
+    i=i+1
+
+    Dp=DF*(normHG/D)**n
+    phi1=n*Dp/normHG**2
+    phi2=Zo*zeta/normG**2*(normG/Go)**zeta*(Z/Zo-1d0)
+    phi3=1d0+Dp/Z/mut+psi/mut                        
+    
+    Km1(1,:)=Dp/normHG*Id(1,:)+phi1/normHG*(H(1)-G(1))*(/H(1)-G(1),H(2)-G(2),H(3)-G(3)/)
+    Km1(2,:)=Dp/normHG*Id(2,:)+phi1/normHG*(H(2)-G(2))*(/H(1)-G(1),H(2)-G(2),H(3)-G(3)/)
+    Km1(3,:)=Dp/normHG*Id(3,:)+phi1/normHG*(H(3)-G(3))*(/H(1)-G(1),H(2)-G(2),H(3)-G(3)/)
+    Km1(1,:)=Km1(1,:)-Dp/normHG**3*(H(1)-G(1))*(/H(1)-G(1),H(2)-G(2),H(3)-G(3)/)
+    Km1(2,:)=Km1(2,:)-Dp/normHG**3*(H(2)-G(2))*(/H(1)-G(1),H(2)-G(2),H(3)-G(3)/)
+    Km1(3,:)=Km1(3,:)-Dp/normHG**3*(H(3)-G(3))*(/H(1)-G(1),H(2)-G(2),H(3)-G(3)/)
+    
+    Km2(1,:)=(psi+Dp/Z)*Id(1,:)+phi3*Km1(1,:)-Dp*phi2/Z**2*(G(1)-K(1))*(/G(1),G(2),G(3)/)
+    Km2(2,:)=(psi+Dp/Z)*Id(2,:)+phi3*Km1(2,:)-Dp*phi2/Z**2*(G(2)-K(2))*(/G(1),G(2),G(3)/)
+    Km2(3,:)=(psi+Dp/Z)*Id(3,:)+phi3*Km1(3,:)-Dp*phi2/Z**2*(G(3)-K(3))*(/G(1),G(2),G(3)/)
+    Km2(1,:)=Km2(1,:)-phi1/Z*(G(1)-K(1))*(/H(1)-G(1),H(2)-G(2),H(3)-G(3)/)
+    Km2(2,:)=Km2(2,:)-phi1/Z*(G(2)-K(2))*(/H(1)-G(1),H(2)-G(2),H(3)-G(3)/)
+    Km2(3,:)=Km2(3,:)-phi1/Z*(G(3)-K(3))*(/H(1)-G(1),H(2)-G(2),H(3)-G(3)/)
+
+    Km3(1,:)=-phi3*Km1(1,:)+phi1/Z*(G(1)-K(1))*(/H(1)-G(1),H(2)-G(2),H(3)-G(3)/)
+    Km3(2,:)=-phi3*Km1(2,:)+phi1/Z*(G(2)-K(2))*(/H(1)-G(1),H(2)-G(2),H(3)-G(3)/)
+    Km3(3,:)=-phi3*Km1(3,:)+phi1/Z*(G(3)-K(3))*(/H(1)-G(1),H(2)-G(2),H(3)-G(3)/)
+    
+    Ksys(1:3,1:3)=mu*Id+Km1
+    Ksys(1:3,4:6)=-Km1
+    Ksys(4:6,1:3)=Km3
+    Ksys(4:6,4:6)=Km2
+      
+    Res=-Res
+    call solveq(Ksys,Res)
+
+! Update
+
+    H=H+Res(1:3)
+    G=G+Res(4:6)
+
+! Too many iterations?
+    
+    if (i.eq.50) then
+        write(*,*)'Mater_kho calculation of H-field did not converge'
+        write(*,*)'too big step'
+        stop
+    endif
+
+! Residual
+ 
+    if (norm2(H).eq.norm2(G))  H=H+1e-15
+    normHG=norm2(H-G)
+    normG=norm2(G)
+    if (normG.lt.1e-15)  normG=1e-15
+    if (normHG.lt.1e-15) normHG=1e-15
+
+    Dp=DF*(normHG/D)**n
+    Z=Zo*(1d0+exp((normG/Go)**zeta))
+
+! Test for infinity
+    if (Z-1 .eq. Z) then
+!write(*,*)' !INFINITY!!!'
+      Z=1.0d50
+    endif
+
+    DBirr=Dp*(H-G)/normHG
+    K=Kold+DBirr/mut
+      
+    Res(1:3)=mu*(H-Hold)+DBirr-DB 
+!Res(4:6)=psi*(G-Gold)-DBirr+Dp/Z*(G-K)-psi*DBirr/mut
+    Res(4:6)=DBirr-norm2(DBirr)/Z*(G-K)+psi*DBirr/mut-psi*(G-Gold)
+    Res(4:6)=-Res(4:6)
+       
+   
+  end do ! iteration loop
+ 
+  Hsave(:,igp,iel,new)=H
+  Gsave(:,igp,iel,new)=G
+  Ksave(:,igp,iel,new)=K
+  if (size(Bin).eq.3) then
+    Hout=H
+    Bsave(:,igp,iel,new)=B
+  else
+! 2D problem
+    Hout=H(1:2)
+    Bsave(1,igp,iel,new)=B(1)
+    Bsave(2,igp,iel,new)=B(2)
+    Bsave(3,igp,iel,new)=0d0
+  end if
+   
+end subroutine magmater_khocalcH3
+
+
+subroutine magmater_khocalcH4(Hout,Bin,dtin,iel,igp)
+! Solving evolutions laws using N-R iterations
+! substepping implementation
+!
+implicit none
+
+double precision, intent(out)     :: Hout(:)
+double precision, intent(in)      :: Bin(:), dtin
+integer, intent(in)               :: iel
+integer, optional, intent(in)     :: igp
+
+double precision                  :: Hold(3), Gold(3), Kold(3), Bold(3)
+double precision                  :: B(3), H(3), G(3), K(3), DB(3)
+double precision                  :: Hs(3), Gs(3), Ks(3)
+double precision                  :: dt
+integer                           :: conv, steps, istep
+
+  
+  Bold=Bsave(:,igp,iel,old)
+
+  if (size(Bin).eq.3) then
+    B=Bin
+  else
+! 2D problem
+    B(1)=Bin(1)
+    B(2)=Bin(2)
+    B(3)=0d0
+  end if
+
+  steps=1
+  conv=0
+
+  do while (conv.eq.0) 
+ 
+! Start data
+    H=Hsave(:,igp,iel,old)
+    G=Gsave(:,igp,iel,old)
+    K=Ksave(:,igp,iel,old)
+
+    DB=(B-Bold)/dble(steps)
+    dt=dtin/dble(steps)
+ 
+    istep=0
+    conv=1
+     
+    do while (istep.lt.steps.and.conv.eq.1) 
+      istep=istep+1
+
+! new starting stage
+      Hold=H
+      Gold=G
+      Kold=K
+      
+      call magmater_khocalcHstep(conv,H,G,K,DB,Hold,Gold,Kold,dt,iel,igp)
+
+      if (conv.eq.0) then
+        steps=steps+3
+      end if
+
+    end do  
+  
+  end do
+  
+! store data
+    
+  Hsave(:,igp,iel,new)=H
+  Gsave(:,igp,iel,new)=G
+  Ksave(:,igp,iel,new)=K
+  if (size(Bin).eq.3) then
+    Hout=H
+    Bsave(:,igp,iel,new)=B
+  else
+! 2D problem
+    Hout=H(1:2)
+    Bsave(1,igp,iel,new)=B(1)
+    Bsave(2,igp,iel,new)=B(2)
+    Bsave(3,igp,iel,new)=0d0
+  end if
+ 
+end subroutine magmater_khocalcH4
+
+
+
+subroutine magmater_khocalcHstep(conv,H,G,K,DB,Hold,Gold,Kold,dt,iel,igp)
+! Solving evolutions laws using N-R iterations
+!
+implicit none
+
+double precision, intent(out)     :: H(:), G(:), K(:) 
+double precision, intent(in)      :: DB(:), Hold(:), Gold(:), Kold(:), dt
+integer, intent(in)               :: iel
+integer, intent(out)              :: conv
+integer, optional, intent(in)     :: igp
+
+
+double precision                 :: psi, mu, mut, D, Go, Zo, n, zeta, F
+double precision                 :: normHG, normG
+double precision                 :: Id(3,3)
+double precision                 :: Km1(3,3), Km2(3,3), Km3(3,3)
+double precision                 :: Ksys(6,6)
+double precision                 :: phi1, phi2, phi3, Z, Dp, DF
+double precision                 :: dBirr(3), Res(6)
+integer                          :: i
+
+
+  psi =propEm(matId(iel),2)
+  mu  =propEm(matId(iel),3)
+  mut =propEm(matId(iel),4)
+  D   =propEm(matId(iel),5)
+  Go  =propEm(matId(iel),6)
+  Zo  =propEm(matId(iel),7)
+  n   =propEm(matId(iel),8)
+  zeta=propEm(matId(iel),9)
+  F=1d0
+  DF=F*dt
+  
+  Id(1,:)=(/1d0,0d0,0d0/)
+  Id(2,:)=(/0d0,1d0,0d0/)
+  Id(3,:)=(/0d0,0d0,1d0/)
+  
+  H=Hold
+  G=Gold
+  K=Kold
+
+  if (norm2(H)==norm2(G))  H=H+1e-15
+  normHG=norm2(H-G)
+  normG=norm2(G)
+  if (normG.lt.1d-15)  normG=1e-5
+  if (normHG.lt.1d-15) normHG=1e-5
+
+  Dp=DF*(normHG/D)**n
+  Z=Zo*(1d0+dexp((normG/Go)**zeta))  ! we must have a check if number is too big
+  
+! Test for infinity, we can have very large values
+  if (Z-1 .eq. Z) then
+!write(*,*)' !INFINITY!!!'
+     Z=1.0d50
+  endif
+ 
+  DBirr=Dp*(H-G)/normHG;
+  K=Kold+DBirr/mut;
+
+  Res(1:3)=mu*(H-Hold)+DBirr-DB
+!Res(4:6)=psi*(G-Gold)-DBirr+Dp/Z*(G-K)+psi*DBirr/mut
+  Res(4:6)=DBirr-norm2(DBirr)/Z*(G-K)+psi*DBirr/mut-psi*(G-Gold)
+  Res(4:6)=-Res(4:6)
+
+  i=0
+  conv=1
+  do while ((norm2(Res).gt.1e-8.or.i.eq.0).and.conv.eq.1)
+    i=i+1
+
+    Dp=DF*(normHG/D)**n
+    phi1=n*Dp/normHG**2
+    phi2=Zo*zeta/normG**2*(normG/Go)**zeta*(Z/Zo-1d0)
+    phi3=1d0+Dp/Z/mut+psi/mut                        
+    
+    Km1(1,:)=Dp/normHG*Id(1,:)+phi1/normHG*(H(1)-G(1))*(/H(1)-G(1),H(2)-G(2),H(3)-G(3)/)
+    Km1(2,:)=Dp/normHG*Id(2,:)+phi1/normHG*(H(2)-G(2))*(/H(1)-G(1),H(2)-G(2),H(3)-G(3)/)
+    Km1(3,:)=Dp/normHG*Id(3,:)+phi1/normHG*(H(3)-G(3))*(/H(1)-G(1),H(2)-G(2),H(3)-G(3)/)
+    Km1(1,:)=Km1(1,:)-Dp/normHG**3*(H(1)-G(1))*(/H(1)-G(1),H(2)-G(2),H(3)-G(3)/)
+    Km1(2,:)=Km1(2,:)-Dp/normHG**3*(H(2)-G(2))*(/H(1)-G(1),H(2)-G(2),H(3)-G(3)/)
+    Km1(3,:)=Km1(3,:)-Dp/normHG**3*(H(3)-G(3))*(/H(1)-G(1),H(2)-G(2),H(3)-G(3)/)
+    
+    Km2(1,:)=(psi+Dp/Z)*Id(1,:)+phi3*Km1(1,:)-Dp*phi2/Z**2*(G(1)-K(1))*(/G(1),G(2),G(3)/)
+    Km2(2,:)=(psi+Dp/Z)*Id(2,:)+phi3*Km1(2,:)-Dp*phi2/Z**2*(G(2)-K(2))*(/G(1),G(2),G(3)/)
+    Km2(3,:)=(psi+Dp/Z)*Id(3,:)+phi3*Km1(3,:)-Dp*phi2/Z**2*(G(3)-K(3))*(/G(1),G(2),G(3)/)
+    Km2(1,:)=Km2(1,:)-phi1/Z*(G(1)-K(1))*(/H(1)-G(1),H(2)-G(2),H(3)-G(3)/)
+    Km2(2,:)=Km2(2,:)-phi1/Z*(G(2)-K(2))*(/H(1)-G(1),H(2)-G(2),H(3)-G(3)/)
+    Km2(3,:)=Km2(3,:)-phi1/Z*(G(3)-K(3))*(/H(1)-G(1),H(2)-G(2),H(3)-G(3)/)
+
+    Km3(1,:)=-phi3*Km1(1,:)+phi1/Z*(G(1)-K(1))*(/H(1)-G(1),H(2)-G(2),H(3)-G(3)/)
+    Km3(2,:)=-phi3*Km1(2,:)+phi1/Z*(G(2)-K(2))*(/H(1)-G(1),H(2)-G(2),H(3)-G(3)/)
+    Km3(3,:)=-phi3*Km1(3,:)+phi1/Z*(G(3)-K(3))*(/H(1)-G(1),H(2)-G(2),H(3)-G(3)/)
+    
+    Ksys(1:3,1:3)=mu*Id+Km1
+    Ksys(1:3,4:6)=-Km1
+    Ksys(4:6,1:3)=Km3
+    Ksys(4:6,4:6)=Km2
+      
+    Res=-Res
+    call solveq(Ksys,Res)
+
+! Update
+
+    H=H+Res(1:3)
+    G=G+Res(4:6)
+
+! Too many iterations?
+    
+    if (i.eq.40) then
+!        write(*,*)'Mater_kho calculation of H-field did not converge'
+!        write(*,*)'too big step'
+        conv=0
+!        pause
+!stop
+    endif
+
+! Residual
+ 
+    if (norm2(H).eq.norm2(G))  H=H+1e-15
+    normHG=norm2(H-G)
+    normG=norm2(G)
+    if (normG.lt.1e-15)  normG=1e-15
+    if (normHG.lt.1e-15) normHG=1e-15
+
+    Dp=DF*(normHG/D)**n
+    Z=Zo*(1d0+exp((normG/Go)**zeta))
+
+! Test for infinity
+    if (Z-1 .eq. Z) then
+!write(*,*)' !INFINITY!!!'
+      Z=1.0d50
+    endif
+
+    DBirr=Dp*(H-G)/normHG
+    K=Kold+DBirr/mut
+      
+    Res(1:3)=mu*(H-Hold)+DBirr-DB 
+!Res(4:6)=psi*(G-Gold)-DBirr+Dp/Z*(G-K)-psi*DBirr/mut
+    Res(4:6)=DBirr-norm2(DBirr)/Z*(G-K)+psi*DBirr/mut-psi*(G-Gold)
+    Res(4:6)=-Res(4:6)
+        
+  end do ! iteration loop
+ 
+   
+end subroutine magmater_khocalcHstep
+
+
+
+subroutine hamodelodes(dOut,Bend,Bt,Bold,Iv,param,dt)
+!
+! Odes describing the kho-model
+!
+implicit none
+
+double precision, intent(out)    :: dOut(:)
+double precision, intent(in)     :: Bend(:), Bt(:), Bold(:), Iv(:),dt,param(:)
+
+double precision                 :: psi, mu, mut, Dov, Go, Zo, n, zeta, F, D          
+double precision                 :: H(3), G(3), K(3), dB(3), dBirr(3)
+double precision                 :: normHG, Z, dirHG(3), p
+
+! material parameters
+  psi=param(2)
+  mu=param(3)
+  mut=param(4)
+  Dov=param(5)
+  Go=param(6)
+  Zo=param(7)
+  n=param(8)
+  zeta=param(9)
+  F=1d0
+
+  H=Iv(1:3)
+  K=Iv(4:6)
+  G=Iv(7:9)
+
+  normHG=norm2(H-G)
+  Z=Zo*(1d0+dexp((norm2(G)/Go)**zeta))
+  D=Dov;
+
+  if (normHG.eq.0d0) then
+    dirHG=(Bend-Bold)/norm2(Bend-Bold)    
+  else
+    dirHG=(H-G)/normHG
+  end if
+
+  dB=Bt-Bold;
+  p=dt*F*(normHG/D)**(n)
+  dBirr=p*dirHG;
+
+! dH, dK, dG
+  dOut(1:3)=1d0/mu*(dB-dBirr)
+  dOut(4:6)=1d0/mut*dBirr
+  dOut(7:9)=1d0/psi*(dBirr-(G-K)/Z*norm2(dBirr))+dOut(4:6)
+
+
+end subroutine hamodelodes
+
+
+subroutine magmater_getkhoH(field,Hout,iel) 
+implicit none
+
+character                         :: field*(*)
+double precision                  :: Hout(:,:)
+integer                           :: iel
+
+double precision                  :: mut
+
+  if (trim(field).eq.'Hfield') then
+    if (size(Hout,1).eq.3) then
+      Hout=Hsave(:,:,iel,new)
+    else
+      Hout=Hsave(1:2,:,iel,new)
+    end if
+  elseif (trim(field).eq.'Bfield') then
+    if (size(Hout,1).eq.3) then
+      Hout=Bsave(:,:,iel,new)
+    else
+      Hout=Bsave(1:2,:,iel,new)
+    end if
+  elseif (trim(field).eq.'Bintr') then
+    mut =propEm(matId(iel),4)
+    if (size(Hout,1).eq.3) then
+      Hout=mut*Ksave(:,:,iel,new)
+    else
+      Hout=mut*Ksave(1:2,:,iel,new)
+    end if
+  else
+    write(*,*)'Field is note stored in mater_magnkho'
+    write(*,*)field
+    stop
+  end if
+  
+end subroutine magmater_getkhoH
+
+
+subroutine magmater_khopara_get(prop,iel)
+implicit none
+
+double precision                  :: prop(:)
+integer                           :: iel
+
+   prop=propEM(matId(iel),:)
+
+end subroutine magmater_khopara_get
+
+
+end module  mater_magnkho
