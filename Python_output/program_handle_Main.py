@@ -76,7 +76,7 @@ class MainClass(object):
         self.input_data.imc_vol_transf         = 1.45
         
         # Load loop
-        self.input_data.imc_steps              = 400
+        self.input_data.imc_steps              = 1
         
         # Level set function parameters
         self.input_data.ls_gamma               = 0.625*1e-6

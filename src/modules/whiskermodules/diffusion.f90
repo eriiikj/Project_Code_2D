@@ -148,7 +148,7 @@ subroutine diffusion_grain(diffsys, i_IMC, global_mesh, grain_mesh, g, input_loc
     call mesh_reset(grain_mesh)
     print *, 'After mesh reset'
 
-    print *, 'In diffusion'
+    
     ! Location of phase mesh script
     call getcwd(main_location)
     phase_mesh_script_location = '/home/er7128ja/Nextcloud/Projekt/Project_Code_2D/Python_output/phase_mesh_script'
@@ -157,7 +157,8 @@ subroutine diffusion_grain(diffsys, i_IMC, global_mesh, grain_mesh, g, input_loc
     ! Generete mesh by running python script
     call chdir(phase_mesh_script_location)
     call clock_time(t1, omp_run)
-    write(command_line,'(A37,I1)'), 'python grain_mesh_triangular_Main.py ', g
+    ! write(command_line,'(A37,I1)'), 'python grain_mesh_triangular_Main.py ', g
+    write(command_line,'(A37,I1)'), 'python grain_mesh_global_Main.py ', g
     call execute_command_line(trim(command_line))
     call clock_time(t2, omp_run)
     diffsys%generate_mesh_time = diffsys%generate_mesh_time + (t2 - t1)    

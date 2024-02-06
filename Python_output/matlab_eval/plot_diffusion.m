@@ -39,7 +39,7 @@ grainArr = repmat(grain, 1, ngrains);
 
 %% Diffusion equation
 step_size = 1;
-for i_IMC = 260%1:step_size:IMC_steps
+for i_IMC = 1%1:step_size:IMC_steps
 
     % Load ngrains from level set
     [ngrains] = load_level_set(i_IMC); 
@@ -222,16 +222,22 @@ edof           = zeros(mesh_struct.nelm, mesh_struct.dofel+1);
 edof(:,1)      = 1:mesh_struct.nelm;
 edof(:,2:end)  = mesh_struct.edof;
 enod           = mesh_struct.enod';
-ex             = mesh_struct.ex;
-ey             = mesh_struct.ey;
 bcnod          = mesh_struct.bcnod;
 bcval          = mesh_struct.bcval;
 bcval_idx      = mesh_struct.bcval_idx;
 coord          = mesh_struct.coord'*1e-3;
-dofs           = mesh_struct.dofs;
 nodel          = mesh_struct.nodel;
 nelm           = mesh_struct.nelm;
 ndof           = mesh_struct.ndof;
+dofspernode    = mesh_struct.dofs_per_node;
+
+% Dofs (one dof per node)
+if (dofspernode==1)
+    dofs = (1:ndof)';
+end
+
+% Ex and Ey
+[ex,ey] = coordxtr(edof,coord,dofs,nodel);
 end
 
 

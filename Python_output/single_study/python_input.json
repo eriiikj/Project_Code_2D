@@ -5,7 +5,7 @@
     "geom_y3": 0.4,
     "geom_y4": 0.6000000000000001,
     "geom_y5": 0.8,
-    "imc_steps": 400,
+    "imc_steps": 1,
     "imc_vol_transf": 1.45,
     "location": "/home/er7128ja/Nextcloud/Projekt/Project_Code_2D/Python_output/single_study",
     "ls_DIMC": 1.647e-10,
