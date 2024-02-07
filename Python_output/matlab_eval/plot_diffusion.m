@@ -45,7 +45,7 @@ for i_IMC = 1%1:step_size:IMC_steps
     [ngrains] = load_level_set(i_IMC); 
     
     % Load grain mesh
-    for g=1:ngrains
+    for g=4%1:ngrains
         [grainArr(g).edof,grainArr(g).enod,grainArr(g).coord,...
          grainArr(g).dofs,grainArr(g).ex,grainArr(g).ey,...
          grainArr(g).bcnod,grainArr(g).bcval,grainArr(g).bcval_idx,...
@@ -62,7 +62,7 @@ for i_IMC = 1%1:step_size:IMC_steps
     % Plot grain mesh with concentration
     f1 = figure(1);
     cla;
-    for g=1:ngrains
+    for g=4%1:ngrains
 %         plot_mesh(grainArr(g).ex,grainArr(g).ey)
         plot_2D_conc(grainArr(g).ex,grainArr(g).ey,grainArr(g).ed,i_IMC)
         hold on
@@ -91,67 +91,67 @@ end
 
 
 
-% % --- Compute jint2 ---
-% g = 4;
-% nbnods  = length(grainArr(g).bcnod(:,1));
-% jint2   = zeros(nbnods,1);
-% counter = 1;
-% while (counter<nbnods)
-%     iseg_start  = counter;
-%     bcval_c     = grainArr(g).bcval_idx(counter);
-%     nnods_bcseg = 0;   
-%     stop        = 0;
-%     while (stop==0 && (counter + nnods_bcseg<=nbnods))        
-%         bcval_cc    = grainArr(g).bcval_idx(counter + nnods_bcseg);
-%         if (abs(bcval_cc-bcval_c)<1e-15) 
-%             nnods_bcseg = nnods_bcseg + 1;
-%         else
-%             stop = 1;
-%         end
-%     end
-%     iseg_end    = iseg_start + nnods_bcseg - 1;
-%     nseg_sep    = nnods_bcseg - 1;
-%     if (nnods_bcseg>1)
-%    
-%         % Compute mass matrix
-%         enod_m = zeros(2,nseg_sep);
-%         for ie=1:nseg_sep
-%           enod_m(:,ie) = [ie,ie+1];
-%         end
-%         M = zeros(nnods_bcseg,nnods_bcseg);
-%         
-%         % Assemble mass matrix
-%         for ie=1:nseg_sep
-%         
-%           % Nods
-%           n1 = grainArr(g).bcnod(counter+ie-1,1);
-%           n2 = grainArr(g).bcnod(counter+ie,1); 
-%         
-%           % Coordinates and length of element
-%           x1 = grainArr(g).coord(n1,1);
-%           y1 = grainArr(g).coord(n1,2);
-%           x2 = grainArr(g).coord(n2,1);
-%           y2 = grainArr(g).coord(n2,2);
-%           Le = norm([(x2-x1), (y2-y1)]);
-%         
-%           % Mass matrix
-%           Me      = zeros(2,2);
-%           Me(1,:) = [2, 1];
-%           Me(2,:) = [1, 2];
-%           Me      = Le/6d0*Me;
-%           M(enod_m(:,ie),enod_m(:,ie)) = M(enod_m(:,ie),enod_m(:,ie)) + Me;
-%         end    
-%     
-%         % Solve M*vnod = -r
-%         b = -grainArr(g).r(grainArr(g).bcnod(iseg_start:iseg_end,1));
-%         jint2(iseg_start:iseg_end) = M\b;
-% 
-%     end
-% 
-%     %  Update counter
-%     counter = counter + nnods_bcseg;
-% 
-% end
+% --- Compute jint2 ---
+g = 4;
+nbnods  = length(grainArr(g).bcnod(:,1));
+jint2   = zeros(nbnods,1);
+counter = 1;
+while (counter<nbnods)
+    iseg_start  = counter;
+    bcval_c     = grainArr(g).bcval_idx(counter);
+    nnods_bcseg = 0;   
+    stop        = 0;
+    while (stop==0 && (counter + nnods_bcseg<=nbnods))        
+        bcval_cc    = grainArr(g).bcval_idx(counter + nnods_bcseg);
+        if (abs(bcval_cc-bcval_c)<1e-15) 
+            nnods_bcseg = nnods_bcseg + 1;
+        else
+            stop = 1;
+        end
+    end
+    iseg_end    = iseg_start + nnods_bcseg - 1;
+    nseg_sep    = nnods_bcseg - 1;
+    if (nnods_bcseg>1)
+   
+        % Compute mass matrix
+        enod_m = zeros(2,nseg_sep);
+        for ie=1:nseg_sep
+          enod_m(:,ie) = [ie,ie+1];
+        end
+        M = zeros(nnods_bcseg,nnods_bcseg);
+        
+        % Assemble mass matrix
+        for ie=1:nseg_sep
+        
+          % Nods
+          n1 = grainArr(g).bcnod(counter+ie-1,1);
+          n2 = grainArr(g).bcnod(counter+ie,1); 
+        
+          % Coordinates and length of element
+          x1 = grainArr(g).coord(n1,1);
+          y1 = grainArr(g).coord(n1,2);
+          x2 = grainArr(g).coord(n2,1);
+          y2 = grainArr(g).coord(n2,2);
+          Le = norm([(x2-x1), (y2-y1)]);
+        
+          % Mass matrix
+          Me      = zeros(2,2);
+          Me(1,:) = [2, 1];
+          Me(2,:) = [1, 2];
+          Me      = Le/6d0*Me;
+          M(enod_m(:,ie),enod_m(:,ie)) = M(enod_m(:,ie),enod_m(:,ie)) + Me;
+        end    
+    
+        % Solve M*vnod = -r
+        b = -grainArr(g).r(grainArr(g).bcnod(iseg_start:iseg_end,1));
+        jint2(iseg_start:iseg_end) = M\b;
+
+    end
+
+    %  Update counter
+    counter = counter + nnods_bcseg;
+
+end
 
 
 

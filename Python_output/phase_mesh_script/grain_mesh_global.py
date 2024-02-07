@@ -898,6 +898,11 @@ class Solver(object):
         enod  = enod.astype(int)
         edof  = enod
         
+        # Make sure that enod is numbered counter-clockwise for 3-node elm
+        self.reorder_enod_triangle(coord, enod)
+        
+        
+        
         
         # Finalize the Gmsh API
         gmsh.finalize()
@@ -1285,6 +1290,37 @@ class Solver(object):
         
         # Return boundary nodes
         return boundary_nodes
+        
+    
+    def reorder_enod_triangle(self, coord, enod):
+        """Routine for reordering enod in a plane triangle s.t. the node
+        numbering is counter-clockwise"""
+        
+        nelm = np.size(enod,0)
+        
+        
+        for i in range(nelm):
+            # Extract the node indices for the current element
+            elm_nodes = enod[i]
+    
+            # Extract the coordinates for the current element
+            elm_coords = coord[elm_nodes-1]
+    
+            # Check if the nodes are in counter-clockwise order, if not, reverse the order
+            if not self.is_ccw(*elm_coords):
+                enod[i] = np.flip(elm_nodes)
+
+        return enod
+        
+
+    def is_ccw(self,p1, p2, p3):
+        """
+        Check if the given three points (nodes) are in counter-clockwise order.
+        """
+        return (p2[1] - p1[1]) * (p3[0] - p2[0]) > (p2[0] - p1[0]) * (p3[1] - p2[1])
+
+        
+        
         
     def reorder_enod(self, coord,enod):
         """"Reordering enod. Start in lower left corner. Counter-clockwise."""

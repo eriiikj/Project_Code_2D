@@ -195,7 +195,7 @@ if __name__ == "__main__":
         print("Running phase mesh script")
     else:
         print("No command-line argument for number of grains provided. Grain=0.")
-        grain = 1  - 1
+        grain = 4  - 1
     
     
     # --- Create application instance ---
