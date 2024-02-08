@@ -63,136 +63,280 @@ class InputData(object):
     
     def geometry(self):
         """Create geometry instance"""
-
-    
+        
         # Short form
         ngrains = self.ngrains
         
+        
+        
+        # --- Add all unique points to the gmsh model ---
+        all_coord = np.zeros([5000,2])
+        counter   = 0
         for grain in range(ngrains):
-            g_cols     = [2*grain, 2*grain + 1]
-            nseg       = self.line_seg_all[grain]
-            line_ex    = self.line_ex_all[:nseg,g_cols]
-            line_ey    = self.line_ey_all[:nseg,g_cols]
-            nsep_lines = self.nsep_lines_all[grain]
-            sep_lines  = self.sep_lines_all[:nsep_lines,g_cols]
             
+            # Extract line segements of grain boundary for grain
+            self.extract_local_boundary(grain)
             
-        
-        
-        
-        
-            # --- Add all line segement points ---
-            npoint       = 0 
-            line_counter = 0
+            # Short form
+            line_ex      = self.line_ex
+            line_ey      = self.line_ey
+            nseg         = self.nseg
+            nsep_lines   = self.nsep_lines
+            sep_lines    = self.sep_lines
+            line_ex_add  = self.line_ex_add
+            line_ey_add  = self.line_ey_add
+            line_seg_add = self.line_seg_add
+            
             # Loop through all seperate lines
+            
+            for sep_idx in range(nsep_lines):
+                
+                # Segements to add
+                nseg_sep = sep_lines[sep_idx,1] - sep_lines[sep_idx,0] + 1
+                all_coord[counter:counter + nseg_sep,0] = line_ex[:,0]
+                all_coord[counter:counter + nseg_sep,1] = line_ey[:,0]
+                all_coord[counter + nseg_sep,0]         = line_ex[nseg_sep-1,1]
+                all_coord[counter + nseg_sep,1]         = line_ey[nseg_sep-1,1]
+                
+                # Update counter
+                counter = counter + nseg_sep + 1
+                
+                # Additional segments to add
+                nseg_sep_add = line_seg_add[sep_idx]
+                
+                # Add additional line segments
+                all_coord[counter:counter + nseg_sep_add,0] = line_ex_add[:nseg_sep_add,0]
+                all_coord[counter:counter + nseg_sep_add,1] = line_ey_add[:nseg_sep_add,0]
+                all_coord[counter + nseg_sep_add,0]         = line_ex_add[nseg_sep_add-1,1]
+                all_coord[counter + nseg_sep_add,1]         = line_ey_add[nseg_sep_add-1,1]
+                
+                # Update counter
+                counter = counter + nseg_sep_add + 1
+                
+               
+        # Find unique nodes
+        all_coord = np.unique(all_coord, axis=0)
+        
+        # Add the nodes to the model
+        z = 0
+        for node_id, (x, y) in enumerate(all_coord):
+            gmsh.model.geo.addPoint(x, y, z, meshSize=0.1, tag=node_id)
+            
+        # Create a surface from all points (without specifying loops)
+        node_tags = [i for i in range(1, len(all_coord) + 1)]
+            
+        
+        
+        # Enteties
+        
+        # --- Add all line segments to the gmsh model and create a face ---
+        line_id = 0
+        for grain in range(ngrains):
+            
+            # Extract line segements of grain boundary for grain
+            self.extract_local_boundary(grain)
+            
+            # Short form
+            line_ex      = self.line_ex
+            line_ey      = self.line_ey
+            nseg         = self.nseg
+            nsep_lines   = self.nsep_lines
+            sep_lines    = self.sep_lines
+            line_ex_add  = self.line_ex_add
+            line_ey_add  = self.line_ey_add
+            line_seg_add = self.line_seg_add
+            
+            # --- Splines ---
+            
+            
+            # Loop through all seperate lines
+            npoint_prev       = 0
+            interface_splines = np.zeros(nseg,dtype=int)
+            marker_c          = 0
+            
             for sep_idx in range(nsep_lines):
                 
                 # Cols of sep_idx
                 sep_idx_cols = [2*sep_idx, 2*sep_idx + 1]
-                
-                # Segements to add
                 nseg_sep     = sep_lines[sep_idx,1] - sep_lines[sep_idx,0] + 1
-                # nseg_sep_add = line_seg_add[sep_idx]
-      
-                # Add points in primary interface
+                nseg_sep_add = line_seg_add[sep_idx]
+                        
+                # Interface splines
                 for i in range(nseg_sep):
-                    P = [line_ex[line_counter,0],line_ey[line_counter,0]]
-                    line_counter = line_counter + 1
+                            
+                    # Coordinates of line segment
+                    P1 = [line_ex[i,0], line_ey[i,0]]
+                    P2 = [line_ex[i,1], line_ey[i,1]]
                     
-                    # Add point
-                    gmsh.model.geo.add_point(P[0], P[1], 0, tag=npoint)
-                    # g.point(P, npoint)
-                    npoint = npoint + 1
-                    
-                # Add last point if not closed curve
-                start_point = np.array([line_ex[0,0], line_ey[0,0]])
-                end_point   = np.array([line_ex[line_counter-1,1],line_ey[line_counter-1,1]])
-                if (np.linalg.norm(start_point - end_point)>1e-15): # Closed curve
-                    P = [line_ex[line_counter-1,1],line_ey[line_counter-1,1]]
-                    gmsh.model.geo.add_point(P[0], P[1], 0, tag=npoint)
-                    npoint = npoint + 1
+                    # Find node tag of P1 and P2 in all_nodes
+                    P1_tag = np.where(((all_coord[:,0] - P1[0])**2 + (all_coord[:,1] - P1[1])**2)<1e-12)[0][0]
+                    P2_tag = np.where(((all_coord[:,0] - P2[0])**2 + (all_coord[:,1] - P2[1])**2)<1e-12)[0][0]
+                  
+                    # Add spline
+                    gmsh.model.geo.add_line(P1_tag, P2_tag,tag=myid)
+                    myid = myid + 1
                 
-                # # Add points in added interface
-                # for i in range(nseg_sep_add-1):
-                #     P = [line_ex_add[i,sep_idx_cols[1]],line_ey_add[i,sep_idx_cols[1]]]
                     
-                #     # Add point
-                #     gmsh.model.geo.add_point(P[0], P[1], 0, tag=npoint)
-                #     # g.point(P, npoint)
-                #     npoint = npoint + 1
-        
-    
-    
-    
-            # --- Splines ---
-            myid = 0
-            
-            # Markers
-            self.interface_marker = 10
-            
-            
-            # Loop through all seperate lines
-            npoint_prev = 0
-            interface_splines = np.zeros(nseg,dtype=int)
-            marker_c = 0
-            
-            # for sep_idx in range(nsep_lines):
-                
-            #     # Cols of sep_idx
-            #     sep_idx_cols = [2*sep_idx, 2*sep_idx + 1]
-            #     nseg_sep     = sep_lines[sep_idx,1] - sep_lines[sep_idx,0] + 1
-            #     # nseg_sep_add = line_seg_add[sep_idx]
-                
-            #     start_point = np.array([line_ex[sep_lines[sep_idx,0]-1,0], line_ey[sep_lines[sep_idx,0]-1,0]])
-            #     end_point   = np.array([line_ex[sep_lines[sep_idx,1]-1,1], line_ey[sep_lines[sep_idx,1]-1,1]])
+                # Additional splines
+                for i in range(nseg_sep_add):
                     
+                    # Coordinates of line segment
+                    P1 = [line_ex[i,0], line_ey[i,0]]
+                    P2 = [line_ex[i,1], line_ey[i,1]]
+                    
+                    # Find node tag of P1 and P2 in all_nodes
+                    P1_tag = np.where(((all_coord[:,0] - P1[0])**2 + (all_coord[:,1] - P1[1])**2)<1e-12)[0][0]
+                    P2_tag = np.where(((all_coord[:,0] - P2[0])**2 + (all_coord[:,1] - P2[1])**2)<1e-12)[0][0]
+                    
+                    # left_point  = myid
+                    # right_point = myid + 1
+                    # if (sep_idx==nsep_lines-1 and i==nseg_sep_add-1):
+                    #     left_point  = myid
+                    #     right_point = 0
                         
-            #     # Interface splines
-            #     for i in range(nseg_sep):
-            #         left_point  = myid
-            #         right_point = myid + 1
-            #         # if (np.linalg.norm(start_point - end_point)<1e-15):
-            #             if (sep_idx==nsep_lines-1 and nseg_sep_add==0 and i==nseg_sep-1):
-            #                 left_point  = myid
-            #                 right_point = 0
-            #         # g.spline([left_point, right_point], ID=myid, el_on_curve=1)
-            #         gmsh.model.geo.add_line(left_point, right_point,tag=myid)
-            #         interface_splines[marker_c] = myid
-            #         marker_c = marker_c + 1
-            #         myid = myid + 1
+                    # Add spline
+                    gmsh.model.geo.add_line(P1_tag, P2_tag,tag=myid)
+                    myid = myid + 1
                 
-                    
-            #     # # Additional splines
-            #     # for i in range(nseg_sep_add):
-            #     #     left_point  = myid
-            #     #     right_point = myid + 1
-            #     #     if (sep_idx==nsep_lines-1 and i==nseg_sep_add-1):
-            #     #         left_point  = myid
-            #     #         right_point = 0
-                        
-        
-            #         # g.spline([left_point, right_point], ID=myid)
-            #         gmsh.model.geo.add_line(left_point, right_point,tag=myid)
-            #         myid = myid + 1
-         
-            #     # npoint_prev = npoint_prev + nseg_sep + nseg_sep_add
-    
-            
+                
             # --- Add unstructured surface ---
             splines = list(range(0,nseg_tot))
             splines = list(range(0,nseg_tot))
             face1 = gmsh.model.geo.add_curve_loop(splines)
             gmsh.model.geo.add_plane_surface([face1])
+        
+        
+        aik = 0
+                
+                
+        
+        # for grain in range(ngrains):
+        #     g_cols = [2*grain, 2*grain + 1]
             
-            gmsh.model.geo.addPhysicalGroup(dim=1, tags=interface_splines)
-           
+        #     # Extract line segements of grain boundary for grain
+        #     self.extract_local_boundary(grain)
+   
+        #     # Short form
+        #     line_ex      = self.line_ex
+        #     line_ey      = self.line_ey
+        #     nseg         = self.nseg
+        #     nsep_lines   = self.nsep_lines
+        #     sep_lines    = self.sep_lines
+        #     line_ex_add  = self.line_ex_add
+        #     line_ey_add  = self.line_ey_add
+        #     line_seg_add = self.line_seg_add
             
-            # Create the relevant Gmsh data structures 
-            # from Gmsh model.
-            gmsh.model.geo.synchronize()
+      
+        #     # --- Add all line segement points ---
+        #     npoint       = 0 
+        #     line_counter = 0
+            
+        #     # Loop through all seperate lines
+        #     for sep_idx in range(nsep_lines):
+                
+        #         # Cols of sep_idx
+        #         sep_idx_cols = [2*sep_idx, 2*sep_idx + 1]
+                
+        #         # Segements to add
+        #         nseg_sep     = sep_lines[sep_idx,1] - sep_lines[sep_idx,0] + 1
+        #         nseg_sep_add = line_seg_add[sep_idx]
+      
+        #         # Add points in primary interface
+        #         for i in range(nseg_sep):
+        #             P = [line_ex[line_counter,0],line_ey[line_counter,0]]
+        #             line_counter = line_counter + 1
+                    
+        #             # Add point
+        #             gmsh.model.geo.add_point(P[0], P[1], 0, tag=npoint)
+        #             # g.point(P, npoint)
+        #             npoint = npoint + 1
+                    
+        #         # Add last point if not closed curve
+        #         start_point = np.array([line_ex[0,0], line_ey[0,0]])
+        #         end_point   = np.array([line_ex[line_counter-1,1],line_ey[line_counter-1,1]])
+        #         if (np.linalg.norm(start_point - end_point)>1e-15): # Closed curve
+        #             P = [line_ex[line_counter-1,1],line_ey[line_counter-1,1]]
+        #             gmsh.model.geo.add_point(P[0], P[1], 0, tag=npoint)
+        #             npoint = npoint + 1
+                
+        #         # Add points in added interface
+        #         for i in range(nseg_sep_add-1):
+        #             P = [line_ex_add[i,sep_idx_cols[1]],line_ey_add[i,sep_idx_cols[1]]]
+                    
+        #             # Add point
+        #             gmsh.model.geo.add_point(P[0], P[1], 0, tag=npoint)
+        #             # g.point(P, npoint)
+        #             npoint = npoint + 1
+    
+        #     # --- Splines ---
+        #     myid = 0
+            
+        #     # Markers
+        #     self.interface_marker = 10
+            
+            
+        #     # Loop through all seperate lines
+        #     npoint_prev = 0
+        #     interface_splines = np.zeros(nseg,dtype=int)
+        #     marker_c = 0
+            
+        #     # for sep_idx in range(nsep_lines):
+                
+        #     #     # Cols of sep_idx
+        #     #     sep_idx_cols = [2*sep_idx, 2*sep_idx + 1]
+        #     #     nseg_sep     = sep_lines[sep_idx,1] - sep_lines[sep_idx,0] + 1
+        #     #     # nseg_sep_add = line_seg_add[sep_idx]
+                
+        #     #     start_point = np.array([line_ex[sep_lines[sep_idx,0]-1,0], line_ey[sep_lines[sep_idx,0]-1,0]])
+        #     #     end_point   = np.array([line_ex[sep_lines[sep_idx,1]-1,1], line_ey[sep_lines[sep_idx,1]-1,1]])
+                    
+                        
+        #     #     # Interface splines
+        #     #     for i in range(nseg_sep):
+        #     #         left_point  = myid
+        #     #         right_point = myid + 1
+        #     #         # if (np.linalg.norm(start_point - end_point)<1e-15):
+        #     #             if (sep_idx==nsep_lines-1 and nseg_sep_add==0 and i==nseg_sep-1):
+        #     #                 left_point  = myid
+        #     #                 right_point = 0
+        #     #         # g.spline([left_point, right_point], ID=myid, el_on_curve=1)
+        #     #         gmsh.model.geo.add_line(left_point, right_point,tag=myid)
+        #     #         interface_splines[marker_c] = myid
+        #     #         marker_c = marker_c + 1
+        #     #         myid = myid + 1
+                
+                    
+        #     #     # # Additional splines
+        #     #     # for i in range(nseg_sep_add):
+        #     #     #     left_point  = myid
+        #     #     #     right_point = myid + 1
+        #     #     #     if (sep_idx==nsep_lines-1 and i==nseg_sep_add-1):
+        #     #     #         left_point  = myid
+        #     #     #         right_point = 0
+                        
+        
+        #     #         # g.spline([left_point, right_point], ID=myid)
+        #     #         gmsh.model.geo.add_line(left_point, right_point,tag=myid)
+        #     #         myid = myid + 1
+         
+        #     #     # npoint_prev = npoint_prev + nseg_sep + nseg_sep_add
     
             
-            return interface_splines
+        #     # --- Add unstructured surface ---
+        #     # splines = list(range(0,nseg_tot))
+        #     # splines = list(range(0,nseg_tot))
+        #     # face1 = gmsh.model.geo.add_curve_loop(splines)
+        #     # gmsh.model.geo.add_plane_surface([face1])
+            
+        #     # gmsh.model.geo.addPhysicalGroup(dim=1, tags=interface_splines)
+           
+            
+        # Create the relevant Gmsh data structures 
+        # from Gmsh model.
+        gmsh.model.geo.synchronize()
+
+        
+        return interface_splines
     
     def save(self, filename):
         """Save input data to dictionary."""
@@ -310,15 +454,16 @@ class InputData(object):
             
             # Global variables
             self.a              = data['a']*1e3
-            self.line_seg       = data['line_seg'].flatten()
-            self.line_seg_all   = self.line_seg 
-            self.ngrains        = np.size(self.line_seg)
+            self.line_seg_all   = data['line_seg'].flatten()
+            self.ngrains        = np.size(self.line_seg_all)
             self.line_ex_all    = data['line_ex']*1e3
             self.line_ey_all    = data['line_ey']*1e3
             self.sep_lines_all  = data['sep_lines']
             self.nsep_lines_all = np.sum(self.sep_lines_all[:,0:-1:2]>0,0)
             self.material       = data['material'].flatten()
-            
+            self.ex             = np.transpose(data['newex'])*1e3
+            self.ey             = np.transpose(data['newey'])*1e3
+            self.coord          = np.transpose(data['newcoord'])*1e3
             
             # IMC area - ?
             self.tot_imc_area_init = data['IMC_area_init'].flatten()[0]
@@ -330,46 +475,7 @@ class InputData(object):
                 self.sn_c0 = (self.sn_c0_fix - self.sn_imc)*\
                     (self.tot_imc_area_init/self.tot_imc_area)\
                     +self.sn_imc
-            
-            left_to_right_prev = False
                     
-                    
-            # Local variables for the grain
-            # Short form 
-            grain     = self.grain
-            g_cols    = [2*grain, 2*grain + 1]
-            
-            self.line_seg     = self.line_seg[grain]
-            self.line_ex      = self.line_ex_all[:self.line_seg,g_cols]
-            self.line_ey      = self.line_ey_all[:self.line_seg,g_cols]
-            self.nsep_lines   = self.nsep_lines_all[self.grain]
-            self.sep_lines    = self.sep_lines_all[:self.nsep_lines,g_cols]
-                    
-            
-            self.el_size_x  = data['elsize_x'][0][0]*1e3
-            self.el_size_y  = data['elsize_y'][0][0]*1e3
-            
-            # Short form 
-            line_ex    = self.line_ex
-            line_ey    = self.line_ey
-            nseg       = self.line_seg
-            sep_lines  = self.sep_lines
-            nsep_lines = self.nsep_lines
-            ngrains    = self.ngrains
-            axisbc     = self.axisbc
-            
-            # Extra lines
-            self.line_ex_add  = np.zeros([nseg*5,nsep_lines*2])
-            self.line_ey_add  = np.zeros([nseg*5,nsep_lines*2])
-            self.line_seg_add = np.zeros(nsep_lines,dtype=int)
-
-            
-            # Access the variable by its name
-            self.ex     = np.transpose(data['newex'])*1e3
-            self.ey     = np.transpose(data['newey'])*1e3
-            self.coord  = np.transpose(data['newcoord'])*1e3
-            
-             
             # Identify points:
             #  P4 ----- P3
             #  |         |
@@ -382,12 +488,43 @@ class InputData(object):
             self.P3   = self.coord[self.P3nod]
             self.P4   = self.coord[self.P4nod]
 
+    def extract_local_boundary(self, grain):
         
+            # Local variables for the grain
+            g_cols    = [2*grain, 2*grain + 1]
+            
+            self.nseg       = self.line_seg_all[grain]
+            self.line_ex    = self.line_ex_all[:self.nseg,g_cols]
+            self.line_ey    = self.line_ey_all[:self.nseg,g_cols]
+            self.nsep_lines = self.nsep_lines_all[grain]
+            self.sep_lines  = self.sep_lines_all[:self.nsep_lines,g_cols]
+            
+            
+            # Short form
+            line_ex    = self.line_ex
+            line_ey    = self.line_ey
+            nseg       = self.nseg
+            nsep_lines = self.nsep_lines
+            sep_lines  = self.sep_lines
+            ngrains    = self.ngrains
+            axisbc     = self.axisbc
+            
+            
+            # Extra lines
+            self.line_ex_add  = np.zeros([nseg*5,nsep_lines*2])
+            self.line_ey_add  = np.zeros([nseg*5,nsep_lines*2])
+            self.line_seg_add = np.zeros(nsep_lines,dtype=int)
+            
+            
+            left_to_right_prev = False
+          
             # Short form 
-            P1        = self.P1
-            P2        = self.P2
-            P3        = self.P3
-            P4        = self.P4
+            P1 = self.P1
+            P2 = self.P2
+            P3 = self.P3
+            P4 = self.P4
+    
+            
     
             for sep_idx in range(self.nsep_lines):
                 
@@ -750,7 +887,7 @@ class Solver(object):
         grain        = self.input_data.grain
         line_ex      = self.input_data.line_ex
         line_ey      = self.input_data.line_ey
-        nseg         = self.input_data.line_seg
+        nseg         = self.input_data.nseg
         sep_lines    = self.input_data.sep_lines
         nsep_lines   = self.input_data.nsep_lines
         ngrains      = self.input_data.ngrains
@@ -1219,8 +1356,7 @@ class Solver(object):
             os.mkdir(path)
             print("Directory '% s' created" % location) 
         os.chdir(path)
-            
-        
+  
         # --- Save location ---
         self.input_data.location = os.getcwd()
 

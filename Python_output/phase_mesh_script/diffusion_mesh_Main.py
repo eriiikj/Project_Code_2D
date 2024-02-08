@@ -55,7 +55,7 @@ class MainClass(object):
         self.input_data.line_ey                = 0
         self.input_data.line_ex_all            = 0
         self.input_data.line_ey_all            = 0
-        self.input_data.line_seg               = 0
+        self.input_data.nseg                   = 0
         self.input_data.line_seg_all           = 0
         self.input_data.sep_lines              = 0
         self.input_data.nsep_lines             = 0
@@ -172,7 +172,6 @@ class MainClass(object):
     def onLoadLsStep(self):
         """Loading geometry data from .mat file"""
         
-
         # --- Load python input data ---
         self.input_data.load_LsStep()
     
