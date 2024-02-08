@@ -5,7 +5,7 @@ Created on Tue Jun 15 09:44:29 2022
 @author: Erik Jacobsson
 """
 
-import grain_mesh_triangular as ph
+import diffusion_mesh as ph
 import json
 import numpy as np
 import math
@@ -27,14 +27,7 @@ import itertools
 
 #from PyQt5.QtCore import pyqtSlot, pyqtSignal, QThread
 from PyQt5.QtWidgets import QApplication, QDialog, QWidget, QMainWindow, QFileDialog, QMessageBox
-#from PyQt5.QtGui import QFont
-#from PyQt5.uic import loadUi
-#from PyQt5.QtGui import *
-#from os import listdir
 from os.path import isfile, join
-# import calfem.ui as cfui
-# import calfem.core as cfc
-# import calfem.vis as cfv
 
         
 class MainClass(object):
@@ -192,25 +185,13 @@ class MainClass(object):
     
 if __name__ == "__main__":
     
-    
-    # Check if at least one command-line argument is provided
-    # (the script name itself counts as one)
-    if len(sys.argv) >= 2:   
-        grain = int(sys.argv[1]) - 1 # 0 based
-        print("Running phase mesh script")
-    else:
-        print("No command-line argument for number of grains provided. Grain=0.")
-        grain = 1  - 1
-    
+
     
     # --- Create application instance ---
     app = QApplication(sys.argv)
     
     # --- Create main instance ---
     main_instance = MainClass(app)
-
-    # Set number of grains
-    main_instance.input_data.grain = grain
     
 
     # --- Load initial level set data
@@ -218,7 +199,6 @@ if __name__ == "__main__":
 
     # --- Load level set step
     main_instance.onLoadLsStep()
-    
     
     # --- Single study ---
     

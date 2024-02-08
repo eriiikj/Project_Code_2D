@@ -5,7 +5,7 @@ Created on Tue Jun 15 09:44:29 2022
 @author: Erik Jacobsson
 """
 
-import grain_mesh_global as ph
+import grain_mesh_local as ph
 import json
 import numpy as np
 import math
@@ -184,8 +184,6 @@ class MainClass(object):
         
     
 if __name__ == "__main__":
-    
-    
     
     
     # Check if at least one command-line argument is provided

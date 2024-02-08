@@ -14,12 +14,6 @@ import os
 import shutil
 import scipy.io
 
-# import calfem.core as cfc
-# import calfem.geometry as cfg  
-# import calfem.mesh as cfm      
-# import calfem.vis as cfv
-# import calfem.utils as cfu
-
 import matplotlib.pyplot as plt
 import itertools
 import scipy.io
@@ -1307,7 +1301,7 @@ class Solver(object):
             elm_coords = coord[elm_nodes-1]
     
             # Check if the nodes are in counter-clockwise order, if not, reverse the order
-            if not self.is_ccw(*elm_coords):
+            if self.is_ccw(*elm_coords):
                 enod[i] = np.flip(elm_nodes)
 
         return enod
@@ -1439,158 +1433,3 @@ class Solver(object):
         os.mkdir(path) 
         print("Directory '% s' created" % dir_name) 
         os.chdir(path)
-        
-class Report(object):
-    """Klass för presentation av indata och utdata i rapportform."""
-    def __init__(self, input_data, output_data, save=False):
-        self.input_data  = input_data
-        self.output_data = output_data
-        self.report      = ""
-
-    def clear(self):
-        self.report = ""
-
-    def add_text(self, text=""):
-        self.report += str(text)+"\n"
-
-    def __str__(self):
-        self.clear()
-        
-         # --- Wrirte report as table ---
-        
-        self.add_text()
-        self.add_text("-------------- Model input ----------------------------------")
-        self.add_text()
-        self.add_text("Width [m]:")
-        self.add_text(self.input_data.w)
-        self.add_text()
-        self.add_text("Height [m]:")
-        self.add_text(self.input_data.h)
-        self.add_text()
-        self.add_text("y2 [m]:")
-        self.add_text(self.input_data.y2)
-        self.add_text()
-        self.add_text("y3 [m]:")
-        self.add_text(self.input_data.y3)
-        self.add_text()
-        self.add_text("y4 [m]:")
-        self.add_text(self.input_data.y4)
-        self.add_text()
-        self.add_text("el_size_x [m]:")
-        self.add_text(self.input_data.el_size_x)
-        self.add_text()
-        self.add_text("el_size_y_coarse [m]:")
-        self.add_text(self.input_data.el_size_y_coarse)
-        self.add_text()
-        self.add_text("el_size_y_fine [m]:")
-        self.add_text(self.input_data.el_size_y_fine)
-        self.add_text("-------------- Model output ----------------------------------")
-        self.add_text()
-        self.add_text("Number of nodes:")
-        self.add_text(self.output_data.nnod)
-        self.add_text()
-        self.add_text("Number of dofs:")
-        self.add_text(self.output_data.ndof)
-        self.add_text()
-        self.add_text("Number of elements:")
-        self.add_text(self.output_data.nelm)
-        self.add_text()
-        self.add_text("Number of nodes in an element:")
-        self.add_text(self.output_data.nodel)
-        self.add_text()
-        self.add_text("Number of dofs in an element:")
-        self.add_text(self.output_data.dofel)
-        self.add_text()
-        self.add_text("Number of dofs in a node:")
-        self.add_text(self.output_data.dofs_per_node)
-        self.add_text()
-        self.add_text("Number of boundary conditions:")
-        self.add_text(np.size(self.output_data.bcval))
-        self.add_text("------------------------------------------------")
-        
-        return self.report
-    
-    def save(self, filename):
-        with open(filename, "w", encoding = "UTF-8") as ofile:
-            print(self, file = ofile)
-    
-
-
-class Visualisation(object):
-    """Class for visualising data"""
-    def __init__(self, input_data, output_data):
-        self.input_data  = input_data
-        self.output_data = output_data
-
-
-
-    def showGeometry(self):
-        """Show geometry, number of elms at segments etc"""
-        # --- Get parameters needed for visualisation ---
-        geometry      = self.input_data.geometry()
-        
-        # --- Draw Geometry ---
-        
-        cfv.figure()
-        cfv.drawGeometry(geometry, draw_points=True, label_curves=True, title='Geometry')
-        
-        
-    def showMatplotlibMesh(self):
-        """Plot element and node labels"""
-        # --- Get parameters needed for visualisation ---
-        coord         = self.output_data.coord
-        edof          = self.output_data.edof
-        dofs          = self.output_data.dofs
-        nnod          = self.output_data.nnod
-        
-        def drawNodes(nnod,coord):
-            """Draw node labels"""
-            offset = 0.02
-            for i in range(0, nnod):
-                cfv.add_text(str(i+1),coord[i]+offset)
-                
-        # --- Draw mesh with labels ---
-        cfv.figure()
-        ex, ey = cfc.coordxtr(edof, coord, dofs)
-        elms   = np.asarray(range(np.shape(edof)[0])) + 1
-        cfv.eldraw2(ex, ey, plotpar=[1, 2, 1], elnum=elms)
-        drawNodes(nnod,coord)
-        
-        
-        
-    def showMesh(self):
-        """Show mesh"""
-        
-        # --- Get parameters needed for visualisation ---
-        coord         = self.output_data.coord
-        edof          = self.output_data.edof
-        dofs_per_node = self.output_data.dofs_per_node
-        el_type       = self.output_data.el_type
-
-        # --- Draw Mesh ---     
-        f = vv.figure()
-        cfv.drawMesh(
-            coords        = coord,
-            edof          = edof,
-            dofs_per_node = dofs_per_node,
-            el_type       = el_type,
-            filled        = True,
-            title         = "Mesh"
-        )
-        self.axes = f.currentAxes
-
-    
-    def saveMesh(self, filename='python_mesh'):
-        """Save mesh as jpg file"""
-        
-        extension      = '.jpg'
-        exportFileName = filename + extension 
-    
-        vv.callLater(1.0, vv.screenshot, exportFileName, self.axes, sf=2)
-        
-
-    def wait(self):
-        """Denna metod ser till att fönstren hålls uppdaterade och kommer att returnera
-        När sista fönstret stängs"""
-
-        cfv.showAndWait()

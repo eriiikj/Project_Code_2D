@@ -39,13 +39,13 @@ grainArr = repmat(grain, 1, ngrains);
 
 %% Diffusion equation
 step_size = 1;
-for i_IMC = 1%1:step_size:IMC_steps
+for i_IMC = 1:step_size:IMC_steps
 
     % Load ngrains from level set
     [ngrains] = load_level_set(i_IMC); 
     
     % Load grain mesh
-    for g=4%1:ngrains
+    for g=1:ngrains
         [grainArr(g).edof,grainArr(g).enod,grainArr(g).coord,...
          grainArr(g).dofs,grainArr(g).ex,grainArr(g).ey,...
          grainArr(g).bcnod,grainArr(g).bcval,grainArr(g).bcval_idx,...
@@ -62,7 +62,7 @@ for i_IMC = 1%1:step_size:IMC_steps
     % Plot grain mesh with concentration
     f1 = figure(1);
     cla;
-    for g=4%1:ngrains
+    for g=1:ngrains
 %         plot_mesh(grainArr(g).ex,grainArr(g).ey)
         plot_2D_conc(grainArr(g).ex,grainArr(g).ey,grainArr(g).ed,i_IMC)
         hold on

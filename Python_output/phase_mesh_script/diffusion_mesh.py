@@ -14,12 +14,6 @@ import os
 import shutil
 import scipy.io
 
-import calfem.core as cfc
-import calfem.geometry as cfg  
-import calfem.mesh as cfm      
-import calfem.vis as cfv
-import calfem.utils as cfu
-
 import matplotlib.pyplot as plt
 import itertools
 import scipy.io
@@ -28,11 +22,10 @@ import pyvtk as vtk
 
 import subprocess
 
+import gmsh
+
 from contextlib import redirect_stdout
 import io
-
-
-cfu.enableLogging()
 
 class InputData(object):
     """Class for defining input data to our model."""
@@ -50,7 +43,6 @@ class InputData(object):
         self.P1                     = 0
         self.P2                     = 0
         self.P3                     = 0
-        self.cu_height              = 0
         
         # Mesh
         self.el_size_x              = 25e-3
@@ -69,191 +61,138 @@ class InputData(object):
     
      # --- Define the geometry ---
     
-    def geometry(self, grain):
+    def geometry(self):
         """Create geometry instance"""
 
-
-        # Define geoms
-        self.geoms = np.zeros(self.ngrains)
-
     
-        # --- Use local references for shorter form ---
-        el_size_x = self.el_size_x
-        el_size_y = self.el_size_y
+        # Short form
+        ngrains = self.ngrains
         
+        for grain in range(ngrains):
+            g_cols     = [2*grain, 2*grain + 1]
+            nseg       = self.line_seg_all[grain]
+            line_ex    = self.line_ex_all[:nseg,g_cols]
+            line_ey    = self.line_ey_all[:nseg,g_cols]
+            nsep_lines = self.nsep_lines_all[grain]
+            sep_lines  = self.sep_lines_all[:nsep_lines,g_cols]
             
-        # Short form 
-        grain        = self.grain
-        line_ex      = self.line_ex
-        line_ey      = self.line_ey
-        nseg         = self.line_seg
-        sep_lines    = self.sep_lines
-        nsep_lines   = self.nsep_lines
-        ngrains      = self.ngrains
-        axisbc       = self.axisbc
-        line_ex_add  = self.line_ex_add
-        line_ey_add  = self.line_ey_add
-        line_seg_add = self.line_seg_add
-        nseg_tot     = np.sum(line_seg_add) + nseg
-    
-        # g_cols
-        g_cols = [2*grain, 2*grain + 1]
-    
-        # Geometry object
-        g = cfg.Geometry()
-    
-    
-
-        # --- Add all line segement points ---
-        npoint = 0
-
-
-        line_counter     = 0
-        line_add_counter = 0
-        # Loop through all seperate lines
-        for sep_idx in range(nsep_lines):
             
-            # Cols of sep_idx
-            sep_idx_cols = [2*sep_idx, 2*sep_idx + 1]
-            
-            # Segements to add
-            nseg_sep     = sep_lines[sep_idx,1] - sep_lines[sep_idx,0] + 1
-            nseg_sep_add = line_seg_add[sep_idx]
-  
-            # Add points in primary interface
-            for i in range(nseg_sep):
-                P = [line_ex[line_counter,0],line_ey[line_counter,0]]
-                line_counter = line_counter + 1
+        
+        
+        
+        
+            # --- Add all line segement points ---
+            npoint       = 0 
+            line_counter = 0
+            # Loop through all seperate lines
+            for sep_idx in range(nsep_lines):
                 
-                # Add point
-                g.point(P, npoint)
-                npoint = npoint + 1
+                # Cols of sep_idx
+                sep_idx_cols = [2*sep_idx, 2*sep_idx + 1]
                 
-            # Add last point if not closed curve
-            start_point = np.array([line_ex[0,0], line_ey[0,0]])
-            end_point   = np.array([line_ex[line_counter-1,1],line_ey[line_counter-1,1]])
-            if (np.linalg.norm(start_point - end_point)>1e-15): # Closed curve
-                P = [line_ex[line_counter-1,1],line_ey[line_counter-1,1]]
-                g.point(P, npoint)
-                npoint = npoint + 1
-            
-            # Add points in added interface
-            for i in range(nseg_sep_add-1):
-                P = [line_ex_add[i,sep_idx_cols[1]],line_ey_add[i,sep_idx_cols[1]]]
+                # Segements to add
+                nseg_sep     = sep_lines[sep_idx,1] - sep_lines[sep_idx,0] + 1
+                # nseg_sep_add = line_seg_add[sep_idx]
+      
+                # Add points in primary interface
+                for i in range(nseg_sep):
+                    P = [line_ex[line_counter,0],line_ey[line_counter,0]]
+                    line_counter = line_counter + 1
+                    
+                    # Add point
+                    gmsh.model.geo.add_point(P[0], P[1], 0, tag=npoint)
+                    # g.point(P, npoint)
+                    npoint = npoint + 1
+                    
+                # Add last point if not closed curve
+                start_point = np.array([line_ex[0,0], line_ey[0,0]])
+                end_point   = np.array([line_ex[line_counter-1,1],line_ey[line_counter-1,1]])
+                if (np.linalg.norm(start_point - end_point)>1e-15): # Closed curve
+                    P = [line_ex[line_counter-1,1],line_ey[line_counter-1,1]]
+                    gmsh.model.geo.add_point(P[0], P[1], 0, tag=npoint)
+                    npoint = npoint + 1
                 
-                # Add point
-                g.point(P, npoint)
-                npoint = npoint + 1
+                # # Add points in added interface
+                # for i in range(nseg_sep_add-1):
+                #     P = [line_ex_add[i,sep_idx_cols[1]],line_ey_add[i,sep_idx_cols[1]]]
+                    
+                #     # Add point
+                #     gmsh.model.geo.add_point(P[0], P[1], 0, tag=npoint)
+                #     # g.point(P, npoint)
+                #     npoint = npoint + 1
+        
     
-
-        # --- Splines ---
-        myid = 0
-        
-        # Markers
-        self.interface_marker = 10
-        
-        
-        
-        # Loop through all seperate lines
-        npoint_prev = 0
-        interface_splines = np.zeros(nseg,dtype=int)
-        marker_c = 0
-        
-        for sep_idx in range(nsep_lines):
+    
+    
+            # --- Splines ---
+            myid = 0
             
-            # Cols of sep_idx
-            sep_idx_cols = [2*sep_idx, 2*sep_idx + 1]
-            nseg_sep     = sep_lines[sep_idx,1] - sep_lines[sep_idx,0] + 1
-            nseg_sep_add = line_seg_add[sep_idx]
+            # Markers
+            self.interface_marker = 10
             
-            start_point = np.array([line_ex[sep_lines[sep_idx,0]-1,0], line_ey[sep_lines[sep_idx,0]-1,0]])
-            end_point   = np.array([line_ex[sep_lines[sep_idx,1]-1,1], line_ey[sep_lines[sep_idx,1]-1,1]])
+            
+            # Loop through all seperate lines
+            npoint_prev = 0
+            interface_splines = np.zeros(nseg,dtype=int)
+            marker_c = 0
+            
+            # for sep_idx in range(nsep_lines):
+                
+            #     # Cols of sep_idx
+            #     sep_idx_cols = [2*sep_idx, 2*sep_idx + 1]
+            #     nseg_sep     = sep_lines[sep_idx,1] - sep_lines[sep_idx,0] + 1
+            #     # nseg_sep_add = line_seg_add[sep_idx]
+                
+            #     start_point = np.array([line_ex[sep_lines[sep_idx,0]-1,0], line_ey[sep_lines[sep_idx,0]-1,0]])
+            #     end_point   = np.array([line_ex[sep_lines[sep_idx,1]-1,1], line_ey[sep_lines[sep_idx,1]-1,1]])
+                    
+                        
+            #     # Interface splines
+            #     for i in range(nseg_sep):
+            #         left_point  = myid
+            #         right_point = myid + 1
+            #         # if (np.linalg.norm(start_point - end_point)<1e-15):
+            #             if (sep_idx==nsep_lines-1 and nseg_sep_add==0 and i==nseg_sep-1):
+            #                 left_point  = myid
+            #                 right_point = 0
+            #         # g.spline([left_point, right_point], ID=myid, el_on_curve=1)
+            #         gmsh.model.geo.add_line(left_point, right_point,tag=myid)
+            #         interface_splines[marker_c] = myid
+            #         marker_c = marker_c + 1
+            #         myid = myid + 1
                 
                     
-            # Interface splines
-            for i in range(nseg_sep):
-                left_point  = myid
-                right_point = myid + 1
-                if (np.linalg.norm(start_point - end_point)<1e-15):
-                    if (sep_idx==nsep_lines-1 and nseg_sep_add==0 and i==nseg_sep-1):
-                        left_point  = myid
-                        right_point = 0
-                g.spline([left_point, right_point], ID=myid, el_on_curve=1)
-                interface_splines[marker_c] = myid
-                marker_c = marker_c + 1
-                myid = myid + 1
-            
-                
-            # Additional splines
-            for i in range(nseg_sep_add):
-                left_point  = myid
-                right_point = myid + 1
-                if (sep_idx==nsep_lines-1 and i==nseg_sep_add-1):
-                    left_point  = myid
-                    right_point = 0
-                    
-    
-                g.spline([left_point, right_point], ID=myid)
-                myid = myid + 1
-     
-            npoint_prev = npoint_prev + nseg_sep + nseg_sep_add
-            
-        s = 9
-            
+            #     # # Additional splines
+            #     # for i in range(nseg_sep_add):
+            #     #     left_point  = myid
+            #     #     right_point = myid + 1
+            #     #     if (sep_idx==nsep_lines-1 and i==nseg_sep_add-1):
+            #     #         left_point  = myid
+            #     #         right_point = 0
+                        
         
-        # for sep_idx in range(nsep_lines):
-            
-        #     # Cols of sep_idx
-        #     sep_idx_cols = [2*sep_idx, 2*sep_idx + 1]
-            
-        #     nseg_sep     = sep_lines[sep_idx,1] - sep_lines[sep_idx,0] + 1
-        #     nseg_sep_add = line_seg_add[sep_idx]
-            
-        #     # Segpoints of line separate segment (closed curve)
-        #     loc_counter = 0
-        #     segpoints = np.arange(npoint_prev,npoint_prev+nseg_sep+nseg_sep_add)
-        #     segpoints = np.append(segpoints, npoint_prev)
-        #     s = 9
-  
-            
-        #     # Interface splines
-        #     for i in range(nseg_sep):
-        #         left_point  = segpoints[loc_counter]
-        #         right_point = segpoints[loc_counter+1]
-        #         g.spline([left_point, right_point], ID=myid, el_on_curve=1)
-        #         interface_splines[marker_c] = myid
-        #         marker_c = marker_c + 1
-        #         myid = myid + 1
-        #         loc_counter = loc_counter + 1
-                
-
-                
-        #     # Additional splines
-        #     for i in range(nseg_sep_add):
-        #         left_point  = segpoints[loc_counter]
-        #         right_point = segpoints[loc_counter+1]
-        #         g.spline([left_point, right_point], ID=myid, el_on_curve=10)
-        #         myid = myid + 1
-        #         loc_counter = loc_counter + 1
-     
-        #     npoint_prev = npoint_prev + nseg_sep + nseg_sep_add
-            
-            
-        
-
-        
-        
-        # Set same marker (interface_marker) to all interface line segements
-        for curveID in interface_splines:
-            g.curveMarker(curveID, self.interface_marker)
-            
-        
-        # --- Add unstructured surface ---
-        splines = list(range(0,nseg_tot))
-        g.addSurface(splines)
+            #         # g.spline([left_point, right_point], ID=myid)
+            #         gmsh.model.geo.add_line(left_point, right_point,tag=myid)
+            #         myid = myid + 1
          
-        
-        return g
+            #     # npoint_prev = npoint_prev + nseg_sep + nseg_sep_add
+    
+            
+            # --- Add unstructured surface ---
+            splines = list(range(0,nseg_tot))
+            splines = list(range(0,nseg_tot))
+            face1 = gmsh.model.geo.add_curve_loop(splines)
+            gmsh.model.geo.add_plane_surface([face1])
+            
+            gmsh.model.geo.addPhysicalGroup(dim=1, tags=interface_splines)
+           
+            
+            # Create the relevant Gmsh data structures 
+            # from Gmsh model.
+            gmsh.model.geo.synchronize()
+    
+            
+            return interface_splines
     
     def save(self, filename):
         """Save input data to dictionary."""
@@ -366,38 +305,22 @@ class InputData(object):
         with open(filename, "r") as ifile:
             
             
-            # Short form 
-            grain     = self.grain
-            g_cols    = [2*grain, 2*grain + 1]
-            
-            
-            # Load the .mat file
+            # Access variables from level set file
             data = scipy.io.loadmat(filename)
-        
-
-            left_to_right_prev = False
             
-            # Access the variable by its name
-            self.a            = data['a']*1e3
-            self.line_seg     = data['line_seg'].flatten()
-            self.line_seg_all = self.line_seg 
-            self.ngrains      = np.size(self.line_seg)
-            self.line_seg     = self.line_seg[grain]
-            self.line_ex      = data['line_ex']*1e3
-            self.line_ex      = self.line_ex[:self.line_seg,g_cols]
-            self.line_ey      = data['line_ey']*1e3
-            self.line_ey      = self.line_ey[:self.line_seg,g_cols]
+            # Global variables
+            self.a              = data['a']*1e3
+            self.line_seg       = data['line_seg'].flatten()
+            self.line_seg_all   = self.line_seg 
+            self.ngrains        = np.size(self.line_seg)
+            self.line_ex_all    = data['line_ex']*1e3
+            self.line_ey_all    = data['line_ey']*1e3
+            self.sep_lines_all  = data['sep_lines']
+            self.nsep_lines_all = np.sum(self.sep_lines_all[:,0:-1:2]>0,0)
+            self.material       = data['material'].flatten()
             
-            self.line_ex_all = data['line_ex']*1e3
-            self.line_ey_all = data['line_ey']*1e3
             
-            self.sep_lines  = data['sep_lines']
-            self.nsep_lines = np.sum(self.sep_lines[:,0:-1:2]>0,0)
-            self.nsep_lines = self.nsep_lines[self.grain]
-            self.sep_lines  = self.sep_lines[:self.nsep_lines,g_cols]
-            self.material   = data['material'].flatten()
-            
-            # IMC area
+            # IMC area - ?
             self.tot_imc_area_init = data['IMC_area_init'].flatten()[0]
             self.tot_imc_area      = data['IMC_area'].flatten()[0]
             
@@ -407,6 +330,20 @@ class InputData(object):
                 self.sn_c0 = (self.sn_c0_fix - self.sn_imc)*\
                     (self.tot_imc_area_init/self.tot_imc_area)\
                     +self.sn_imc
+            
+            left_to_right_prev = False
+                    
+                    
+            # Local variables for the grain
+            # Short form 
+            grain     = self.grain
+            g_cols    = [2*grain, 2*grain + 1]
+            
+            self.line_seg     = self.line_seg[grain]
+            self.line_ex      = self.line_ex_all[:self.line_seg,g_cols]
+            self.line_ey      = self.line_ey_all[:self.line_seg,g_cols]
+            self.nsep_lines   = self.nsep_lines_all[self.grain]
+            self.sep_lines    = self.sep_lines_all[:self.nsep_lines,g_cols]
                     
             
             self.el_size_x  = data['elsize_x'][0][0]*1e3
@@ -432,25 +369,13 @@ class InputData(object):
             self.ey     = np.transpose(data['newey'])*1e3
             self.coord  = np.transpose(data['newcoord'])*1e3
             
-            # # Find min and max of lines
-            # min_line_ex = np.where(self.line_ex == np.min(self.line_ex))
-            # min_line_ex = np.array([min_line_ex[0][0],min_line_ex[1][0]])
-            # max_line_ex = np.where(self.line_ex == np.max(self.line_ex))
-            # max_line_ex = np.array([max_line_ex[0][0],max_line_ex[1][0]])
-            
              
-            
             # Identify points:
             #  P4 ----- P3
             #  |         |
             #  |         |
             #  |         |
             #  P1 ----- P2
-
-            # self.P1   = np.array([axisbc[0],axisbc[2]])
-            # self.P2   = np.array([axisbc[1],axisbc[2]])
-            # self.P3   = np.array([axisbc[1],axisbc[3]])
-            # self.P4   = np.array([axisbc[0],axisbc[3]])
 
             self.P1   = self.coord[self.P1nod]
             self.P2   = self.coord[self.P2nod]
@@ -463,8 +388,6 @@ class InputData(object):
             P2        = self.P2
             P3        = self.P3
             P4        = self.P4
-    
-   
     
             for sep_idx in range(self.nsep_lines):
                 
@@ -750,11 +673,7 @@ class OutputData(object):
         self.bcnod           = None
         self.bcval           = None
         self.bcval_idx       = None
-        self.lower_bcnod     = None
-        self.upper_bcnod     = None
-        self.dofs            = None
         self.dofs_per_node   = None
-        self.el_type         = None
         self.nelm            = None
         self.nnod            = None
         self.ndof            = None
@@ -767,10 +686,6 @@ class OutputData(object):
         self.single_location = None
         self.param_locations = None
         self.input_location  = None
-        
-        # Fortran main output
-        self.ex              = None
-        self.ey              = None
 
         # Fortran loadstep output
         self.vm              = None
@@ -784,24 +699,16 @@ class OutputData(object):
         output_data_file["coord"]           = np.transpose(self.coord).tolist()
         output_data_file["enod"]            = np.transpose(self.enod).tolist()
         output_data_file["edof"]            = self.edof.tolist()
-        output_data_file["ex"]              = self.ex.tolist()
-        output_data_file["ey"]              = self.ey.tolist()
         output_data_file["bcnod"]           = self.bcnod.tolist()
         output_data_file["bcval"]           = self.bcval.tolist()
         output_data_file["bcval_idx"]       = self.bcval_idx.tolist()
-        output_data_file["lower_bcnod"]     = self.lower_bcnod.tolist()
-        output_data_file["upper_bcnod"]     = self.upper_bcnod.tolist()
-        output_data_file["dofs"]            = self.dofs.tolist()
         output_data_file["dofs_per_node"]   = self.dofs_per_node
-        output_data_file["el_type"]         = self.el_type
         output_data_file["nelm"]            = self.nelm
         output_data_file["nnod"]            = self.nnod
         output_data_file["ndof"]            = self.ndof
         output_data_file["nodel"]           = self.nodel
         output_data_file["dofel"]           = self.dofel
         output_data_file["input_location"]  = self.input_location
-        output_data_file["bot_c"]           = self.bot_c
-        output_data_file["top_c"]           = self.top_c
         
         
         with open(filename, "w") as ofile:
@@ -828,8 +735,6 @@ class OutputData(object):
         self.ndof          = np.asarray(output_data_file["ndof"])
         self.nodel         = np.asarray(output_data_file["nodel"])
         self.dofel         = output_data_file["dofel"]
-        
-        self.ex, self.ey   = cfc.coordxtr(self.edof, self.coord, self.dofs)
 
         
         
@@ -840,9 +745,7 @@ class Solver(object):
         self.output_data = output_data
         
     def generateMesh(self):
-        
-        
-        
+            
         # Short form 
         grain        = self.input_data.grain
         line_ex      = self.input_data.line_ex
@@ -856,72 +759,111 @@ class Solver(object):
         line_ey_add  = self.input_data.line_ey_add
         line_seg_add = self.input_data.line_seg_add
         nseg_tot     = np.sum(line_seg_add) + nseg
-    
+        
+        
         # grain_idx
         grain_idx = np.linspace(0,ngrains-1,ngrains,dtype=int)
         
-        # g_cols
-        g_cols = [2*grain, 2*grain + 1]
         
- 
+        for grain in range(self.input_data.ngrains):
+            g_cols   = [2*grain, 2*grain + 1]
+            line_seg = self.input_data.line_seg_all[grain]
+            line_ex  = self.input_data.line_ex_all[:line_seg,g_cols]
+            line_ey  = self.input_data.line_ey_all[:line_seg,g_cols]
     
-        # --- Call input_data for geometry ---
-        g = self.input_data.geometry(grain)
+        # # g_cols
+        # g_cols         = [2*grain, 2*grain + 1]
+        # grain_material = self.input_data.material[grain] - 1
+
+        # Create geometry
+        interface_splines = self.input_data.geometry()
         
+        # Change location to phase_meshes
+        # os.chdir(self.input_data.python_location + '/single_study/phase_meshes')
+        print('where', os.getcwd())
+        print('where', self.input_data.python_location)
         
-        grain_material = self.input_data.material[grain] - 1
-        if (grain_material==0 or grain_material==2):
-            # Cu or Sn material - flux not important
-            self.input_data.el_size_factor = 0.4
+        # Generate mesh:
+        gmsh.model.mesh.generate(2) # 2D mesh generation
+        
+        # Write mesh data:
+        filename = 'phase_mesh_' + str(self.input_data.version)
+        # gmsh.write(filename s+ ".msh")
+        gmsh.write(filename + ".inp")
+        
+        # --- Graphical illustration of mesh ---
+        # if 'close' not in sys.argv:
+        #     gmsh.fltk.run()
             
-
-        # --- Mesh ---
-        el_type        = 2        # <-- Triangle elements
-        dofs_per_node  = 1        # <-- Concentration problem
         
-        mesh                          = cfm.GmshMesh(g)   
-        mesh.el_type                  = el_type
-        mesh.dofs_per_node            = dofs_per_node
-        mesh.return_boundary_elements = True
-        mesh.el_size_factor           = self.input_data.el_size_factor # Unstructured mesh
+        # --- Extract coord and enod in the model ---
+        entities = gmsh.model.getEntities()
         
-        # set a trap and redirect stdout
-        trap = io.StringIO()
-        with redirect_stdout(trap):
-            coord, edof, dofs, bdofs, elementmarkers, \
-            boundaryElements  = mesh.create()
-        
-        
-        # Obtain and rearrange enod
-        enod = edof
-        # enod   = self.reorder_enod(coord,enod)
-
-        
-        bcnod        = np.asarray([0])
-        bcval        = np.asarray([0])
-        lower_bcnods = np.asarray([0])
-        upper_bcnods = np.asarray([0])
-        bot_c        = np.asarray([0])
-        top_c        = np.asarray([0])
-        
-        
-        # Line ex all
-        line_ex_all = self.input_data.line_ex_all
-        line_ey_all = self.input_data.line_ey_all
-        line_seg_all = self.input_data.line_seg_all
-    
-
         # --- Extract bcnod ---
-        bcnods = np.asarray(bdofs[self.input_data.interface_marker],\
-                                  dtype=int)
-        bcval = np.zeros(np.size(bcnods))
-        
+        bcnods = []
+        for line_tag in interface_splines:
+            line_nods,_,_ = gmsh.model.mesh.getNodes(dim=1,tag=line_tag,includeBoundary=True)
+            bcnods.extend(line_nods)
+        bcnods = sorted(set(bcnods))
+        bcnods = np.asarray(bcnods,dtype=int)
+        bcval  = np.zeros(np.size(bcnods))
         
         # Number of bcnods
-        n_interface_points = np.size(bcnods) 
+        n_interface_points = np.size(bcnods)
         
-     
-        # Equilibrium concentrations of all materials
+        with open(filename + '.inp') as infile:
+            lines = [ln.strip() for ln in infile.readlines()]
+            # Remove comments
+            lines = [ln for ln in lines if not ln.startswith("**")]
+            # Find section headers
+            headings = [(ln[1:], n) for n, ln in enumerate(lines) if ln.startswith("*")]
+            # Filter the headings so that every heading has a start-of-data and
+            # end-of-data index.
+            headings.append(("end", -1))
+            ln = [h[1] for h in headings]
+            headings = [
+                (name, start + 1, end) for (name, start), end in zip(headings[:-1], ln[1:])
+            ]
+        
+        for h in headings:
+            name       = h[0]
+            lname      = name.lower()
+            start_line = h[1]
+            end_line   = h[2]
+            
+            # Coord
+            if lname.startswith("node"):
+                coord = lines[start_line:end_line]
+                
+            # Connectivity
+            if lname.startswith("element, type=cps3"):
+                enod = lines[start_line:end_line]
+                
+                
+        # Extract coord
+        coord = self.extract_mesh_data(coord)
+        coord = coord[:,1:3]
+        
+        # Extract enod
+        enod  = self.extract_mesh_data(enod)
+        enod  = enod[:,1:]
+        enod  = enod.astype(int)
+        edof  = enod
+        
+        # Make sure that enod is numbered counter-clockwise for 3-node elm
+        self.reorder_enod_triangle(coord, enod)
+        
+        # Dofs per node
+        dofs_per_node = 1
+
+        # Line ex all
+        line_ex_all  = self.input_data.line_ex_all
+        line_ey_all  = self.input_data.line_ey_all
+        line_seg_all = self.input_data.line_seg_all
+        
+        
+        
+        # --- Equilibrium concentrations of all materials ---
         cu_cu   = self.input_data.cu_cu
         cu_imc  = self.input_data.cu_imc
         cu_sn   = self.input_data.cu_sn
@@ -955,21 +897,7 @@ class Solver(object):
         mu_sn_imc  = sn_params[0]*(sn_imc - sn_params[3]) + sn_params[1]
         mu_sn_sn   = sn_params[0]*(sn_sn  - sn_params[3]) + sn_params[1]
         
-        
-        # Diffusion potentials
-        c_cu_cu   = cu_cu/molar_volumes[0]
-        c_cu_imc  = cu_imc/molar_volumes[0]
-        c_cu_sn   = cu_sn/molar_volumes[0]
-        
-        c_imc_cu  = imc_cu/molar_volumes[1]
-        c_imc_imc = imc_imc/molar_volumes[1]
-        c_imc_sn  = imc_sn/molar_volumes[1]
-        
-        c_sn_cu   = sn_cu/molar_volumes[2]
-        c_sn_imc  = sn_imc/molar_volumes[2]
-        c_sn_sn   = sn_sn/molar_volumes[2]
-        
-        
+        # Equilibrium compositions
         # Row 1: Cu eq comps
         # Row 2: IMC eq comps
         # Row 3: Sn eq comps
@@ -1031,20 +959,7 @@ class Solver(object):
                         
                 if (np.size(other_material)>1):
                     print('Error in bcval')
-                
-                s = 9
-                
-             
-                # # Find closest node to interface point
-                # closest_node = np.argmin(np.sqrt((self.input_data.coord[:,0]\
-                #         -P[0])**2 + (self.input_data.coord[:,1]-P[1])**2 ))
-                
-                # # Find which of the other grains lowest value at node
-                # other_grain = other_grains[np.argmin(self.input_data.a\
-                #                                 [closest_node,other_grains])]
-                
-                # other_material = self.input_data.material[other_grain] - 1
-                
+
                 # Find equilibrium composition grain, lowest_grain
                 bcval[point_counter] = eq_comp[grain_material,other_material]
                 
@@ -1095,54 +1010,29 @@ class Solver(object):
                 if (np.size(other_material)>1):
                     print('Error in bcval')
                 
-                # # Determine what other grain has smallest value at that node
-                # other_grains = grain_idx[grain_idx != grain]
-                
-                # # Find closest node to interface point
-                # closest_node = np.argmin(np.sqrt(\
-                # (self.input_data.coord[:,0]-P[0])**2 +\
-                # (self.input_data.coord[:,1]-P[1])**2 ))
-                
-                # # Find which of the other grains lowest value at node
-                # other_grain = other_grains[np.argmin(self.input_data.a\
-                #                             [closest_node,other_grains])]
-                    
-                # other_material = self.input_data.material[other_grain] - 1
-                
-                # Find equilibrium composition grain, lowest_grain
                 bcval[point_counter] = eq_comp[grain_material,other_material]
                 point_counter = point_counter + 1
                 
             
-            
-        
-        
         # Rearrange bcnod
         nbc        = np.size(bcnods)
         bcnod      = np.zeros((nbc,2), dtype=np.int32)
         bcnod[:,0] = bcnods
         bcnod[:,1] = np.ones((nbc), dtype=np.int32)
         
-    
-        
-        
-        # Remove bc cond that is imc/imc interphase
         
         # Create a boolean mask and remove imc_imc values from bc
         # mask  = np.abs(bcval - self.input_data.imc_imc)>1e-12
-        mask  = np.abs(bcval - mu_imc_imc)>1e-12
+        mask  = np.abs(bcval - mu_imc_imc) > 1e-12
         bcval = bcval[mask]
         bcnod = bcnod[mask]
         
         
-        # Remove bc cond that is sn/sn interphase
-        
-        # Create a boolean mask and remove imc_imc values from bc
+        # Create a boolean mask and remove sn_sn values from bc
         # mask  = np.abs(bcval - self.input_data.imc_imc)>1e-12
         mask  = np.abs(bcval - mu_sn_sn)>1e-12
         bcval = bcval[mask]
         bcnod = bcnod[mask]
-        
         
         
         # Remove tp points from bc
@@ -1160,69 +1050,9 @@ class Solver(object):
         bcval = bcval[mask]
         bcnod = bcnod[mask]
         
-        
-        
-        
-        # If sn grain add top bc
-        # if (grain_material==2):
-        #     mu_sn_c0   = sn_params[0]*(sn_c0  - sn_params[3]) + sn_params[1]
-        #     maxy      = np.max(coord[:,1])
-        #     top_nodes = np.where(abs(coord[:,1] - maxy)<1e-12)
-        #     top_nodes = top_nodes[0] + 1
-        #     add_bcnod_top      = np.zeros((np.size(top_nodes),2), dtype=np.int32)
-        #     add_bcnod_top[:,0] = top_nodes
-        #     add_bcnod_top[:,1] = 1
-        #     add_bcval_top      = np.zeros(np.size(top_nodes))
-        #     add_bcval_top[:]   = mu_sn_c0
-            
-        #     # Define new bcnod and bcval
-        #     bcnod = np.vstack((bcnod, add_bcnod_top))
-        #     bcval = np.concatenate((bcval, add_bcval_top))
-            
-            
         bcval_idx = bcval.copy()
-        # # If sn grain change conc at gb
-        # if (grain_material==2):
-        #     bccoord    = coord[bcnod[:,0]-1,:]
-        #     elm_width  = self.input_data.el_size_factor
-        #     mu_sn_c0   = sn_params[0]*(sn_c0_fix  - sn_params[3]) + sn_params[1]
-        #     minx       = np.min(coord[:,0])
-        #     maxx       = np.max(coord[:,0])
-        #     miny       = np.min(coord[:,1])
-        #     maxy       = np.max(coord[:,1])
-            
-        #     # Find lower left node in grain mesh
-        #     min_y = coord[0][1]
-        #     for x, y in coord:
-        #         if x < minx + 1e-12:
-        #             if y < min_y:
-        #                 min_y = y
-            
-        #     Pll = np.array([minx, min_y])
-            
-        #     # Find nodes in bcnods
-        #     line_bool      = line_ex[:,0]<Pll[0] + elm_width*7
-        #     xcoord_include = line_ex[line_bool,0]
-        #     ycoord_include = line_ey[line_bool,0]
-        #     left_side_nodes = []
-        #     for i in range(np.size(xcoord_include)):
-        #         xcoord_i = xcoord_include[i]
-        #         ycoord_i = ycoord_include[i]
-        #         is_included = ((bccoord[:,0] - xcoord_i)**2 + (bccoord[:,1] - ycoord_i)**2)<1e-14
-        #         if (np.any(is_included)):
-        #             left_side_nodes.append(np.where(is_included)[0][0])
-    
-        #     left_side_nodes        = np.array(left_side_nodes)
-        #     alpha = 5
-        #     mu_sn_set = mu_sn_imc + (mu_sn_c0 - mu_sn_imc)*np.exp(-alpha*abs(xcoord_include - Pll[0]))
 
-        #     bcval[left_side_nodes] = mu_sn_set
-            
-        #     print('as')
-            
-        
-    
-        
+      
         # --- Topology quantities ---
             
         nelm  = np.shape(edof)[0]
@@ -1234,40 +1064,34 @@ class Solver(object):
         nodel = np.size(enod[0])
         
         dofel = nodel*dofs_per_node
-        
-        # ex and ey in mm
-        ex, ey = cfc.coordxtr(enod, coord, dofs)
-        ex     = ex*1e-3
-        ey     = ey*1e-3
-        
-        # # Extract boundary nodes along line ex
-        # line_ex = self.input_data.line_ex
-        # line_ey = self.input_data.line_ey
-        # boundary_nodes = self.get_boundary_nodes(coord,enod,ndof,nelm,\
-                                                  # line_ex,line_ey)
-            
-        
+    
+
         # --- Transfer model variables to output data ---
         self.output_data.coord          = coord
         self.output_data.enod           = enod
         self.output_data.edof           = edof
-        self.output_data.ex             = ex
-        self.output_data.ey             = ey
         self.output_data.bcnod          = bcnod
         self.output_data.bcval          = bcval
         self.output_data.bcval_idx      = bcval_idx
-        self.output_data.lower_bcnod    = lower_bcnods
-        self.output_data.upper_bcnod    = upper_bcnods
-        self.output_data.dofs           = dofs
         self.output_data.dofs_per_node  = dofs_per_node
-        self.output_data.el_type        = el_type
         self.output_data.nelm           = nelm
         self.output_data.nnod           = nnod
         self.output_data.ndof           = ndof
         self.output_data.nodel          = nodel
         self.output_data.dofel          = dofel
         
+    def extract_mesh_data(self,inpmatrix):
+        # Convert mesh data from .inp file to float
         
+        # Use numpy.char.split to split each string into a list of substrings
+        split_arrays = np.char.split(inpmatrix, sep=', ')
+        
+        # Use numpy.vstack to stack the resulting lists into a 2D array
+        float_array = np.vstack([np.array(arr, dtype=float) for arr in split_arrays])
+        
+        return float_array    
+    
+    
     def get_boundary_nodes(self,coord,enod,ndof,nelm,line_ex,line_ey):
         """Finding boundary nodes along interphase"""
         
@@ -1304,6 +1128,37 @@ class Solver(object):
         
         # Return boundary nodes
         return boundary_nodes
+        
+    
+    def reorder_enod_triangle(self, coord, enod):
+        """Routine for reordering enod in a plane triangle s.t. the node
+        numbering is counter-clockwise"""
+        
+        nelm = np.size(enod,0)
+        
+        
+        for i in range(nelm):
+            # Extract the node indices for the current element
+            elm_nodes = enod[i]
+    
+            # Extract the coordinates for the current element
+            elm_coords = coord[elm_nodes-1]
+    
+            # Check if the nodes are in counter-clockwise order, if not, reverse the order
+            if self.is_ccw(*elm_coords):
+                enod[i] = np.flip(elm_nodes)
+
+        return enod
+        
+
+    def is_ccw(self,p1, p2, p3):
+        """
+        Check if the given three points (nodes) are in counter-clockwise order.
+        """
+        return (p2[1] - p1[1]) * (p3[0] - p2[0]) > (p2[0] - p1[0]) * (p3[1] - p2[1])
+
+        
+        
         
     def reorder_enod(self, coord,enod):
         """"Reordering enod. Start in lower left corner. Counter-clockwise."""
@@ -1370,7 +1225,20 @@ class Solver(object):
         self.input_data.location = os.getcwd()
 
         # --- Create mesh ---
+        gmsh.initialize()
+        gmsh.finalize()
+        
+        # Initialize gmsh:
+        gmsh.initialize()
+        
+        # Set Mesh.SaveAll to 1
+        gmsh.option.setNumber("Mesh.SaveAll", 1)
+        
+        # Generate mesh
         self.generateMesh()
+        
+        # Finalize the Gmsh API
+        gmsh.finalize()
         
         # --- Save input data as json file ---
         # self.input_data.save('phase_input_' + str(self.input_data.version) + '.json')
@@ -1422,158 +1290,3 @@ class Solver(object):
         os.mkdir(path) 
         print("Directory '% s' created" % dir_name) 
         os.chdir(path)
-        
-class Report(object):
-    """Klass för presentation av indata och utdata i rapportform."""
-    def __init__(self, input_data, output_data, save=False):
-        self.input_data  = input_data
-        self.output_data = output_data
-        self.report      = ""
-
-    def clear(self):
-        self.report = ""
-
-    def add_text(self, text=""):
-        self.report += str(text)+"\n"
-
-    def __str__(self):
-        self.clear()
-        
-         # --- Wrirte report as table ---
-        
-        self.add_text()
-        self.add_text("-------------- Model input ----------------------------------")
-        self.add_text()
-        self.add_text("Width [m]:")
-        self.add_text(self.input_data.w)
-        self.add_text()
-        self.add_text("Height [m]:")
-        self.add_text(self.input_data.h)
-        self.add_text()
-        self.add_text("y2 [m]:")
-        self.add_text(self.input_data.y2)
-        self.add_text()
-        self.add_text("y3 [m]:")
-        self.add_text(self.input_data.y3)
-        self.add_text()
-        self.add_text("y4 [m]:")
-        self.add_text(self.input_data.y4)
-        self.add_text()
-        self.add_text("el_size_x [m]:")
-        self.add_text(self.input_data.el_size_x)
-        self.add_text()
-        self.add_text("el_size_y_coarse [m]:")
-        self.add_text(self.input_data.el_size_y_coarse)
-        self.add_text()
-        self.add_text("el_size_y_fine [m]:")
-        self.add_text(self.input_data.el_size_y_fine)
-        self.add_text("-------------- Model output ----------------------------------")
-        self.add_text()
-        self.add_text("Number of nodes:")
-        self.add_text(self.output_data.nnod)
-        self.add_text()
-        self.add_text("Number of dofs:")
-        self.add_text(self.output_data.ndof)
-        self.add_text()
-        self.add_text("Number of elements:")
-        self.add_text(self.output_data.nelm)
-        self.add_text()
-        self.add_text("Number of nodes in an element:")
-        self.add_text(self.output_data.nodel)
-        self.add_text()
-        self.add_text("Number of dofs in an element:")
-        self.add_text(self.output_data.dofel)
-        self.add_text()
-        self.add_text("Number of dofs in a node:")
-        self.add_text(self.output_data.dofs_per_node)
-        self.add_text()
-        self.add_text("Number of boundary conditions:")
-        self.add_text(np.size(self.output_data.bcval))
-        self.add_text("------------------------------------------------")
-        
-        return self.report
-    
-    def save(self, filename):
-        with open(filename, "w", encoding = "UTF-8") as ofile:
-            print(self, file = ofile)
-    
-
-
-class Visualisation(object):
-    """Class for visualising data"""
-    def __init__(self, input_data, output_data):
-        self.input_data  = input_data
-        self.output_data = output_data
-
-
-
-    def showGeometry(self):
-        """Show geometry, number of elms at segments etc"""
-        # --- Get parameters needed for visualisation ---
-        geometry      = self.input_data.geometry()
-        
-        # --- Draw Geometry ---
-        
-        cfv.figure()
-        cfv.drawGeometry(geometry, draw_points=True, label_curves=True, title='Geometry')
-        
-        
-    def showMatplotlibMesh(self):
-        """Plot element and node labels"""
-        # --- Get parameters needed for visualisation ---
-        coord         = self.output_data.coord
-        edof          = self.output_data.edof
-        dofs          = self.output_data.dofs
-        nnod          = self.output_data.nnod
-        
-        def drawNodes(nnod,coord):
-            """Draw node labels"""
-            offset = 0.02
-            for i in range(0, nnod):
-                cfv.add_text(str(i+1),coord[i]+offset)
-                
-        # --- Draw mesh with labels ---
-        cfv.figure()
-        ex, ey = cfc.coordxtr(edof, coord, dofs)
-        elms   = np.asarray(range(np.shape(edof)[0])) + 1
-        cfv.eldraw2(ex, ey, plotpar=[1, 2, 1], elnum=elms)
-        drawNodes(nnod,coord)
-        
-        
-        
-    def showMesh(self):
-        """Show mesh"""
-        
-        # --- Get parameters needed for visualisation ---
-        coord         = self.output_data.coord
-        edof          = self.output_data.edof
-        dofs_per_node = self.output_data.dofs_per_node
-        el_type       = self.output_data.el_type
-
-        # --- Draw Mesh ---     
-        f = vv.figure()
-        cfv.drawMesh(
-            coords        = coord,
-            edof          = edof,
-            dofs_per_node = dofs_per_node,
-            el_type       = el_type,
-            filled        = True,
-            title         = "Mesh"
-        )
-        self.axes = f.currentAxes
-
-    
-    def saveMesh(self, filename='python_mesh'):
-        """Save mesh as jpg file"""
-        
-        extension      = '.jpg'
-        exportFileName = filename + extension 
-    
-        vv.callLater(1.0, vv.screenshot, exportFileName, self.axes, sf=2)
-        
-
-    def wait(self):
-        """Denna metod ser till att fönstren hålls uppdaterade och kommer att returnera
-        När sista fönstret stängs"""
-
-        cfv.showAndWait()

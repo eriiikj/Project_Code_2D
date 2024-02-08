@@ -97,6 +97,11 @@ subroutine solve_diffusion_problem_global(diffsys,i_IMC,lssys,mesh,pq,input_loca
 ! Subroutine variables
   integer :: g
   
+! Obtain global diffusion mesh
+  call generate_global_diffusion_mesh()
+
+
+
 ! Solve diffusion problem for all grains seperately
   do g=1,lssys%ngrains    
     call diffusion_grain(diffsys,i_IMC, mesh, diffsys%grain_meshes(g), g, input_location, lssys, omp_run, pq)
@@ -111,6 +116,26 @@ subroutine solve_diffusion_problem_global(diffsys,i_IMC,lssys,mesh,pq,input_loca
   return
 end subroutine solve_diffusion_problem_global
 
+
+
+subroutine generate_global_diffusion_mesh()
+! --- Routine for generating and partiotioning a global diffusion mesh ---
+  implicit none
+
+! Subroutine variables
+  character(len=40)                          :: command_line
+  character(len=80)                          :: diffusion_mesh_script_location
+
+
+
+  diffusion_mesh_script_location = '/home/er7128ja/Nextcloud/Projekt/Project_Code_2D/Python_output/phase_mesh_script'  
+
+! Generete mesh by running python script
+  call chdir(diffusion_mesh_script_location)
+  write(command_line,'(A37,I1)'), 'python diffusion_mesh_Main.py '  
+
+  return
+end subroutine generate_global_diffusion_mesh
 
 subroutine diffusion_grain(diffsys, i_IMC, global_mesh, grain_mesh, g, input_location, lssys, omp_run, pq)
 ! --- Routine for solving diffusion equation in grain ---
@@ -159,7 +184,7 @@ subroutine diffusion_grain(diffsys, i_IMC, global_mesh, grain_mesh, g, input_loc
     call chdir(phase_mesh_script_location)
     call clock_time(t1, omp_run)
 ! write(command_line,'(A37,I1)'), 'python grain_mesh_triangular_Main.py ', g
-    write(command_line,'(A37,I1)'), 'python grain_mesh_global_Main.py ', g
+    write(command_line,'(A37,I1)'), 'python grain_mesh_local_Main.py ', g
     call execute_command_line(trim(command_line))
     call clock_time(t2, omp_run)
     diffsys%generate_mesh_time = diffsys%generate_mesh_time + (t2 - t1)    
