@@ -78,6 +78,8 @@ class MainClass(object):
         self.input_data.P2nod                  = 0
         self.input_data.P3nod                  = 0
         self.input_data.P4nod                  = 0
+        self.input_data.node_tags              = 0
+        self.input_data.spline_tags            = 0
         
         # Equilibrium compositions
         self.input_data.cu_cu                  = 111
