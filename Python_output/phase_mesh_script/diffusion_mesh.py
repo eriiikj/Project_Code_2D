@@ -291,12 +291,12 @@ class InputData(object):
             
             # Global variables
             self.a              = data['a']*1e3
-            self.line_seg_all   = data['line_seg'].flatten()
-            self.ngrains        = np.size(self.line_seg_all)
+            self.ngrains        = np.shape(self.a)[1]
             self.line_ex_all    = (data['line_ex']*1e3)
             self.line_ey_all    = data['line_ey']*1e3
-            self.sep_lines_all  = data['sep_lines']
-            self.nsep_lines_all = np.sum(self.sep_lines_all[:,0:-1:2]>0,0)
+            self.line_seg_all   = data['line_seg'].flatten()
+            # self.sep_lines_all  = data['sep_lines']
+            # self.nsep_lines_all = np.sum(self.sep_lines_all[:,0:-1:2]>0,0)
             self.material       = data['material'].flatten()
             self.ex             = np.transpose(data['newex'])*1e3
             self.ey             = np.transpose(data['newey'])*1e3
@@ -398,17 +398,15 @@ class OutputData(object):
         output_data_file = {}
         output_data_file["coord"]           = np.transpose(self.coord).tolist()
         output_data_file["enod"]            = np.transpose(self.enod).tolist()
-        # output_data_file["edof"]            = self.edof.tolist()
         # output_data_file["bcnod"]           = self.bcnod.tolist()
         # output_data_file["bcval"]           = self.bcval.tolist()
         # output_data_file["bcval_idx"]       = self.bcval_idx.tolist()
-        # output_data_file["dofs_per_node"]   = self.dofs_per_node
-        # output_data_file["nelm"]            = self.nelm
-        # output_data_file["nnod"]            = self.nnod
-        # output_data_file["ndof"]            = self.ndof
-        # output_data_file["nodel"]           = self.nodel
-        # output_data_file["dofel"]           = self.dofel
-        # output_data_file["input_location"]  = self.input_location
+        output_data_file["dofs_per_node"]   = self.dofs_per_node
+        output_data_file["nelm"]            = self.nelm
+        output_data_file["nnod"]            = self.nnod
+        output_data_file["ndof"]            = self.ndof
+        output_data_file["nodel"]           = self.nodel
+        output_data_file["dofel"]           = self.dofel
         
         
         with open(filename, "w") as ofile:
@@ -478,6 +476,9 @@ class Mesh(object):
         coord = triangulation['vertices']
         enod  = triangulation['triangles']
         
+        # Make sure that enod is numbered counter-clockwise for 3-node elm
+        self.reorder_enod_triangle(coord, enod)
+        
         s = 9
         
         
@@ -497,50 +498,12 @@ class Mesh(object):
         # # Number of bcnods
         # n_interface_points = np.size(bcnods)
         
-        # with open(filename + '.inp') as infile:
-        #     lines = [ln.strip() for ln in infile.readlines()]
-        #     # Remove comments
-        #     lines = [ln for ln in lines if not ln.startswith("**")]
-        #     # Find section headers
-        #     headings = [(ln[1:], n) for n, ln in enumerate(lines) if ln.startswith("*")]
-        #     # Filter the headings so that every heading has a start-of-data and
-        #     # end-of-data index.
-        #     headings.append(("end", -1))
-        #     ln = [h[1] for h in headings]
-        #     headings = [
-        #         (name, start + 1, end) for (name, start), end in zip(headings[:-1], ln[1:])
-        #     ]
+ 
         
-        # for h in headings:
-        #     name       = h[0]
-        #     lname      = name.lower()
-        #     start_line = h[1]
-        #     end_line   = h[2]
-            
-        #     # Coord
-        #     if lname.startswith("node"):
-        #         coord = lines[start_line:end_line]
-                
-        #     # Connectivity
-        #     if lname.startswith("element, type=cps3"):
-        #         enod = lines[start_line:end_line]
-                
-                
-        # # Extract coord
-        # coord = self.extract_mesh_data(coord)
-        # coord = coord[:,1:3]
         
-        # # Extract enod
-        # enod  = self.extract_mesh_data(enod)
-        # enod  = enod[:,1:]
-        # enod  = enod.astype(int)
-        # edof  = enod
         
-        # # Make sure that enod is numbered counter-clockwise for 3-node elm
-        # self.reorder_enod_triangle(coord, enod)
-        
-        # # Dofs per node
-        # dofs_per_node = 1
+        # Dofs per node
+        dofs_per_node = 1
 
         # # Line ex all
         # line_ex_all  = self.input_data.line_ex_all
@@ -740,15 +703,15 @@ class Mesh(object):
       
         # # --- Topology quantities ---
             
-        # nelm  = np.shape(edof)[0]
+        nelm  = np.shape(enod)[0]
         
-        # nnod  = np.shape(coord)[0]
+        nnod  = np.shape(coord)[0]
         
-        # ndof  = nnod*dofs_per_node
+        ndof  = nnod*dofs_per_node
         
-        # nodel = np.size(enod[0])
+        nodel = np.size(enod[0])
         
-        # dofel = nodel*dofs_per_node
+        dofel = nodel*dofs_per_node
     
 
         # # --- Transfer model variables to output data ---
@@ -757,12 +720,12 @@ class Mesh(object):
         # self.output_data.bcnod          = bcnod
         # self.output_data.bcval          = bcval
         # self.output_data.bcval_idx      = bcval_idx
-        # self.output_data.dofs_per_node  = dofs_per_node
-        # self.output_data.nelm           = nelm
-        # self.output_data.nnod           = nnod
-        # self.output_data.ndof           = ndof
-        # self.output_data.nodel          = nodel
-        # self.output_data.dofel          = dofel
+        self.output_data.dofs_per_node  = dofs_per_node
+        self.output_data.nelm           = nelm
+        self.output_data.nnod           = nnod
+        self.output_data.ndof           = ndof
+        self.output_data.nodel          = nodel
+        self.output_data.dofel          = dofel
         
     def extract_mesh_data(self,inpmatrix):
         # Convert mesh data from .inp file to float

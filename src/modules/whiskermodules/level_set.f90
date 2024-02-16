@@ -273,6 +273,8 @@ subroutine init_ls_system(lssys,mesh,IMC_steps, input_location)
 end subroutine init_ls_system
 
 
+
+
 subroutine update_ls_system(lssys,mesh,i_IMC,input_location, omp_run, pq, diffsys, ls_spatial)
   ! --- Routine for updating all level set functions with the previously computed vp ---
   implicit none
@@ -367,11 +369,11 @@ subroutine update_ls_system(lssys,mesh,i_IMC,input_location, omp_run, pq, diffsy
   
   
   ! 6) --- Sort line segments ---
-  do g = 1,lssys%ngrains
-    g_rows = [2*(g-1) + 1, 2*(g-1) + 2]
-    call sort_lines(lssys%line_ex(:,g_rows(1):g_rows(2)),lssys%line_ey(:,g_rows(1):g_rows(2)),lssys%tplines(:,g), &
-    lssys%line_seg(g),lssys%sep_lines(:,g_rows(1):g_rows(2)),lssys%nsep_lines(g),mesh)
-  enddo
+  ! do g = 1,lssys%ngrains
+  !   g_rows = [2*(g-1) + 1, 2*(g-1) + 2]
+  !   call sort_lines(lssys%line_ex(:,g_rows(1):g_rows(2)),lssys%line_ey(:,g_rows(1):g_rows(2)),lssys%tplines(:,g), &
+  !   lssys%line_seg(g),lssys%sep_lines(:,g_rows(1):g_rows(2)),lssys%nsep_lines(g),mesh)
+  ! enddo
 
   ! 7) --- Reinitialize level set function ---
   do g = 1,lssys%ngrains
