@@ -111,9 +111,9 @@ class InputData(object):
         
         
         # --- Constraint Delanuay triangularization using triangle ---
-        tri_input     = dict(vertices=self.mesh_points, segments=self.line_conn) # segments=self.line_conn
+        tri_input     = dict(vertices=self.mesh_points) # segments=self.line_conn
         print('Creating a constraint delanuay triangularization...')
-        triangulation = triangle.triangulate(tri_input,opts='pcqa0.03') #pca0.002YY 
+        triangulation = triangle.triangulate(tri_input,opts='') #pcqa0.03 
         print('Finished delanuay triangularization')
         tris          = triangulation['triangles']
         tris          = tris.flatten()
@@ -143,32 +143,7 @@ class InputData(object):
         xyz[2::3] = np.zeros_like(coord[:, 0])
         return xyz
     
-    def get_line_conn(self, line_coord, line_ex, line_ey):
-        
-        # No. line segments
-        nseg = np.shape(line_ex)[0]
-
-        # Stack line_ex and line_ey into a single array for convenience
-        lines_stacked = np.column_stack((line_ex.flatten(), line_ey.flatten()))
-        
-        # Find indices of line_segments in line_coord
-        line_conn = np.where(np.all(line_coord == lines_stacked[:, None, :],axis=-1))[1]
-        
-        # Reshape to match line segments (nsegx2)
-        line_conn = line_conn.reshape(nseg,2)
-        
-        return line_conn
     
-    def lines_to_coord(self, line_ex, line_ey):
-        """ Function for extracting unique vertices in lines"""
-        N             = np.shape(line_ex)[0]
-        coord         = np.zeros((2 * N, 2))
-        coord[:N, 0]  = line_ex[:, 0]
-        coord[N:, 0]  = line_ex[:, 1]
-        coord[:N, 1]  = line_ey[:, 0]
-        coord[N:, 1]  = line_ey[:, 1]
-        unique_coord  = np.unique(coord, axis=0)
-        return coord
     
     def save(self, filename):
         """Save input data to dictionary."""
@@ -306,9 +281,9 @@ class InputData(object):
             self.tot_imc_area_init = data['IMC_area_init'].flatten()[0]
             self.tot_imc_area      = data['IMC_area'].flatten()[0]
             
-        # Round to 7 decimals 
-        self.line_ex_all = self.line_ex_all.round(decimals=8)
-        self.line_ey_all = self.line_ey_all.round(decimals=8)
+        # Round line coords to 6 decimals 
+        self.line_ex_all = self.line_ex_all.round(decimals=6)
+        self.line_ey_all = self.line_ey_all.round(decimals=6)
             
         # Domain corners
         self.P1   = self.coord[self.P1nod]
@@ -316,7 +291,9 @@ class InputData(object):
         self.P3   = self.coord[self.P3nod]
         self.P4   = self.coord[self.P4nod]
             
-        # Compute line_coord
+        
+        
+        # --- Extract all line coords ---
         line_coord = np.empty((0, 2), dtype=float)
         for grain in range(self.ngrains):
             
@@ -335,10 +312,13 @@ class InputData(object):
         # Domain corners
         corner_coords = np.vstack((self.P1, self.P2, self.P3, self.P4))
         
-        # Total mesh_points (line_coord + domain corners)
+        # All mesh_points (line_coord + domain corners)
         self.mesh_points = np.unique(np.vstack((self.line_coord, corner_coords)), axis=0)
         
-        # Extract line connectivity matrix line_conn
+        
+        
+        
+        # --- Extract line connectivity matrix line_conn ---
         line_conn = np.empty((0, 2), dtype=int)
         for grain in range(self.ngrains):
             
@@ -361,6 +341,34 @@ class InputData(object):
             self.sn_c0 = (self.sn_c0_fix - self.sn_imc)*\
                 (self.tot_imc_area_init/self.tot_imc_area)\
                 +self.sn_imc
+                
+                
+    def get_line_conn(self, line_coord, line_ex, line_ey):
+        
+        # No. line segments
+        nseg = np.shape(line_ex)[0]
+
+        # Stack line_ex and line_ey into a single array for convenience
+        lines_stacked = np.column_stack((line_ex.flatten(), line_ey.flatten()))
+        
+        # Find indices of line_segments in line_coord
+        line_conn = np.where(np.all(line_coord == lines_stacked[:, None, :],axis=-1))[1]
+        
+        # Reshape to match line segments (nsegx2)
+        line_conn = line_conn.reshape(nseg,2)
+        
+        return line_conn
+    
+    def lines_to_coord(self, line_ex, line_ey):
+        """ Function for extracting unique vertices in lines"""
+        N             = np.shape(line_ex)[0]
+        coord         = np.zeros((2 * N, 2))
+        coord[:N, 0]  = line_ex[:, 0]
+        coord[N:, 0]  = line_ex[:, 1]
+        coord[:N, 1]  = line_ey[:, 0]
+        coord[N:, 1]  = line_ey[:, 1]
+        unique_coord  = np.unique(coord, axis=0)
+        return coord
             
         
 class OutputData(object):
