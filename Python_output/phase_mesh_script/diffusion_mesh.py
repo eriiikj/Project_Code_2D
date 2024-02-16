@@ -14,6 +14,7 @@ import os
 import shutil
 import scipy.io
 
+
 import matplotlib.pyplot as plt
 import itertools
 import scipy.io
@@ -23,9 +24,8 @@ import pyvtk as vtk
 import subprocess
 
 import gmsh
+import triangle
 
-from contextlib import redirect_stdout
-import io
 
 class InputData(object):
     """Class for defining input data to our model."""
@@ -34,192 +34,141 @@ class InputData(object):
         # --- Define private variabels, standrad values
 
         # Version
-        self.version                = 1
+        self.version            = 1
         
-        # Geometry
-        self.line_ex                = 0
-        self.line_ey                = 0
-        self.P0                     = 0
-        self.P1                     = 0
-        self.P2                     = 0
-        self.P3                     = 0
+        # Geometry [microns]
+        self.grain              = 0
+        self.a                  = 0
+        self.ex                 = 0
+        self.ey                 = 0 
+        self.coord              = 0
+        self.axisbc             = 0
+        self.line_ex            = 0
+        self.line_ey            = 0
+        self.line_ex_all        = 0
+        self.line_ey_all        = 0
+        self.nseg               = 0
+        self.line_seg_all       = 0
+        self.sep_lines          = 0
+        self.nsep_lines         = 0
+        self.ccsep_log          = 0
+        self.ngrains            = 0
+        self.P1                 = 0
+        self.P2                 = 0
+        self.P3                 = 0
+        self.P4                 = 0
+        self.geoms              = 0
+        self.interface_marker   = 0
+        self.eq_comp            = 0
+        self.material           = 0
+        self.tot_imc_area_init  = 0
+        self.tot_imc_area       = 0
+        self.P1nod              = 0
+        self.P2nod              = 0
+        self.P3nod              = 0
+        self.P4nod              = 0
+        self.node_tags          = 0
+        self.spline_tags        = 0
+        self.line_coord         = 0
+        self.line_conn          = 0
+        self.mesh_points        = 0
         
+        # Equilibrium compositions
+        self.cu_cu              = 111
+        self.cu_imc             = 0.1  # OBS not acc. to pd
+        self.cu_sn              = 0.31117
+        self.imc_cu             = 0.38214
+        self.imc_imc            = 112
+        self.imc_sn             = 0.45292
+        self.sn_cu              = 0.999763
+        self.sn_imc             = 0.99941
+        self.sn_sn              = 113
+        self.sn_c0_fix          = 0.999
+        self.sn_c0              = 0
+    
+        
+        self.cu_params          = [1.0133e5, -2.1146e4, -1.2842e4, 0.10569]
+        self.imc_params         = [4e5     , -6.9892e3, -1.9185e4, 0.41753]
+        self.sn_params          = [4.2059e6, 7.1680e3 , -1.5265e4, 0.99941]
+        self.molar_volumes      = np.array([7.09, 10.7, 16.3])*1e3
+
         # Mesh
-        self.el_size_x              = 25e-3
-        self.el_size_y              = 25e-3
-        self.el_size_factor         = 0.2
-        
+        self.el_size_x          = 15e-3
+        self.el_size_y          = 15e-3
+        self.el_size_factor     = 0.05
 
         # Location
-        self.location               = None
+        self.location           = None
+        self.python_location    = '/home/er7128ja/Nextcloud/Projekt/Project_Code_2D/Python_output'
+        self.fortran_location   = '/home/er7128ja/Nextcloud/Projekt/Project_Code_2D/build/src/main'
         
-        
-        # Markers
-        self.lowerSupportMarkers    = None 
-        self.upperSupportMarkers    = None 
   
     
      # --- Define the geometry ---
     
     def geometry(self):
-        """Create geometry instance"""
-        
-        # Short form
-        ngrains = self.ngrains
+        """Define geometry in gmsh"""
         
         
+        # --- Constraint Delanuay triangularization using triangle ---
+        tri_input     = dict(vertices=self.mesh_points, segments=self.line_conn) # segments=self.line_conn
+        print('Creating a constraint delanuay triangularization...')
+        triangulation = triangle.triangulate(tri_input,opts='pcqa0.03') #pca0.002YY 
+        print('Finished delanuay triangularization')
+        tris          = triangulation['triangles']
+        tris          = tris.flatten()
+        tris          = tris + 1
+        vertices      = triangulation['vertices']
+        N             = np.shape(vertices)[0]
         
-        # --- Add all unique points to the gmsh model ---
-        all_coord = np.zeros([5000,2])
-        counter   = 0
-        for grain in range(ngrains):
+        # Extract xyz data
+        xyz = self.xyz_from_coord(vertices)
             
-            # Extract line segements of grain boundary for grain
-            self.extract_local_boundary(grain)
             
-            # Short form
-            line_ex      = self.line_ex
-            line_ey      = self.line_ey
-            nseg         = self.nseg
-            nsep_lines   = self.nsep_lines
-            sep_lines    = self.sep_lines
-            line_ex_add  = self.line_ex_add
-            line_ey_add  = self.line_ey_add
-            line_seg_add = self.line_seg_add
-            
-            # Loop through all seperate lines
-            
-            for sep_idx in range(nsep_lines):
-                
-                # Segements to add
-                nseg_sep = sep_lines[sep_idx,1] - sep_lines[sep_idx,0] + 1
-                all_coord[counter:counter + nseg_sep,0] = line_ex[:,0]
-                all_coord[counter:counter + nseg_sep,1] = line_ey[:,0]
-                all_coord[counter + nseg_sep,0]         = line_ex[nseg_sep-1,1]
-                all_coord[counter + nseg_sep,1]         = line_ey[nseg_sep-1,1]
-                
-                # Update counter
-                counter = counter + nseg_sep + 1
-                
-                # Additional segments to add
-                nseg_sep_add = line_seg_add[sep_idx]
-                
-                # Add additional line segments
-                all_coord[counter:counter + nseg_sep_add,0] = line_ex_add[:nseg_sep_add,0]
-                all_coord[counter:counter + nseg_sep_add,1] = line_ey_add[:nseg_sep_add,0]
-                all_coord[counter + nseg_sep_add,0]         = line_ex_add[nseg_sep_add-1,1]
-                all_coord[counter + nseg_sep_add,1]         = line_ey_add[nseg_sep_add-1,1]
-                
-                # Update counter
-                counter = counter + nseg_sep_add + 1
-                
-               
-        # Find unique nodes
-        all_coord = np.unique(all_coord, axis=0)
+        # Add triangles to gmsh
+        surf = gmsh.model.addDiscreteEntity(2)
+        gmsh.model.mesh.addNodes(2, surf, range(1, N + 1), xyz)
+        gmsh.model.mesh.addElementsByType(surf, 2, [], tris)
         
-        # Add the nodes to the model
-        z = 0
-        for node_id, (x, y) in enumerate(all_coord):
-            gmsh.model.geo.addPoint(x, y, z, meshSize=0.1, tag=node_id)
-            
-        # Define a vector with all the node tags
-        self.node_tags = [i for i in range(0, len(all_coord))]
-        
-        
-        # # --- Add all line segments to the gmsh model and create a face ---
-        # line_id = 0
-        
-        # for grain in range(ngrains):
-            
-        #     # Extract line segements of grain boundary for grain
-        #     self.extract_local_boundary(grain)
-            
-        #     # Short form
-        #     line_ex      = self.line_ex
-        #     line_ey      = self.line_ey
-        #     nseg         = self.nseg
-        #     nsep_lines   = self.nsep_lines
-        #     sep_lines    = self.sep_lines
-        #     line_ex_add  = self.line_ex_add
-        #     line_ey_add  = self.line_ey_add
-        #     line_seg_add = self.line_seg_add
-            
-        #     # --- Splines ---
-            
-            
-        #     # Loop through all seperate lines
-        #     npoint_prev       = 0
-        #     interface_splines = np.zeros(nseg,dtype=int)
-        #     marker_c          = 0
-            
-        #     for sep_idx in range(nsep_lines):
-                
-        #         # Cols of sep_idx
-        #         sep_idx_cols = [2*sep_idx, 2*sep_idx + 1]
-        #         nseg_sep     = sep_lines[sep_idx,1] - sep_lines[sep_idx,0] + 1
-        #         nseg_sep_add = line_seg_add[sep_idx]
-                        
-        #         # Interface splines
-        #         for i in range(nseg_sep):
-                            
-        #             # Coordinates of line segment
-        #             P1 = [line_ex[i,0], line_ey[i,0]]
-        #             P2 = [line_ex[i,1], line_ey[i,1]]
-                    
-        #             # Find node tag of P1 and P2 in all_nodes
-        #             P1_tag = np.where(((all_coord[:,0] - P1[0])**2 + (all_coord[:,1] - P1[1])**2)<1e-12)[0][0]
-        #             P2_tag = np.where(((all_coord[:,0] - P2[0])**2 + (all_coord[:,1] - P2[1])**2)<1e-12)[0][0]
-                  
-        #             # Add spline
-        #             gmsh.model.geo.add_line(P1_tag, P2_tag, tag=line_id)
-        #             line_id = line_id + 1
-                
-                    
-        #         # Additional splines
-        #         for i in range(nseg_sep_add):
-                    
-        #             # Coordinates of line segment
-        #             P1 = [line_ex[i,0], line_ey[i,0]]
-        #             P2 = [line_ex[i,1], line_ey[i,1]]
-                    
-        #             # Find node tag of P1 and P2 in all_nodes
-        #             P1_tag = np.where(((all_coord[:,0] - P1[0])**2 + (all_coord[:,1] - P1[1])**2)<1e-12)[0][0]
-        #             P2_tag = np.where(((all_coord[:,0] - P2[0])**2 + (all_coord[:,1] - P2[1])**2)<1e-12)[0][0]
-                    
-        #             # left_point  = myid
-        #             # right_point = myid + 1
-        #             # if (sep_idx==nsep_lines-1 and i==nseg_sep_add-1):
-        #             #     left_point  = myid
-        #             #     right_point = 0
-                        
-        #             # Add spline
-        #             gmsh.model.geo.add_line(P1_tag, P2_tag, tag=line_id)
-        #             line_id = line_id + 1
-                
-
-        # # Define a vector with all the spline tags
-        # self.spline_tags = [i for i in range(0, line_id)]
-                
-        
-        
-        
-        #     # --- Add unstructured surface ---
-        #     # splines = list(range(0,nseg_tot))
-        #     # splines = list(range(0,nseg_tot))
-        #     # face1 = gmsh.model.geo.add_curve_loop(splines)
-        #     # gmsh.model.geo.add_plane_surface([face1])
-            
-        #     # gmsh.model.geo.addPhysicalGroup(dim=1, tags=interface_splines)
-           
-            
-        # Create the relevant Gmsh data structures 
-        # from Gmsh model.
+        # Create the relevant Gmsh data structures from gmsh model
         gmsh.model.geo.synchronize()
-
-        # Entities
-        entities = gmsh.model.getEntities()
         
-        return
+        return triangulation
+    
+    def xyz_from_coord(self, coord):
+        N         = np.shape(coord)[0]
+        xyz       = np.zeros(3 * N)
+        xyz[::3]  = coord[:, 0]
+        xyz[1::3] = coord[:, 1]
+        xyz[2::3] = np.zeros_like(coord[:, 0])
+        return xyz
+    
+    def get_line_conn(self, line_coord, line_ex, line_ey):
+        
+        # No. line segments
+        nseg = np.shape(line_ex)[0]
+
+        # Stack line_ex and line_ey into a single array for convenience
+        lines_stacked = np.column_stack((line_ex.flatten(), line_ey.flatten()))
+        
+        # Find indices of line_segments in line_coord
+        line_conn = np.where(np.all(line_coord == lines_stacked[:, None, :],axis=-1))[1]
+        
+        # Reshape to match line segments (nsegx2)
+        line_conn = line_conn.reshape(nseg,2)
+        
+        return line_conn
+    
+    def lines_to_coord(self, line_ex, line_ey):
+        """ Function for extracting unique vertices in lines"""
+        N             = np.shape(line_ex)[0]
+        coord         = np.zeros((2 * N, 2))
+        coord[:N, 0]  = line_ex[:, 0]
+        coord[N:, 0]  = line_ex[:, 1]
+        coord[:N, 1]  = line_ey[:, 0]
+        coord[N:, 1]  = line_ey[:, 1]
+        unique_coord  = np.unique(coord, axis=0)
+        return coord
     
     def save(self, filename):
         """Save input data to dictionary."""
@@ -287,10 +236,15 @@ class InputData(object):
             self.coord  = np.transpose(data['coord'])*1e3
             
 
-        self.axisbc = np.array([np.min(self.ex),np.max(self.ex),\
-                                np.min(self.ey),np.max(self.ey)])
+        axisbc = np.array([np.min(self.ex),np.max(self.ex),\
+                           np.min(self.ey),np.max(self.ey)])
             
-        axisbc = self.axisbc
+        # Identify domain corners:
+        #  P4 ----- P3
+        #  |         |
+        #  |         |
+        #  |         |
+        #  P1 ----- P2
         
         P1   = np.array([axisbc[0],axisbc[2]])
         P2   = np.array([axisbc[1],axisbc[2]])
@@ -306,7 +260,8 @@ class InputData(object):
                                  ((self.coord[:,1]-P3[1]))**2)<1e-12)[0][0]
         self.P4nod = np.where(np.sqrt(((self.coord[:,0]-P4[0]))**2 + \
                                  ((self.coord[:,1]-P4[1]))**2)<1e-12)[0][0]
-        
+
+            
     def load_LsStep(self):
         """Read indata from file."""
         
@@ -331,7 +286,6 @@ class InputData(object):
 
         with open(filename, "r") as ifile:
             
-            
             # Access variables from level set file
             data = scipy.io.loadmat(filename)
             
@@ -339,7 +293,7 @@ class InputData(object):
             self.a              = data['a']*1e3
             self.line_seg_all   = data['line_seg'].flatten()
             self.ngrains        = np.size(self.line_seg_all)
-            self.line_ex_all    = data['line_ex']*1e3
+            self.line_ex_all    = (data['line_ex']*1e3)
             self.line_ey_all    = data['line_ey']*1e3
             self.sep_lines_all  = data['sep_lines']
             self.nsep_lines_all = np.sum(self.sep_lines_all[:,0:-1:2]>0,0)
@@ -348,339 +302,66 @@ class InputData(object):
             self.ey             = np.transpose(data['newey'])*1e3
             self.coord          = np.transpose(data['newcoord'])*1e3
             
-            # IMC area - ?
+            # IMC area
             self.tot_imc_area_init = data['IMC_area_init'].flatten()[0]
             self.tot_imc_area      = data['IMC_area'].flatten()[0]
             
-            if (self.tot_imc_area_init==0):
-                self.sn_c0 = self.sn_c0_fix
-            else:
-                self.sn_c0 = (self.sn_c0_fix - self.sn_imc)*\
-                    (self.tot_imc_area_init/self.tot_imc_area)\
-                    +self.sn_imc
-                    
-            # Identify points:
-            #  P4 ----- P3
-            #  |         |
-            #  |         |
-            #  |         |
-            #  P1 ----- P2
-
-            self.P1   = self.coord[self.P1nod]
-            self.P2   = self.coord[self.P2nod]
-            self.P3   = self.coord[self.P3nod]
-            self.P4   = self.coord[self.P4nod]
-
-    def extract_local_boundary(self, grain):
-        
+        # Round to 7 decimals 
+        self.line_ex_all = self.line_ex_all.round(decimals=8)
+        self.line_ey_all = self.line_ey_all.round(decimals=8)
+            
+        # Domain corners
+        self.P1   = self.coord[self.P1nod]
+        self.P2   = self.coord[self.P2nod]
+        self.P3   = self.coord[self.P3nod]
+        self.P4   = self.coord[self.P4nod]
+            
+        # Compute line_coord
+        line_coord = np.empty((0, 2), dtype=float)
+        for grain in range(self.ngrains):
+            
             # Local variables for the grain
-            g_cols    = [2*grain, 2*grain + 1]
-            
-            self.nseg       = self.line_seg_all[grain]
-            self.line_ex    = self.line_ex_all[:self.nseg,g_cols]
-            self.line_ey    = self.line_ey_all[:self.nseg,g_cols]
-            self.nsep_lines = self.nsep_lines_all[grain]
-            self.sep_lines  = self.sep_lines_all[:self.nsep_lines,g_cols]
-            
-            
-            # Short form
-            line_ex    = self.line_ex
-            line_ey    = self.line_ey
-            nseg       = self.nseg
-            nsep_lines = self.nsep_lines
-            sep_lines  = self.sep_lines
-            ngrains    = self.ngrains
-            axisbc     = self.axisbc
-            
-            
-            # Extra lines
-            self.line_ex_add  = np.zeros([nseg*5,nsep_lines*2])
-            self.line_ey_add  = np.zeros([nseg*5,nsep_lines*2])
-            self.line_seg_add = np.zeros(nsep_lines,dtype=int)
-            
-            
-            left_to_right_prev = False
-          
-            # Short form 
-            P1 = self.P1
-            P2 = self.P2
-            P3 = self.P3
-            P4 = self.P4
-    
-            
-    
-            for sep_idx in range(self.nsep_lines):
-                
-                # Cols of sep_idx
-                sep_idx_cols = [2*sep_idx, 2*sep_idx + 1]
-                
-                # Start point
-                iseg_start = sep_lines[sep_idx, 0] - 1 # 0 idx
-                A = np.array([line_ex[iseg_start,0], \
-                              line_ey[iseg_start,0]])
-                
-                # End point
-                iseg_end = sep_lines[sep_idx, 1] - 1 # 0 idx
-                B = np.array([line_ex[iseg_end,1], \
-                              line_ey[iseg_end,1]])
-                
-                if (np.linalg.norm(A-B)>1e-13):
-                    # A and B does not coincide. Both A and B located at 
-                    # domain edge
-                    
-                    # Find point that should be added 
-                    # Borders:
-                    #  ---- 4 ----
-                    #  |         |
-                    #  1         3
-                    #  |         |
-                    #  ---- 2 ---
-                    
+            g_cols        = [2*grain, 2*grain + 1]
+            nseg          = self.line_seg_all[grain]
+            line_ex       = self.line_ex_all[:nseg,g_cols]
+            line_ey       = self.line_ey_all[:nseg,g_cols]
 
-                    # 1) Find domain border crossed by A
-                    if (abs(A[0]-axisbc[0])<1e-13):
-                        A_border = 1
-                    elif (abs(A[1]-axisbc[2])<1e-13):
-                        A_border = 2
-                    elif (abs(A[0]-axisbc[1])<1e-13):
-                        A_border = 3
-                    elif (abs(A[1]-axisbc[3])<1e-13):
-                        A_border = 4
-                        
-                    # 1) Find domain border crossed by B
-                    if (abs(B[0]-axisbc[0])<1e-13):
-                        B_border = 1
-                    elif (abs(B[1]-axisbc[2])<1e-13):
-                        B_border = 2
-                    elif (abs(B[0]-axisbc[1])<1e-13):
-                        B_border = 3
-                    elif (abs(B[1]-axisbc[3])<1e-13):
-                        B_border = 4
-                    
-                    if (A_border==B_border):
-                        
-                        # Add line segment from B to A (which goes along
-                        # border) last in line list such that curve
-                        # becomes closed
-                        added_lines = self.line_seg_add[sep_idx]
-                        self.line_ex_add[added_lines,sep_idx_cols] = [B[0], A[0]]
-                        self.line_ey_add[added_lines,sep_idx_cols] = [B[1], A[1]]
-                        self.line_seg_add[sep_idx] = self.line_seg_add[sep_idx] + 1
+            # Stack line coords
+            line_coord    = np.vstack((line_coord,self.lines_to_coord(line_ex, line_ey)))
+            
+        # Unique line coords
+        self.line_coord = np.unique(line_coord, axis=0)
+            
+        # Domain corners
+        corner_coords = np.vstack((self.P1, self.P2, self.P3, self.P4))
+        
+        # Total mesh_points (line_coord + domain corners)
+        self.mesh_points = np.unique(np.vstack((self.line_coord, corner_coords)), axis=0)
+        
+        # Extract line connectivity matrix line_conn
+        line_conn = np.empty((0, 2), dtype=int)
+        for grain in range(self.ngrains):
+            
+            # Grain boundary
+            g_cols        = [2*grain, 2*grain + 1]
+            nseg          = self.line_seg_all[grain]
+            line_ex       = self.line_ex_all[:nseg,g_cols]
+            line_ey       = self.line_ey_all[:nseg,g_cols]
  
-                        
-                    else:
-                            
-                        
-                        dl  = False
-                        dl2 = False
-                        
-                        # Find closest lower node to A
-                        closest_lower_node_A = np.argmin(np.sqrt(\
-                        (self.coord[:,0]-A[0])**2 + \
-                        (self.coord[:,1]-(A[1]-self.el_size_y))**2))
-                            
-                        # Find closest left node to A
-                        closest_left_node_A = np.argmin(np.sqrt(\
-                        (self.coord[:,0]-(A[0]-self.el_size_x))**2 + \
-                        (self.coord[:,1]-A[1])**2))
-                        
-                        # A_border = 1
-                        if (A_border==1):
-                            if (B_border==2):
-                                P = P1
-                            elif (B_border==3):
-                                
-                                
-                                if (self.nsep_lines==1):
-                                    dl = True
-                                    
-                                    if (self.a[closest_lower_node_A,grain]<0):
-                                        if (A[0]<B[0]): 
-                                            P = [P2, P1]
-                                        else:
-                                            P = [P1, P2]
-                                    else:
-                                        if (A[0]<B[0]): 
-                                            P = [P3, P4]
-                                        else:
-                                            P = [P4, P2]
-                                elif(self.nsep_lines==2):
-                                    dl2 = True
-                                    if (sep_idx==0):
-                                        next_sep = 1
-                                    elif(sep_idx==1):
-                                        next_sep = 0
-                                    
-                                    if (A[0]<B[0]):
-                                        left_to_right=True
-                                    else:
-                                        left_to_right=False
-                                    
-                                    
-                                    
-                                    if (left_to_right==left_to_right_prev and sep_idx>0):
-                                        # Reshuffle lines
-                                        line_ex_copy = np.copy(line_ex[iseg_start:iseg_end+1,:])
-                                        line_ex[iseg_start:iseg_end+1,0] = np.flip(line_ex_copy[:,1])
-                                        line_ex[iseg_start:iseg_end+1,1] = np.flip(line_ex_copy[:,0])
-                                        
-                                        line_ey_copy = np.copy(line_ey[iseg_start:iseg_end+1,:])
-                                        line_ey[iseg_start:iseg_end+1,0] = np.flip(line_ey_copy[:,1])
-                                        line_ey[iseg_start:iseg_end+1,1] = np.flip(line_ey_copy[:,0])
-
-                                        
-                                    # Start point
-                                    iseg_start = sep_lines[sep_idx, 0] - 1 # 0 idx
-                                    A = np.array([line_ex[iseg_start,0], \
-                                                  line_ey[iseg_start,0]])
-                                    
-                                    # End point
-                                    iseg_end = sep_lines[sep_idx, 1] - 1 # 0 idx
-                                    B = np.array([line_ex[iseg_end,1], \
-                                                  line_ey[iseg_end,1]])  
-                                        
-                                        
-                                    iseg_start2 = sep_lines[next_sep, 0] - 1
-                                    C = np.array([line_ex[iseg_start2,0], \
-                                                  line_ey[iseg_start2,0]])
-                                    iseg_end2 = sep_lines[next_sep, 1] - 1 # 0 idx
-                                    D = np.array([line_ex[iseg_end2,1], \
-                                                  line_ey[iseg_end2,1]])
-                                    
-                                    
-                                    if (D[0]==B[0]):
-                                        P = D
-                                    else:
-                                        P = C
-                                    left_to_right_prev = left_to_right    
-                                    print('Assuming sep lines can be added.')
-                                    
-                                  
-                                            
-                                    
-                                
-                            elif (B_border==4):
-                                P = P4
-                                
-          
-                        # A_border = 2
-                        if (A_border==2):
-                            if (B_border==1):
-                                P = P1
-                            elif (B_border==3):
-                                P = P3
-                            elif (B_border==4):
-                                dl = True
-                                
-                                if (self.a[closest_left_node_A,grain]<0):
-                                    if (A[1]<B[1]): 
-                                        P = [P4, P1]
-                                    else:
-                                        P = [P1, P4]
-                                else:
-                                    if (A[1]<B[1]): 
-                                        P = [P3, P2]
-                                    else:
-                                        P = [P2, P3]
-                        
-                        # A_border = 3
-                        if (A_border==3):
-                            if (B_border==1):
-                                
-                                
-                                if (self.nsep_lines==1):
-                                    dl = True
-                                    if (self.a[closest_lower_node_A,grain]<0):
-                                        if (A[0]<B[0]): 
-                                            P = [P2, P1]
-                                        else:
-                                            P = [P1, P2]
-                                    else:
-                                        if (A[0]<B[0]): 
-                                            P = [P3, P4]
-                                        else:
-                                            P = [P4, P2]
-                                else:
-                                    print('Assuming sep lines can be added.')
-                                
-                                
-                            elif (B_border==2):
-                                P = P2
-                            elif (B_border==4):
-                                P = P3
-                                
-                                        
-                        
-                        # A_border = 4
-                        if (A_border==4):
-                            if (B_border==1):
-                                P = P4
-                            elif (B_border==2):
-                                dl = True
-                                if (self.a[closest_left_node_A,grain]<0):
-                                    if (A[1]<B[1]): 
-                                        P = [P4, P1]
-                                    else:
-                                        P = [P1, P4]
-                                else:
-                                    if (A[1]<B[1]): 
-                                        P = [P3, P2]
-                                    else:
-                                        P = [P2, P3]
-                            elif (B_border==3):
-                                P = P3
-                                
-                                
-                        if (dl):
-                            PP1 = P[0]; PP2 = P[1]
-                            
-                            
-                            
-                            # Draw line from B to PP1
-                            added_lines = self.line_seg_add[sep_idx]
-                            self.line_ex_add[added_lines,sep_idx_cols] = [B[0], PP1[0]]
-                            self.line_ey_add[added_lines,sep_idx_cols] = [B[1], PP1[1]]
-                            self.line_seg_add[sep_idx] = self.line_seg_add[sep_idx] + 1
-                            
-                            # Draw line from PP1 to PP2
-                            added_lines = self.line_seg_add[sep_idx]
-                            self.line_ex_add[added_lines,sep_idx_cols] = [PP1[0], PP2[0]]
-                            self.line_ey_add[added_lines,sep_idx_cols] = [PP1[1], PP2[1]]
-                            self.line_seg_add[sep_idx] = self.line_seg_add[sep_idx] + 1
-                            
-                            
-                            # Draw line from PP2 to A
-                            added_lines = self.line_seg_add[sep_idx]
-                            self.line_ex_add[added_lines,sep_idx_cols] = [PP2[0], A[0]]
-                            self.line_ey_add[added_lines,sep_idx_cols] = [PP2[1], A[1]]
-                            self.line_seg_add[sep_idx] = self.line_seg_add[sep_idx] + 1
- 
-                            
-                        elif(dl2):
-                            
-                            # Draw line from B to P
-                            added_lines = self.line_seg_add[sep_idx]
-                            self.line_ex_add[added_lines,sep_idx_cols] = [B[0], P[0]]
-                            self.line_ey_add[added_lines,sep_idx_cols] = [B[1], P[1]]
-                            self.line_seg_add[sep_idx] = self.line_seg_add[sep_idx] + 1
-                        else:
-                                
-                        
-                            # Draw line from B to P
-                            added_lines = self.line_seg_add[sep_idx]
-                            self.line_ex_add[added_lines,sep_idx_cols] = [B[0], P[0]]
-                            self.line_ey_add[added_lines,sep_idx_cols] = [B[1], P[1]]
-                            self.line_seg_add[sep_idx] = self.line_seg_add[sep_idx] + 1
-                            
-                            # Draw line from P to A
-                            added_lines = self.line_seg_add[sep_idx]
-                            self.line_ex_add[added_lines,sep_idx_cols] = [P[0], A[0]]
-                            self.line_ey_add[added_lines,sep_idx_cols] = [P[1], A[1]]
-                            self.line_seg_add[sep_idx] = self.line_seg_add[sep_idx] + 1
- 
-    
- 
-    
+            # Line segment connectivity of coords
+            line_conn     = np.vstack((line_conn, self.get_line_conn(self.mesh_points, line_ex, line_ey)))
+            
+        # Unique line connectivity
+        self.line_conn = np.unique(line_conn, axis=0)
+        
+        # Set concentration
+        if (self.tot_imc_area_init==0):
+            self.sn_c0 = self.sn_c0_fix
+        else:
+            self.sn_c0 = (self.sn_c0_fix - self.sn_imc)*\
+                (self.tot_imc_area_init/self.tot_imc_area)\
+                +self.sn_imc
+            
         
 class OutputData(object):
     """Class for storing output data from calculation."""
@@ -689,7 +370,6 @@ class OutputData(object):
         # Python output
         self.coord           = None
         self.enod            = None
-        self.edof            = None
         self.bcnod           = None
         self.bcval           = None
         self.bcval_idx       = None
@@ -718,17 +398,17 @@ class OutputData(object):
         output_data_file = {}
         output_data_file["coord"]           = np.transpose(self.coord).tolist()
         output_data_file["enod"]            = np.transpose(self.enod).tolist()
-        output_data_file["edof"]            = self.edof.tolist()
-        output_data_file["bcnod"]           = self.bcnod.tolist()
-        output_data_file["bcval"]           = self.bcval.tolist()
-        output_data_file["bcval_idx"]       = self.bcval_idx.tolist()
-        output_data_file["dofs_per_node"]   = self.dofs_per_node
-        output_data_file["nelm"]            = self.nelm
-        output_data_file["nnod"]            = self.nnod
-        output_data_file["ndof"]            = self.ndof
-        output_data_file["nodel"]           = self.nodel
-        output_data_file["dofel"]           = self.dofel
-        output_data_file["input_location"]  = self.input_location
+        # output_data_file["edof"]            = self.edof.tolist()
+        # output_data_file["bcnod"]           = self.bcnod.tolist()
+        # output_data_file["bcval"]           = self.bcval.tolist()
+        # output_data_file["bcval_idx"]       = self.bcval_idx.tolist()
+        # output_data_file["dofs_per_node"]   = self.dofs_per_node
+        # output_data_file["nelm"]            = self.nelm
+        # output_data_file["nnod"]            = self.nnod
+        # output_data_file["ndof"]            = self.ndof
+        # output_data_file["nodel"]           = self.nodel
+        # output_data_file["dofel"]           = self.dofel
+        # output_data_file["input_location"]  = self.input_location
         
         
         with open(filename, "w") as ofile:
@@ -758,346 +438,331 @@ class OutputData(object):
 
         
         
-class Solver(object):
-    """Class for generating the mesh and executing Fortran code"""
+class Mesh(object):
+    """Class for generating the mesh"""
     def __init__(self, input_data, output_data):
         self.input_data  = input_data
         self.output_data = output_data
         
     def generateMesh(self):
             
-        # # Short form 
-        # grain        = self.input_data.grain
-        # line_ex      = self.input_data.line_ex
-        # line_ey      = self.input_data.line_ey
-        # nseg         = self.input_data.nseg
-        # sep_lines    = self.input_data.sep_lines
-        # nsep_lines   = self.input_data.nsep_lines
-        # ngrains      = self.input_data.ngrains
-        # axisbc       = self.input_data.axisbc
-        # line_ex_add  = self.input_data.line_ex_add
-        # line_ey_add  = self.input_data.line_ey_add
-        # line_seg_add = self.input_data.line_seg_add
-        # nseg_tot     = np.sum(line_seg_add) + nseg
+        # for grain in range(self.input_data.ngrains):
+        #     g_cols   = [2*grain, 2*grain + 1]
+        #     line_seg = self.input_data.line_seg_all[grain]
+        #     line_ex  = self.input_data.line_ex_all[:line_seg,g_cols]
+        #     line_ey  = self.input_data.line_ey_all[:line_seg,g_cols]
         
         
-        # # grain_idx
-        # grain_idx = np.linspace(0,ngrains-1,ngrains,dtype=int)
+        # --- gmsh mesh generation ---
         
-        # # g_cols
-        # g_cols         = [2*grain, 2*grain + 1]
-        # grain_material = self.input_data.material[grain] - 1
-        
-        
-        for grain in range(self.input_data.ngrains):
-            g_cols   = [2*grain, 2*grain + 1]
-            line_seg = self.input_data.line_seg_all[grain]
-            line_ex  = self.input_data.line_ex_all[:line_seg,g_cols]
-            line_ey  = self.input_data.line_ey_all[:line_seg,g_cols]
-    
+        # Initialize gmsh
+        gmsh.initialize()
+   
         # Create gmsh geometry
-        self.input_data.geometry()
+        triangulation = self.input_data.geometry()
         
         # Location
-        print('where', os.getcwd())
+        print('Generating mesh in folder: ', os.getcwd())
         
-        # Generate mesh:
-        gmsh.model.mesh.generate(2) # 2D mesh generation
+        # Generate mesh
+        gmsh.model.mesh.generate(2)
         
-        # Write mesh data:
-        filename = 'phase_mesh_' + str(self.input_data.version)
-        # gmsh.write(filename s+ ".msh")
-        gmsh.write(filename + ".inp")
-        
-        # --- Graphical illustration of mesh ---
+        # Graphical illustration of mesh
         if 'close' not in sys.argv:
             gmsh.fltk.run()
+        
+        # Finalize Gmsh
+        gmsh.finalize()
+  
+        # Extract coord and enod
+        coord = triangulation['vertices']
+        enod  = triangulation['triangles']
+        
+        s = 9
+        
+        
+        
+        
+        
+        
+        # # --- Extract bcnod ---
+        # bcnods = []
+        # for line_tag in interface_splines:
+        #     line_nods,_,_ = gmsh.model.mesh.getNodes(dim=1,tag=line_tag,includeBoundary=True)
+        #     bcnods.extend(line_nods)
+        # bcnods = sorted(set(bcnods))
+        # bcnods = np.asarray(bcnods,dtype=int)
+        # bcval  = np.zeros(np.size(bcnods))
+        
+        # # Number of bcnods
+        # n_interface_points = np.size(bcnods)
+        
+        # with open(filename + '.inp') as infile:
+        #     lines = [ln.strip() for ln in infile.readlines()]
+        #     # Remove comments
+        #     lines = [ln for ln in lines if not ln.startswith("**")]
+        #     # Find section headers
+        #     headings = [(ln[1:], n) for n, ln in enumerate(lines) if ln.startswith("*")]
+        #     # Filter the headings so that every heading has a start-of-data and
+        #     # end-of-data index.
+        #     headings.append(("end", -1))
+        #     ln = [h[1] for h in headings]
+        #     headings = [
+        #         (name, start + 1, end) for (name, start), end in zip(headings[:-1], ln[1:])
+        #     ]
+        
+        # for h in headings:
+        #     name       = h[0]
+        #     lname      = name.lower()
+        #     start_line = h[1]
+        #     end_line   = h[2]
             
-        
-        # --- Extract coord and enod in the model ---
-        entities = gmsh.model.getEntities()
-        
-        
-        
-        # --- Extract bcnod ---
-        bcnods = []
-        for line_tag in interface_splines:
-            line_nods,_,_ = gmsh.model.mesh.getNodes(dim=1,tag=line_tag,includeBoundary=True)
-            bcnods.extend(line_nods)
-        bcnods = sorted(set(bcnods))
-        bcnods = np.asarray(bcnods,dtype=int)
-        bcval  = np.zeros(np.size(bcnods))
-        
-        # Number of bcnods
-        n_interface_points = np.size(bcnods)
-        
-        with open(filename + '.inp') as infile:
-            lines = [ln.strip() for ln in infile.readlines()]
-            # Remove comments
-            lines = [ln for ln in lines if not ln.startswith("**")]
-            # Find section headers
-            headings = [(ln[1:], n) for n, ln in enumerate(lines) if ln.startswith("*")]
-            # Filter the headings so that every heading has a start-of-data and
-            # end-of-data index.
-            headings.append(("end", -1))
-            ln = [h[1] for h in headings]
-            headings = [
-                (name, start + 1, end) for (name, start), end in zip(headings[:-1], ln[1:])
-            ]
-        
-        for h in headings:
-            name       = h[0]
-            lname      = name.lower()
-            start_line = h[1]
-            end_line   = h[2]
-            
-            # Coord
-            if lname.startswith("node"):
-                coord = lines[start_line:end_line]
+        #     # Coord
+        #     if lname.startswith("node"):
+        #         coord = lines[start_line:end_line]
                 
-            # Connectivity
-            if lname.startswith("element, type=cps3"):
-                enod = lines[start_line:end_line]
+        #     # Connectivity
+        #     if lname.startswith("element, type=cps3"):
+        #         enod = lines[start_line:end_line]
                 
                 
-        # Extract coord
-        coord = self.extract_mesh_data(coord)
-        coord = coord[:,1:3]
+        # # Extract coord
+        # coord = self.extract_mesh_data(coord)
+        # coord = coord[:,1:3]
         
-        # Extract enod
-        enod  = self.extract_mesh_data(enod)
-        enod  = enod[:,1:]
-        enod  = enod.astype(int)
-        edof  = enod
+        # # Extract enod
+        # enod  = self.extract_mesh_data(enod)
+        # enod  = enod[:,1:]
+        # enod  = enod.astype(int)
+        # edof  = enod
         
-        # Make sure that enod is numbered counter-clockwise for 3-node elm
-        self.reorder_enod_triangle(coord, enod)
+        # # Make sure that enod is numbered counter-clockwise for 3-node elm
+        # self.reorder_enod_triangle(coord, enod)
         
-        # Dofs per node
-        dofs_per_node = 1
+        # # Dofs per node
+        # dofs_per_node = 1
 
-        # Line ex all
-        line_ex_all  = self.input_data.line_ex_all
-        line_ey_all  = self.input_data.line_ey_all
-        line_seg_all = self.input_data.line_seg_all
+        # # Line ex all
+        # line_ex_all  = self.input_data.line_ex_all
+        # line_ey_all  = self.input_data.line_ey_all
+        # line_seg_all = self.input_data.line_seg_all
         
         
-        # --- Equilibrium concentrations of all materials ---
-        cu_cu   = self.input_data.cu_cu
-        cu_imc  = self.input_data.cu_imc
-        cu_sn   = self.input_data.cu_sn
-        imc_cu  = self.input_data.imc_cu
-        imc_imc = self.input_data.imc_imc
-        imc_sn  = self.input_data.imc_sn
-        sn_cu   = self.input_data.sn_cu
-        sn_imc  = self.input_data.sn_imc
-        sn_sn   = self.input_data.sn_sn
-        sn_c0   = self.input_data.sn_c0
-        sn_c0_fix = self.input_data.sn_c0_fix
+        # # --- Equilibrium concentrations of all materials ---
+        # cu_cu   = self.input_data.cu_cu
+        # cu_imc  = self.input_data.cu_imc
+        # cu_sn   = self.input_data.cu_sn
+        # imc_cu  = self.input_data.imc_cu
+        # imc_imc = self.input_data.imc_imc
+        # imc_sn  = self.input_data.imc_sn
+        # sn_cu   = self.input_data.sn_cu
+        # sn_imc  = self.input_data.sn_imc
+        # sn_sn   = self.input_data.sn_sn
+        # sn_c0   = self.input_data.sn_c0
+        # sn_c0_fix = self.input_data.sn_c0_fix
         
         
-        # Short form
-        cu_params     = self.input_data.cu_params
-        imc_params    = self.input_data.imc_params
-        sn_params     = self.input_data.sn_params
-        molar_volumes = self.input_data.molar_volumes
+        # # Short form
+        # cu_params     = self.input_data.cu_params
+        # imc_params    = self.input_data.imc_params
+        # sn_params     = self.input_data.sn_params
+        # molar_volumes = self.input_data.molar_volumes
         
         
-        # Diffusion potentials
-        mu_cu_cu   = cu_params[0]*(cu_cu  - cu_params[3]) + cu_params[1]
-        mu_cu_imc  = cu_params[0]*(cu_imc - cu_params[3]) + cu_params[1]
-        mu_cu_sn   = cu_params[0]*(cu_sn  - cu_params[3]) + cu_params[1]
+        # # Diffusion potentials
+        # mu_cu_cu   = cu_params[0]*(cu_cu  - cu_params[3]) + cu_params[1]
+        # mu_cu_imc  = cu_params[0]*(cu_imc - cu_params[3]) + cu_params[1]
+        # mu_cu_sn   = cu_params[0]*(cu_sn  - cu_params[3]) + cu_params[1]
         
-        mu_imc_cu  = imc_params[0]*(imc_cu  - imc_params[3]) + imc_params[1]
-        mu_imc_imc = imc_params[0]*(imc_imc - imc_params[3]) + imc_params[1]
-        mu_imc_sn  = imc_params[0]*(imc_sn  - imc_params[3]) + imc_params[1]
+        # mu_imc_cu  = imc_params[0]*(imc_cu  - imc_params[3]) + imc_params[1]
+        # mu_imc_imc = imc_params[0]*(imc_imc - imc_params[3]) + imc_params[1]
+        # mu_imc_sn  = imc_params[0]*(imc_sn  - imc_params[3]) + imc_params[1]
         
-        mu_sn_cu   = sn_params[0]*(sn_cu  - sn_params[3]) + sn_params[1]
-        mu_sn_imc  = sn_params[0]*(sn_imc - sn_params[3]) + sn_params[1]
-        mu_sn_sn   = sn_params[0]*(sn_sn  - sn_params[3]) + sn_params[1]
+        # mu_sn_cu   = sn_params[0]*(sn_cu  - sn_params[3]) + sn_params[1]
+        # mu_sn_imc  = sn_params[0]*(sn_imc - sn_params[3]) + sn_params[1]
+        # mu_sn_sn   = sn_params[0]*(sn_sn  - sn_params[3]) + sn_params[1]
         
-        # Equilibrium compositions
-        # Row 1: Cu eq comps
-        # Row 2: IMC eq comps
-        # Row 3: Sn eq comps
-        eq_comp = np.array([[mu_cu_cu , mu_cu_imc , mu_cu_sn],\
-                            [mu_imc_cu, mu_imc_imc, mu_imc_sn],\
-                            [mu_sn_cu , mu_sn_imc , mu_sn_sn]])
+        # # Equilibrium compositions
+        # # Row 1: Cu eq comps
+        # # Row 2: IMC eq comps
+        # # Row 3: Sn eq comps
+        # eq_comp = np.array([[mu_cu_cu , mu_cu_imc , mu_cu_sn],\
+        #                     [mu_imc_cu, mu_imc_imc, mu_imc_sn],\
+        #                     [mu_sn_cu , mu_sn_imc , mu_sn_sn]])
         
         
-        grain_material = self.input_data.material[grain] - 1
+        # grain_material = self.input_data.material[grain] - 1
         
-        # Save triple junction points
-        tp_points_x = []
-        tp_points_y = []
+        # # Save triple junction points
+        # tp_points_x = []
+        # tp_points_y = []
         
-        # Determine what other grain has smallest value at that node
-        other_grains = grain_idx[grain_idx != grain]
+        # # Determine what other grain has smallest value at that node
+        # other_grains = grain_idx[grain_idx != grain]
         
-        # Add bcval
-        line_counter  = 0
-        point_counter = 0
-        for sep_idx in range(nsep_lines):
+        # # Add bcval
+        # line_counter  = 0
+        # point_counter = 0
+        # for sep_idx in range(nsep_lines):
             
-            # Cols of sep_idx
-            sep_idx_cols = [2*sep_idx, 2*sep_idx + 1]
+        #     # Cols of sep_idx
+        #     sep_idx_cols = [2*sep_idx, 2*sep_idx + 1]
             
-            # Number of segments lines in separate line
-            nseg_sep     = sep_lines[sep_idx,1] - sep_lines[sep_idx,0] + 1
-            line_counter_start = line_counter
-            for k in range(nseg_sep):
+        #     # Number of segments lines in separate line
+        #     nseg_sep     = sep_lines[sep_idx,1] - sep_lines[sep_idx,0] + 1
+        #     line_counter_start = line_counter
+        #     for k in range(nseg_sep):
                 
-                # Point P
-                P = [line_ex[line_counter][0],line_ey[line_counter][0]]
+        #         # Point P
+        #         P = [line_ex[line_counter][0],line_ey[line_counter][0]]
                 
-                # See if point P is in other grain
-                P_in_g = []
-                for g in other_grains:
-                    g_cols = [2*g, 2*g + 1]
-                    line_ex_g = line_ex_all[:line_seg_all[g],[g_cols[0],g_cols[1]]]
-                    line_ey_g = line_ey_all[:line_seg_all[g],[g_cols[0],g_cols[1]]]
-                    if ((abs((line_ex_g - P[0]) + (line_ey_g - P[1]))<1e-15).any()):
-                        P_in_g.append(g)
+        #         # See if point P is in other grain
+        #         P_in_g = []
+        #         for g in other_grains:
+        #             g_cols = [2*g, 2*g + 1]
+        #             line_ex_g = line_ex_all[:line_seg_all[g],[g_cols[0],g_cols[1]]]
+        #             line_ey_g = line_ey_all[:line_seg_all[g],[g_cols[0],g_cols[1]]]
+        #             if ((abs((line_ex_g - P[0]) + (line_ey_g - P[1]))<1e-15).any()):
+        #                 P_in_g.append(g)
                 
-                P_in_g = np.array(P_in_g)
+        #         P_in_g = np.array(P_in_g)
                     
-                if (np.size(P_in_g)==2):
-                    # triple junction
-                    tp_points_x.append(P[0])
-                    tp_points_y.append(P[1])
+        #         if (np.size(P_in_g)==2):
+        #             # triple junction
+        #             tp_points_x.append(P[0])
+        #             tp_points_y.append(P[1])
                     
-                if (np.size(P_in_g)>1):
-                    other_materials = self.input_data.material[P_in_g] - 1
-                    if (any((other_materials-grain_material) == 0)):
-                        P_in_g = P_in_g[other_materials != grain_material]
-                    else:
-                        P_in_g = P_in_g[0]
+        #         if (np.size(P_in_g)>1):
+        #             other_materials = self.input_data.material[P_in_g] - 1
+        #             if (any((other_materials-grain_material) == 0)):
+        #                 P_in_g = P_in_g[other_materials != grain_material]
+        #             else:
+        #                 P_in_g = P_in_g[0]
                             
-                other_material = self.input_data.material[P_in_g] - 1
+        #         other_material = self.input_data.material[P_in_g] - 1
 
                         
-                if (np.size(other_material)>1):
-                    print('Error in bcval')
+        #         if (np.size(other_material)>1):
+        #             print('Error in bcval')
 
-                # Find equilibrium composition grain, lowest_grain
-                bcval[point_counter] = eq_comp[grain_material,other_material]
+        #         # Find equilibrium composition grain, lowest_grain
+        #         bcval[point_counter] = eq_comp[grain_material,other_material]
                 
-                # Update counter
-                line_counter  = line_counter  + 1
-                point_counter = point_counter + 1
+        #         # Update counter
+        #         line_counter  = line_counter  + 1
+        #         point_counter = point_counter + 1
      
         
      
-            # Check if first and last point of current separate segment coincide
-            A = np.array([line_ex[line_counter_start][0],line_ey[line_counter_start][0]])
-            B = np.array([line_ex[line_counter-1][1],line_ey[line_counter-1][1]])
+        #     # Check if first and last point of current separate segment coincide
+        #     A = np.array([line_ex[line_counter_start][0],line_ey[line_counter_start][0]])
+        #     B = np.array([line_ex[line_counter-1][1],line_ey[line_counter-1][1]])
             
-            if (np.linalg.norm(A-B)>1e-12):
-                # If points dont coincide we must add one more bcval
+        #     if (np.linalg.norm(A-B)>1e-12):
+        #         # If points dont coincide we must add one more bcval
                 
-                # Point P
-                P = B
-                
-                
-                # See if point P is in other grain
-                P_in_g = []
-                for g in other_grains:
-                    g_cols = [2*g, 2*g + 1]
-                    line_ex_g = line_ex_all[:line_seg_all[g],[g_cols[0],g_cols[1]]]
-                    line_ey_g = line_ey_all[:line_seg_all[g],[g_cols[0],g_cols[1]]]
-                    if ((abs((line_ex_g - P[0]) + (line_ey_g - P[1]))<1e-15).any()):
-                        P_in_g.append(g)
+        #         # Point P
+        #         P = B
                 
                 
-                P_in_g = np.array(P_in_g)
+        #         # See if point P is in other grain
+        #         P_in_g = []
+        #         for g in other_grains:
+        #             g_cols = [2*g, 2*g + 1]
+        #             line_ex_g = line_ex_all[:line_seg_all[g],[g_cols[0],g_cols[1]]]
+        #             line_ey_g = line_ey_all[:line_seg_all[g],[g_cols[0],g_cols[1]]]
+        #             if ((abs((line_ex_g - P[0]) + (line_ey_g - P[1]))<1e-15).any()):
+        #                 P_in_g.append(g)
                 
-                if (np.size(P_in_g)==2):
-                    # triple junction
-                    tp_points_x.append(P[0])
-                    tp_points_y.append(P[1])
+                
+        #         P_in_g = np.array(P_in_g)
+                
+        #         if (np.size(P_in_g)==2):
+        #             # triple junction
+        #             tp_points_x.append(P[0])
+        #             tp_points_y.append(P[1])
                     
-                if (np.size(P_in_g)>1):
-                    other_materials = self.input_data.material[P_in_g] - 1
-                    if (any((other_materials-grain_material) == 0)):
-                        P_in_g = P_in_g[other_materials != grain_material]
-                    else:
-                        P_in_g = P_in_g[0]
+        #         if (np.size(P_in_g)>1):
+        #             other_materials = self.input_data.material[P_in_g] - 1
+        #             if (any((other_materials-grain_material) == 0)):
+        #                 P_in_g = P_in_g[other_materials != grain_material]
+        #             else:
+        #                 P_in_g = P_in_g[0]
                             
-                other_material = self.input_data.material[P_in_g] - 1
+        #         other_material = self.input_data.material[P_in_g] - 1
                 
                 
-                if (np.size(other_material)>1):
-                    print('Error in bcval')
+        #         if (np.size(other_material)>1):
+        #             print('Error in bcval')
                 
-                bcval[point_counter] = eq_comp[grain_material,other_material]
-                point_counter = point_counter + 1
-                
-            
-        # Rearrange bcnod
-        nbc        = np.size(bcnods)
-        bcnod      = np.zeros((nbc,2), dtype=np.int32)
-        bcnod[:,0] = bcnods
-        bcnod[:,1] = np.ones((nbc), dtype=np.int32)
-        
-        
-        # Create a boolean mask and remove imc_imc values from bc
-        # mask  = np.abs(bcval - self.input_data.imc_imc)>1e-12
-        mask  = np.abs(bcval - mu_imc_imc) > 1e-12
-        bcval = bcval[mask]
-        bcnod = bcnod[mask]
-        
-        
-        # Create a boolean mask and remove sn_sn values from bc
-        # mask  = np.abs(bcval - self.input_data.imc_imc)>1e-12
-        mask  = np.abs(bcval - mu_sn_sn)>1e-12
-        bcval = bcval[mask]
-        bcnod = bcnod[mask]
-        
-        
-        # Remove tp points from bc
-        tp_points_x = np.array(tp_points_x)
-        tp_points_y = np.array(tp_points_y)
-        ntp = np.size(tp_points_x)
-        mask = np.full(np.size(bcnod[:,0]), True, dtype=bool)
-        for (xtp,ytp) in zip(tp_points_x,tp_points_y):
-            grain_nod = np.where(np.logical_and(abs(coord[bcnod[:,0]-1,0]-xtp) \
-                      <1e-13,abs(coord[bcnod[:,0]-1,1]-ytp)<1e-13))[0][0]
-            mask[grain_nod] = False 
+        #         bcval[point_counter] = eq_comp[grain_material,other_material]
+        #         point_counter = point_counter + 1
                 
             
-        # Update bcnod and bcval
-        bcval = bcval[mask]
-        bcnod = bcnod[mask]
+        # # Rearrange bcnod
+        # nbc        = np.size(bcnods)
+        # bcnod      = np.zeros((nbc,2), dtype=np.int32)
+        # bcnod[:,0] = bcnods
+        # bcnod[:,1] = np.ones((nbc), dtype=np.int32)
         
-        bcval_idx = bcval.copy()
+        
+        # # Create a boolean mask and remove imc_imc values from bc
+        # # mask  = np.abs(bcval - self.input_data.imc_imc)>1e-12
+        # mask  = np.abs(bcval - mu_imc_imc) > 1e-12
+        # bcval = bcval[mask]
+        # bcnod = bcnod[mask]
+        
+        
+        # # Create a boolean mask and remove sn_sn values from bc
+        # # mask  = np.abs(bcval - self.input_data.imc_imc)>1e-12
+        # mask  = np.abs(bcval - mu_sn_sn)>1e-12
+        # bcval = bcval[mask]
+        # bcnod = bcnod[mask]
+        
+        
+        # # Remove tp points from bc
+        # tp_points_x = np.array(tp_points_x)
+        # tp_points_y = np.array(tp_points_y)
+        # ntp = np.size(tp_points_x)
+        # mask = np.full(np.size(bcnod[:,0]), True, dtype=bool)
+        # for (xtp,ytp) in zip(tp_points_x,tp_points_y):
+        #     grain_nod = np.where(np.logical_and(abs(coord[bcnod[:,0]-1,0]-xtp) \
+        #               <1e-13,abs(coord[bcnod[:,0]-1,1]-ytp)<1e-13))[0][0]
+        #     mask[grain_nod] = False 
+                
+            
+        # # Update bcnod and bcval
+        # bcval = bcval[mask]
+        # bcnod = bcnod[mask]
+        
+        # bcval_idx = bcval.copy()
 
       
-        # --- Topology quantities ---
+        # # --- Topology quantities ---
             
-        nelm  = np.shape(edof)[0]
+        # nelm  = np.shape(edof)[0]
         
-        nnod  = np.shape(coord)[0]
+        # nnod  = np.shape(coord)[0]
         
-        ndof  = nnod*dofs_per_node
+        # ndof  = nnod*dofs_per_node
         
-        nodel = np.size(enod[0])
+        # nodel = np.size(enod[0])
         
-        dofel = nodel*dofs_per_node
+        # dofel = nodel*dofs_per_node
     
 
-        # --- Transfer model variables to output data ---
+        # # --- Transfer model variables to output data ---
         self.output_data.coord          = coord
         self.output_data.enod           = enod
-        self.output_data.edof           = edof
-        self.output_data.bcnod          = bcnod
-        self.output_data.bcval          = bcval
-        self.output_data.bcval_idx      = bcval_idx
-        self.output_data.dofs_per_node  = dofs_per_node
-        self.output_data.nelm           = nelm
-        self.output_data.nnod           = nnod
-        self.output_data.ndof           = ndof
-        self.output_data.nodel          = nodel
-        self.output_data.dofel          = dofel
+        # self.output_data.bcnod          = bcnod
+        # self.output_data.bcval          = bcval
+        # self.output_data.bcval_idx      = bcval_idx
+        # self.output_data.dofs_per_node  = dofs_per_node
+        # self.output_data.nelm           = nelm
+        # self.output_data.nnod           = nnod
+        # self.output_data.ndof           = ndof
+        # self.output_data.nodel          = nodel
+        # self.output_data.dofel          = dofel
         
     def extract_mesh_data(self,inpmatrix):
         # Convert mesh data from .inp file to float
@@ -1178,52 +843,6 @@ class Solver(object):
 
         
         
-        
-    def reorder_enod(self, coord,enod):
-        """"Reordering enod. Start in lower left corner. Counter-clockwise."""
-        
-        nelm = np.size(enod,0)
-        
-        # Allocate enod_reshaped
-        enod_reshaped = np.zeros(np.shape(enod)).astype(int)
-        
-        # Loop over all elms and sort
-        for i in range(0, nelm):
-            el_coord  = coord[enod[i]-1,:]
-            el_enod   = enod[i,:]
-            
-            
-            # 1) x and y idx sorted
-            sort_idx_x = np.argsort(el_coord[:,0])
-            sort_idx_y = np.argsort(el_coord[:,1])
-            
-            left_points  = el_enod[sort_idx_x[0:2]]
-            right_points = el_enod[sort_idx_x[2:]]
-            
-            if (el_coord[sort_idx_x[0],1]<el_coord[sort_idx_x[1],1]):
-                lower_left_point = left_points[0]
-                upper_left_point = left_points[1]
-            else:
-                lower_left_point = left_points[1]
-                upper_left_point = left_points[0]
-                
-            if (el_coord[sort_idx_x[2],1]<el_coord[sort_idx_x[3],1]):
-                lower_right_point = right_points[0]
-                upper_right_point = right_points[1]
-            else:
-                lower_right_point = right_points[1]
-                upper_right_point = right_points[0]
-                
-
-            # Collect reshaped enod
-            enod_reshaped[i,:] = np.array([lower_left_point, \
-                                           lower_right_point,\
-                                           upper_right_point,
-                                           upper_left_point],dtype=int)
-        
-        # Return enod
-        return enod_reshaped
-    
     
     def generateSingleMesh(self):
         """Generate a single mesh"""
@@ -1246,31 +865,17 @@ class Solver(object):
         gmsh.initialize()
         gmsh.finalize()
         
-        # Initialize gmsh:
-        gmsh.initialize()
-        
-        # Set Mesh.SaveAll to 1
-        gmsh.option.setNumber("Mesh.SaveAll", 1)
-        
         # Generate mesh
         self.generateMesh()
-        
-        # Finalize the Gmsh API
-        gmsh.finalize()
-        
-        # --- Save input data as json file ---
-        # self.input_data.save('phase_input_' + str(self.input_data.version) + '.json')
-        
-        
-        print('cwd: ', os.getcwd())
+          
         # --- Save output data as json file ---
-        self.output_data.save('phase_mesh_' + str(self.input_data.version) + '_' + str(self.input_data.grain+1) + '.json')
+        self.output_data.save('phase_mesh_' + str(self.input_data.version) + '.json')
         
-        # # --- Export location to Fortran ---
-        # self.exportLocationToFortran()
+        # # # --- Export location to Fortran ---
+        # # self.exportLocationToFortran()
         
-        # --- Leave dir ---
-        os.chdir(cwd)
+        # # --- Leave dir ---
+        # os.chdir(cwd)
         
         
  

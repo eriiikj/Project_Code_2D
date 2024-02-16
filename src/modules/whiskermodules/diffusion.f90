@@ -99,8 +99,6 @@ subroutine solve_diffusion_problem_global(diffsys,i_IMC,lssys,mesh,pq,input_loca
   ! Obtain global diffusion mesh
   call generate_global_diffusion_mesh()
 
-
-
   ! Solve diffusion problem for all grains seperately
   do g=1,lssys%ngrains    
     call diffusion_grain(diffsys,i_IMC, mesh, diffsys%grain_meshes(g), g, input_location, lssys, omp_run, pq)
@@ -125,13 +123,12 @@ subroutine generate_global_diffusion_mesh()
   character(len=40)                          :: command_line
   character(len=80)                          :: diffusion_mesh_script_location
 
-
-
   diffusion_mesh_script_location = '/home/er7128ja/Nextcloud/Projekt/Project_Code_2D/Python_output/phase_mesh_script'  
 
   ! Generete mesh by running python script
   call chdir(diffusion_mesh_script_location)
-  write(command_line,'(A37,I1)'), 'python diffusion_mesh_Main.py '  
+  write(command_line,'(A29)'), 'python diffusion_mesh_Main.py'
+  call execute_command_line(trim(command_line))
 
   return
 end subroutine generate_global_diffusion_mesh
@@ -157,7 +154,7 @@ subroutine diffusion_grain(diffsys, i_IMC, global_mesh, grain_mesh, g, input_loc
 
     ! Locations
     character(len=255)                         :: main_location               ! Location of this Fortran program
-    character(len=255)                          :: phase_mesh_script_location  ! Location of phase mesh script
+    character(len=255)                         :: phase_mesh_script_location  ! Location of phase mesh script
     character(len=:),allocatable               :: phase_mesh_location         ! Location of phase mesh json files
     character(len=40)                          :: command_line         
 

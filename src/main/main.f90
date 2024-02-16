@@ -144,8 +144,8 @@ program main
          write(*,"(A24,G10.3)") 'Volume transformation : ', IMC_vol_transf
          write(*,"(A6,G15.6)") 'Time: ', lssys%time
          write(*,"(A12,G10.3)") 'Time step : ', lssys%h
-         call loadloop(mesh, lssys, IMC_eps_star, pq, i_IMC, omp_run, input_location, newton_loop_conv)
-         ! newton_loop_conv = .true.
+         ! call loadloop(mesh, lssys, IMC_eps_star, pq, i_IMC, omp_run, input_location, newton_loop_conv)
+         newton_loop_conv = .true.
 
          ! If Newton loop fail - take shorter time step
          if (newton_loop_conv .eqv. .false.) then
