@@ -169,27 +169,27 @@ program main
 ! Update time
       lssys%time = lssys%time + lssys%h
 
-! --- Solve diffusion problem for all grains ---
-      call solve_diffusion_problem_global(diffsys, i_IMC, lssys, mesh, pq, input_location, omp_run)
+! ! --- Solve diffusion problem for all grains ---
+! call solve_diffusion_problem_global(diffsys, i_IMC, lssys, mesh, pq, input_location, omp_run)
 
-! --- Compute new velocity field ---
-      print *, 'Entering compute_common_vp'
-      if (ls_spatial) then
-         call compute_common_vp_spatial(lssys,mesh,diffsys)
-      else
-         call compute_common_vp(lssys,mesh,diffsys)
-      endif
-      print *, 'Leaving compute_common_vp'
+! ! --- Compute new velocity field ---
+! print *, 'Entering compute_common_vp'
+! if (ls_spatial) then
+!    call compute_common_vp_spatial(lssys,mesh,diffsys)
+! else
+!    call compute_common_vp(lssys,mesh,diffsys)
+! endif
+! print *, 'Leaving compute_common_vp'
 
-! --- Save output data from level set and diffusion ---
-      print *, 'Entering write_level_set_iter_to_matlab'
-      call write_level_set_iter_to_matlab(lssys, mesh, i_IMC, input_location)
-      print *, 'Leaving write_level_set_iter_to_matlab'
+! ! --- Save output data from level set and diffusion ---
+! print *, 'Entering write_level_set_iter_to_matlab'
+! call write_level_set_iter_to_matlab(lssys, mesh, i_IMC, input_location)
+! print *, 'Leaving write_level_set_iter_to_matlab'
       
-! --- Plot ---
-      print *, 'Entering plot_vtk'
-      call plot_vtk(pq, input_location, mesh%nnodgp, mesh, lssys, i_IMC)
-      print *, 'Leaving plot_vtk'
+! ! --- Plot ---
+! print *, 'Entering plot_vtk'
+! call plot_vtk(pq, input_location, mesh%nnodgp, mesh, lssys, i_IMC)
+! print *, 'Leaving plot_vtk'
 
    enddo
 

@@ -965,7 +965,7 @@ subroutine tp_reconstruction_spatial(lssys,mesh)
 
             ! Set isogonic point as mean of all input points
             F = (lsa_connA + lsa_connB + lsb_connA + lsb_connB + lsc_connA + lsc_connB + lsd_connA + lsd_connB)/8d0
-            
+
             ! Add isogonic point to level set function a
             call add_isogonic(lssys%line_ex(:,g_rowsa(1):g_rowsa(2)),lssys%line_ey(:,g_rowsa(1):g_rowsa(2)), &
             lssys%tplines(:,ga), lsa_connA,lsa_connB,F,nsega,lssys%int_elms(:,ga),mesh)
@@ -981,6 +981,10 @@ subroutine tp_reconstruction_spatial(lssys,mesh)
             ! Add isogonic point to level set function d
             call add_isogonic(lssys%line_ex(:,g_rowsd(1):g_rowsd(2)),lssys%line_ey(:,g_rowsd(1):g_rowsd(2)), &
             lssys%tplines(:,gd), lsd_connA,lsd_connB,F,nsegd,lssys%int_elms(:,gd),mesh)
+
+            ! Add isogonic to tppoints
+            lssys%ntp_points = lssys%ntp_points  + 1
+            lssys%tp_points(lssys%ntp_points ,:) = F
 
             ! Update line_seg counter
             lssys%line_seg(ga) = nsega + 2
@@ -1285,6 +1289,9 @@ subroutine tp_reconstruction_spatial(lssys,mesh)
             call add_isogonic(lssys%line_ex(:,g_rowsc(1):g_rowsc(2)),lssys%line_ey(:,g_rowsc(1):g_rowsc(2)), &
             lssys%tplines(:,gc), lsc_connA,lsc_connB,F,nsegc,lssys%int_elms(:,gc),mesh)
 
+            ! Add isogonic to tppoints
+            lssys%ntp_points = lssys%ntp_points  + 1
+            lssys%tp_points(lssys%ntp_points ,:) = F
 
             ! Add elm containing isogonic point to int_elms_gr
             do ie = 1, mesh%nelm

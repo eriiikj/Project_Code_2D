@@ -196,6 +196,8 @@ subroutine connect_line_segments(line_ex, line_ey, tplines, separate_lines_idx, 
 end subroutine connect_line_segments
 
 
+
+
 subroutine remove_line_segments(line_ex, line_ey, tplines, critical_length, separate_lines_idx, line_seg, &
     separate_lines_idx_extended)
     ! Routine for removing line segments shorter than threshold
@@ -566,6 +568,125 @@ subroutine add_line_segments(line_ex, line_ey, critical_length, line_seg, sep_li
 
     return
 end subroutine add_line_segments
+
+
+
+
+subroutine remove_line_segments_noSorting(line_ex, line_ey, nseg, lseg)
+    ! --- Routine for removing line segments shorter than threshhold. No sorting of line segments required --- 
+
+    implicit none
+
+    ! Intent inout
+    real(dp), intent(inout) :: line_ex(:,:), line_ey(:,:)
+    integer, intent(inout)  :: nseg
+
+    ! Intent in    
+    real(dp), intent(in)    :: lseg
+
+    ! Subroutine variables
+    integer, allocatable    :: rm_seg(:), keep_seg(:)
+    real(dp), allocatable   :: line_ex_new(:,:), line_ey_new(:,:)
+    integer                 :: ierr, iseg, nrm, nkeep, i
+    real(dp)                :: P1(2), P2(2), line_length, N(2)  
+    
+    ! Copy line_ex and line_ey
+    allocate(line_ex_new(nseg,2),stat=ierr)
+    allocate(line_ey_new(nseg,2),stat=ierr)
+    line_ex_new = line_ex(1:nseg,:)
+    line_ey_new = line_ey(1:nseg,:)    
+    
+
+    ! Remove lines shorter than lseg
+    allocate(rm_seg(nseg), stat=ierr)
+    rm_seg   = 0
+    nrm      = 0
+    allocate(keep_seg(nseg), stat=ierr)
+    keep_seg = 0
+    nkeep    = 0
+    do iseg=1,nseg
+
+        ! 1) Take out vertex coordinates
+        P1 = [line_ex_new(iseg,1),line_ey_new(iseg,1)]
+        P2 = [line_ex_new(iseg,2),line_ey_new(iseg,2)]
+
+        ! 2) Compute line length
+        line_length = norm2(P1-P2)
+
+        ! 3) Check if line_length smaller than threshhold
+        if (line_length.lt.lseg) then
+
+            ! Add line to lines to be removed
+            nrm         = nrm + 1
+            rm_seg(nrm) = iseg
+            
+
+            print *, 'as', ((abs(line_ex_new-P1(1)).lt.1d-12) .and. (abs(line_ey_new-P1(2)).lt.1d-12)) .or. &
+            ((abs(line_ex_new-P2(1)).lt.1d-12) .and. (abs(line_ey_new-P2(2)).lt.1d-12))
+
+            ! New coordinates
+            N = (P1 + P2) / 2
+            print *, 'as'
+            where ( ((abs(line_ex_new-P1(1)).lt.1d-12) .and. (abs(line_ey_new-P1(2)).lt.1d-12)) .or. &
+                    ((abs(line_ex_new-P2(1)).lt.1d-12) .and. (abs(line_ey_new-P2(2)).lt.1d-12)) ) line_ex_new = N(1)
+            where ( ((abs(line_ex_new-P1(1)).lt.1d-12) .and. (abs(line_ey_new-P1(2)).lt.1d-12)) .or. &
+                    ((abs(line_ex_new-P2(1)).lt.1d-12) .and. (abs(line_ey_new-P2(2)).lt.1d-12)) ) line_ey_new = N(2)
+            print *, 'as'
+            
+            
+
+            ! % Check if P1 or P2 on boundary
+            ! P1B = abs(P1(1)-min(ex))<1e-12 | abs(P1(1)-max(ex))<1e-12 | ...
+            !     abs(P1(2)-min(ey))<1e-12 | abs(P1(2)-max(ey))<1e-12;
+            ! P2B = abs(P2(1)-min(ex))<1e-12 | abs(P2(1)-max(ex))<1e-12 | ...
+            !     abs(P2(2)-min(ey))<1e-12 | abs(P2(2)-max(ey))<1e-12;
+            
+            ! if (~P1B && ~P2B)
+            !     % Neither P1 or P2 on domain boundary
+            !     idx = abs(line_ex-P1(1))<1e-12 & abs(line_ey-P1(2))<1e-12 | ...
+            !         abs(line_ex-P2(1))<1e-12 & abs(line_ey-P2(2))<1e-12;            
+            !     N   = (P1+P2)/2;
+            ! elseif (P1B)
+            !     % P1 on domain boundary. Set P2 at P1 pos.
+            !     idx = abs(line_ex-P2(1))<1e-12 & abs(line_ey-P2(2))<1e-12;
+            !     N   = P1;
+            ! elseif(P2B)
+            !     % P2 on domain boundary. Set P1 at P2 pos.
+            !     idx = abs(line_ex-P1(1))<1e-12 & abs(line_ey-P1(2))<1e-12;
+            !     N   = P2;
+            ! end
+
+            ! Update line coordinates
+            ! line_ex(idx) = N(1)
+            ! line_ey(idx) = N(2)  
+            print *, 'as'
+        else
+            ! Add line to lines to be kept
+            nkeep           = nkeep + 1
+            keep_seg(nkeep) = iseg
+        endif
+
+    enddo
+
+    ! Adjust line_ex and line_ey and assign line_ex_red and line_ey_red to them
+    line_ex            = 0d0
+    line_ey            = 0d0
+    line_ex(1:nkeep,:) = line_ex_new(keep_seg(1:nkeep),:)
+    line_ey(1:nkeep,:) = line_ey_new(keep_seg(1:nkeep),:)
+
+    ! Update nseg
+    nseg = nkeep
+
+    ! Deallocate
+    deallocate(line_ex_new)
+    deallocate(line_ey_new)
+    deallocate(rm_seg)
+    deallocate(keep_seg)    
+
+    return
+
+end subroutine remove_line_segments_noSorting
+
 
 
 end module ls_sorting_routines

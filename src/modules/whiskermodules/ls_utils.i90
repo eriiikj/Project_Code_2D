@@ -383,9 +383,13 @@ subroutine interface_reconstruction_spatial(lssys,mesh)
 ! Intent in
     type(mesh_system), intent(in)  :: mesh
 
+
 ! Subroutine variables
-    real(dp)                       :: a_copy(size(lssys%a,1)), critical_length
-    integer                        :: g, ie, nods(mesh%nodel)    
+    real(dp)                       :: a_copy(size(lssys%a,1)), critical_length, P1(2), P2(2), P1_gg(2), P2_gg(2)
+    integer                        :: g, ie, nods(mesh%nodel), g_cols(2), gg_cols(2), iseg, i, iseg_gg
+    integer, allocatable           :: other_grains(:)    
+    integer                        :: grainidx(lssys%ngrains), counter
+    real(dp), allocatable          :: unique_coord(:,:), all_coord(:,:)
 
 ! Critical length
     critical_length = 0.4d0*mesh%min_elm_width
@@ -409,12 +413,90 @@ subroutine interface_reconstruction_spatial(lssys,mesh)
             endif
         enddo
     enddo
-    
+
+! ! Grain idx
+! do i=1,lssys%ngrains
+!     grainidx(i) = i
+! enddo
+
+! ! Extract line_coord
+! do g = 1,lssys%ngrains
+!     g_cols = [2*(g-1) + 1, 2*(g-1) + 2]
+!     call lines_to_coord(lssys%line_ex([1:lssys%line_seg(g)],g_cols(1):g_cols(2)), &
+!     lssys%line_ey([1:lssys%line_seg(g)],g_cols(1):g_cols(2)), lssys%line_seg(g), unique_coord)
+!     lssys%line_coordN(g) = size(unique_coord,1)
+!     lssys%line_coord([1:lssys%line_coordN(g)],g_cols(1):g_cols(2)) = unique_coord
+! enddo
 
     return
 end subroutine interface_reconstruction_spatial
 
 
+
+subroutine lines_to_coord(line_ex, line_ey, N, unique_coord)
+! --- Routine for finding unique coordinates in lines ---
+    implicit none
+    integer, intent(in)                :: N
+    real(dp), intent(in)               :: line_ex(:,:), line_ey(:,:)
+    real(dp)                           :: coord(2*N, 2)
+    real(dp), allocatable, intent(out) :: unique_coord(:,:)
+  
+! Copy line_ex and line_ey to coord
+    coord(1:N, 1)     = line_ex(:, 1)
+    coord(N+1:2*N, 1) = line_ex(:, 2)
+    coord(1:N, 2)     = line_ey(:, 1)
+    coord(N+1:2*N, 2) = line_ey(:, 2)
+  
+! Find unique coordinates in coord
+    call find_unique_coordinates(coord, 2*N, unique_coord)
+
+    return
+  end subroutine lines_to_coord
+  
+
+  subroutine find_unique_coordinates(coords, N, unique_coords)
+! Finding unique coords in Nx2 array
+    implicit none
+    integer, intent(in) :: N
+    real(dp), dimension(N, 2), intent(in) :: coords
+    real(dp), dimension(:, :), allocatable, intent(out) :: unique_coords
+    logical, dimension(N) :: is_unique
+    integer :: i, j, counter
+  
+! Initialize is_unique array
+    is_unique = .true.
+  
+! Check for unique coordinates
+    do i = 1, N-1
+        if (is_unique(i)) then
+            do j = i+1, N
+                if (norm2(coords(i, :) - coords(j, :))<1d-12) then
+                    is_unique(j) = .false.
+                end if
+            end do
+        end if
+    end do
+  
+! Count the number of unique coordinates
+    counter = count(is_unique)
+  
+! Allocate and fill the unique_coords array
+    allocate(unique_coords(counter, 2))
+    counter  = 0
+    do i = 1, N
+      if (is_unique(i)) then
+        counter = counter + 1
+        unique_coords(counter, :) = coords(i, :)
+      end if
+    end do
+  
+    return
+  end subroutine find_unique_coordinates
+
+
+
+
+  
 subroutine sort_lines(line_ex,line_ey,tplines,line_seg,sep_lines,nsep_lines, mesh)
 ! --- Routine for sorting line segments, removing too short lines and adding lines to too long line segments ---
     implicit none
@@ -446,8 +528,8 @@ subroutine sort_lines(line_ex,line_ey,tplines,line_seg,sep_lines,nsep_lines, mes
 ! OBS this does not work with sep_lines!!
 
 ! 3) Add line segements longer than threshold
-    critical_length = 1.2d0*mesh%min_elm_width
-    call add_line_segments(line_ex, line_ey, critical_length, line_seg, sep_lines, nsep_lines)
+! critical_length = 1.2d0*mesh%min_elm_width
+! call add_line_segments(line_ex, line_ey, critical_length, line_seg, sep_lines, nsep_lines)
 
 
 ! Deallocate
@@ -457,6 +539,26 @@ subroutine sort_lines(line_ex,line_ey,tplines,line_seg,sep_lines,nsep_lines, mes
 
     return
 end subroutine sort_lines
+
+
+subroutine interface_lseg_adjustment(line_ex,line_ey, nseg, lseg)
+
+! Intent inout
+    real(dp), intent(inout) :: line_ex(:,:), line_ey(:,:)
+    integer, intent(inout)  :: nseg
+
+! Intent in
+    real(dp), intent(in)    :: lseg
+
+
+! Remove line segments shorter than lseg
+    call remove_line_segments_noSorting(line_ex, line_ey, nseg, lseg)
+
+! Add line segments at segments longer than lseg
+
+    return
+
+end subroutine interface_lseg_adjustment
 
 
 subroutine reinit_level_set(a_g,line_ex,line_ey,closest_line,nseg,mesh)

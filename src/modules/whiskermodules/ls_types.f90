@@ -13,14 +13,17 @@ module ls_types
     type ls_system
       integer               :: ngrains, nseg_alloc
       real(dp), allocatable :: a(:,:), ed(:,:,:), a_gp(:,:,:),jnod(:,:), bcval(:,:), a_prev(:,:)
-      real(dp),allocatable  :: line_ex(:,:), line_ey(:,:), jed(:,:,:), tp_points(:,:)
+      real(dp),allocatable  :: line_ex(:,:), line_ey(:,:), jed(:,:,:)
       integer, allocatable  :: line_seg(:), line_elms(:,:), closest_line(:,:)
       logical, allocatable  :: int_elms(:,:), line_seg_cc(:), tplines(:,:)
       real(dp), allocatable :: xvec(:), yvec(:), rvec(:), EEvec(:)
       real(dp), allocatable :: vp(:,:,:), vpm(:,:)
       integer, allocatable  :: rm_lines(:,:), rm_lines_tmp(:,:), sep_lines(:,:), nsep_lines(:)
       real(dp)              :: alpha=1d4, IMC_area, IMC_area_init
-
+      ! real(dp), allocatable :: line_coord(:,:)
+      ! integer, allocatable  :: line_coordN(:)
+      real(dp),allocatable  :: tp_points(:,:)
+      integer               :: ntp_points
       
       ! Update level set function
       real(dp)              :: theta = 1d0, gamma, m, zeta, mzeta, mzetagb, malpha
@@ -30,7 +33,7 @@ module ls_types
       real(dp)              :: time = 0d0
       type(sparse)          :: C_hat, K_hat
 
-      ! Stress loop
+      ! Ls stress loop variables
       real(dp),allocatable  :: phi(:,:), phi_ed(:,:,:), phi_gp(:,:,:)
       real(dp),allocatable  :: hphi(:,:), hphi_ed(:,:,:), hphi_gp(:,:,:), hphi_sum(:)      
       integer, allocatable  :: material(:)

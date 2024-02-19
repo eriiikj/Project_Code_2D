@@ -66,6 +66,10 @@ subroutine allocate_ls_system(lssys,ngrains,nelm,nrgp,nnod,nodel,enod)
   allocate(lssys%rm_lines_tmp(nseg_alloc,ngrains),stat=ierr)
   allocate(lssys%sep_lines(nseg_alloc,2*ngrains),stat=ierr)
   allocate(lssys%nsep_lines(ngrains),stat=ierr)
+! allocate(lssys%line_coord(nseg_alloc+200,2*ngrains),stat=ierr)
+! allocate(lssys%line_coordN(ngrains),stat=ierr)
+  allocate(lssys%tp_points(200,2),stat=ierr) 
+  
 
 ! Material
   allocate(lssys%material(ngrains),stat=ierr)
@@ -294,8 +298,9 @@ subroutine update_ls_system(lssys,mesh,i_IMC,input_location, omp_run, pq, diffsy
   logical, intent(in)                       :: ls_spatial
 
 ! Subroutine variables
-  integer                                   :: g, g_rows(2), nindecies, counter, i, inod
-  integer, allocatable                      :: indecies(:), indecies2(:), uniqueIndices(:)  
+  integer                                   :: g, g_cols(2), nindecies, counter, i, inod
+  integer, allocatable                      :: indecies(:), indecies2(:), uniqueIndices(:)
+  real(dp)                                  :: lseg
 
 ! !
 ! integer  :: ie
@@ -337,29 +342,33 @@ subroutine update_ls_system(lssys,mesh,i_IMC,input_location, omp_run, pq, diffsy
 ! 4) --- Interpolate interfaces ---
   lssys%line_ex     = 0d0
   lssys%line_ey     = 0d0
-  lssys%line_elms   = 0
   lssys%line_seg    = 0
+  lssys%line_elms   = 0  
   lssys%line_seg_cc = .false.
   lssys%int_elms    = .false.
   lssys%sep_lines   = 0
   lssys%jnod        = 0d0  
   lssys%vp          = 0d0
   lssys%vpm         = 0d0
+  lssys%tp_points   = 0d0
+  lssys%ntp_points  = 0
 
 ! Interpolate line segments in deformed configuration
   do g = 1, lssys%ngrains
-    g_rows = [2*(g-1) + 1, 2*(g-1) + 2]
+    g_cols = [2*(g-1) + 1, 2*(g-1) + 2]
     if (ls_spatial) then
-      call get_interface_spatial(lssys%line_ex(:, g_rows(1):g_rows(2)), lssys%line_ey(:, g_rows(1):g_rows(2)), &
+      call get_interface_spatial(lssys%line_ex(:, g_cols(1):g_cols(2)), lssys%line_ey(:, g_cols(1):g_cols(2)), &
       lssys%line_elms(:, g), lssys%line_seg(g), lssys%ed(:,:,g), mesh)
     else
-      call get_interface(lssys%line_ex(:, g_rows(1):g_rows(2)), lssys%line_ey(:, g_rows(1):g_rows(2)), &
+      call get_interface(lssys%line_ex(:, g_cols(1):g_cols(2)), lssys%line_ey(:, g_cols(1):g_cols(2)), &
       lssys%line_elms(:, g), lssys%line_seg(g), lssys%ed(:,:,g), mesh)
     endif
     
 ! Obtain logical array with a true bool if the element contains a line
     lssys%int_elms(lssys%line_elms(1:lssys%line_seg(g),g),g) = .true.
   end do
+
+
 
 ! 5) --- Interface reconstruction (post-processing step) ---
   if (ls_spatial) then
@@ -368,22 +377,30 @@ subroutine update_ls_system(lssys,mesh,i_IMC,input_location, omp_run, pq, diffsy
     call interface_reconstruction(lssys, mesh)
   endif
   
-  
 ! 6) --- Sort line segments ---
 ! do g = 1,lssys%ngrains
-!   g_rows = [2*(g-1) + 1, 2*(g-1) + 2]
-!   call sort_lines(lssys%line_ex(:,g_rows(1):g_rows(2)),lssys%line_ey(:,g_rows(1):g_rows(2)),lssys%tplines(:,g), &
-!   lssys%line_seg(g),lssys%sep_lines(:,g_rows(1):g_rows(2)),lssys%nsep_lines(g),mesh)
+!   g_cols = [2*(g-1) + 1, 2*(g-1) + 2]
+!   call sort_lines(lssys%line_ex(:,g_cols(1):g_cols(2)),lssys%line_ey(:,g_cols(1):g_cols(2)),lssys%tplines(:,g), &
+!   lssys%line_seg(g),lssys%sep_lines(:,g_cols(1):g_cols(2)),lssys%nsep_lines(g),mesh)
+! enddo
+
+! 6) --- Adaptive mesh with refinement length lseg ---
+  lseg = 2d-5
+! do g = 1,lssys%ngrains
+  g = 5
+    g_cols = [2*(g-1) + 1, 2*(g-1) + 2]
+    call interface_lseg_adjustment(lssys%line_ex(:,g_cols(1):g_cols(2)), lssys%line_ey(:,g_cols(1):g_cols(2)), &
+    lssys%line_seg(g), lseg)    
 ! enddo
 
 ! 7) --- Reinitialize level set function ---
   do g = 1,lssys%ngrains
-    g_rows = [2*(g-1) + 1, 2*(g-1) + 2]
+    g_cols = [2*(g-1) + 1, 2*(g-1) + 2]
     if (ls_spatial) then
-      call reinit_level_set_spatial(lssys%a(:,g),lssys%line_ex(:,g_rows(1):g_rows(2)),lssys%line_ey(:,g_rows(1):g_rows(2)), &
+      call reinit_level_set_spatial(lssys%a(:,g),lssys%line_ex(:,g_cols(1):g_cols(2)),lssys%line_ey(:,g_cols(1):g_cols(2)), &
       lssys%closest_line(:,g),lssys%line_seg(g),mesh)
     else
-      call reinit_level_set(lssys%a(:,g),lssys%line_ex(:,g_rows(1):g_rows(2)),lssys%line_ey(:,g_rows(1):g_rows(2)), &
+      call reinit_level_set(lssys%a(:,g),lssys%line_ex(:,g_cols(1):g_cols(2)),lssys%line_ey(:,g_cols(1):g_cols(2)), &
       lssys%closest_line(:,g),lssys%line_seg(g),mesh)
     endif
     
