@@ -555,7 +555,7 @@ subroutine interface_lseg_adjustment(line_ex,line_ey, nseg, tppoints, bcnod_all,
     call remove_line_segments_noSorting(line_ex, line_ey, nseg, tppoints, bcnod_all, meshcoord, lseg)
 
     ! Add line segments at segments longer than lseg
-    ! call add_line_segments_noSorting(line_ex, line_ey, nseg, lseg)
+    call add_line_segments_noSorting(line_ex, line_ey, nseg, lseg)
 
     return
 
