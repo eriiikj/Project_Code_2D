@@ -528,7 +528,7 @@ subroutine sort_lines(line_ex,line_ey,tplines,line_seg,sep_lines,nsep_lines, mes
 ! OBS this does not work with sep_lines!!
 
 ! 3) Add line segements longer than threshold
-    critical_length = 0.7d0*mesh%min_elm_width
+    critical_length = 0.8d0*mesh%min_elm_width
     call add_line_segments(line_ex, line_ey, critical_length, line_seg, sep_lines, nsep_lines)
 
 
@@ -556,7 +556,7 @@ subroutine interface_lseg_adjustment(line_ex,line_ey, nseg, tppoints, bcnod_all,
     call remove_line_segments_noSorting(line_ex, line_ey, nseg, tppoints, bcnod_all, meshcoord, lseg)
 
 ! Add line segments at segments longer than lseg
-    call add_line_segments_noSorting(line_ex, line_ey, nseg, lseg)
+! call add_line_segments_noSorting(line_ex, line_ey, nseg, lseg)
 
     return
 

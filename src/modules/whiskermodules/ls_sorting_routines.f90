@@ -569,11 +569,6 @@ subroutine add_line_segments(line_ex, line_ey, critical_length, line_seg, sep_li
 end subroutine add_line_segments
 
 
-
-
-! subroutine remove_
-
-
 subroutine remove_line_segments_noSorting(line_ex, line_ey, nseg, tppoints, bcnod_all, meshcoord, lseg)
     ! --- Routine for removing line segments shorter than threshhold. No sorting of line segments required --- 
 
@@ -615,7 +610,7 @@ subroutine remove_line_segments_noSorting(line_ex, line_ey, nseg, tppoints, bcno
     enddo
 
     step = 1
-    do while (rm .and. step<=20)
+    do while (rm .and. step<=60)
         rm      = .false.
         segloop = pack(isegs,rmseg.eqv..false.)
         nseg    = size(segloop)
@@ -636,13 +631,13 @@ subroutine remove_line_segments_noSorting(line_ex, line_ey, nseg, tppoints, bcno
             ! 3) Compute line length
             line_length = norm2(P1-P2)
 
-            ! 4) Check if line_length smaller than threshhold (do not remove segments containing triple junction point)
-            if (line_length.lt.lseg .and. (.not. P1tp) .and. (.not. P2tp)) then                
+            ! 4) Check if P1 or P2 along boundary (OBS not very good)
+            bdist = 1.3d-5
+            P1onB = any(sqrt((meshcoord(1,bcnod_all) - P1(1))**2 + (meshcoord(2,bcnod_all) - P1(2))**2 ).lt.bdist)
+            P2onB = any(sqrt((meshcoord(1,bcnod_all) - P2(1))**2 + (meshcoord(2,bcnod_all) - P2(2))**2 ).lt.bdist)
 
-                ! Check if P1 or P2 is located along domain boundary (naive check)
-                bdist = 1.1d-5
-                P1onB = any(sqrt((meshcoord(1,bcnod_all) - P1(1))**2 + (meshcoord(2,bcnod_all) - P1(2))**2 ).lt.bdist)
-                P2onB = any(sqrt((meshcoord(1,bcnod_all) - P2(1))**2 + (meshcoord(2,bcnod_all) - P2(2))**2 ).lt.bdist)
+            ! 4) Check if line_length smaller than threshhold (do not remove segments containing triple junction point)
+            if (line_length.lt.lseg .and. (.not. P1tp) .and. (.not. P2tp) .and. .not. (P1onB .and. P2onB)) then
 
                 if ((.not. P1onB) .and. (.not. P2onB)) then
                     ! Continue looping

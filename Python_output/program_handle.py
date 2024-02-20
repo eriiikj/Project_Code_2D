@@ -405,9 +405,6 @@ class Solver(object):
         
         # --- Extract bcnod ---
         
-        
-        
-        
         # -- Lower bc nods
         bcnods_lower = np.asarray(bdofs[self.input_data.lowerSupportMarker])\
             [0:-1:2]
@@ -454,6 +451,14 @@ class Solver(object):
         bcnod_all = np.unique(np.concatenate([bcnods_lower,bcnods_upper,bcnods_sides]))
         bcnod_all = bcnod_all.astype('int')
         
+        
+        # Create a boolean matrix indicating the presence of each bcnod in enod
+        presence_matrix = np.isin(enod, bcnod_all)
+     
+        # Find the row and column indices where True values occur
+        edge_elms = np.where(np.sum(presence_matrix,1)>1)
+                                       
+                                       
         s = 9
         
         
