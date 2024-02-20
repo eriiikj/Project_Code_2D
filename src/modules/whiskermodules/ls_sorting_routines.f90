@@ -637,10 +637,7 @@ subroutine remove_line_segments_noSorting(line_ex, line_ey, nseg, tppoints, bcno
             line_length = norm2(P1-P2)
 
             ! 4) Check if line_length smaller than threshhold (do not remove segments containing triple junction point)
-            if (line_length.lt.lseg .and. (.not. P1tp) .and. (.not. P2tp)) then
-
-                ! Continue looping
-                rm = .true.
+            if (line_length.lt.lseg .and. (.not. P1tp) .and. (.not. P2tp)) then                
 
                 ! Check if P1 or P2 is located along domain boundary (naive check)
                 bdist = 1.1d-5
@@ -648,6 +645,9 @@ subroutine remove_line_segments_noSorting(line_ex, line_ey, nseg, tppoints, bcno
                 P2onB = any(sqrt((meshcoord(1,bcnod_all) - P2(1))**2 + (meshcoord(2,bcnod_all) - P2(2))**2 ).lt.bdist)
 
                 if ((.not. P1onB) .and. (.not. P2onB)) then
+                    ! Continue looping
+                    rm = .true.
+                    
                     ! New coordinates
                     N = (P1 + P2) / 2            
                     idx = ( ((abs(line_ex_new-P1(1)).lt.1d-13) .and. (abs(line_ey_new-P1(2)).lt.1d-13)) .or. &

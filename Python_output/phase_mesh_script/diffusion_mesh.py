@@ -111,9 +111,9 @@ class InputData(object):
         
         
         # --- Constraint Delanuay triangularization using triangle ---
-        tri_input     = dict(vertices=self.mesh_points) # segments=self.line_conn
+        tri_input     = dict(vertices=self.mesh_points,segments=self.line_conn) # segments=self.line_conn
         print('Creating a constraint delanuay triangularization...')
-        triangulation = triangle.triangulate(tri_input,opts='') #pcqa0.03 
+        triangulation = triangle.triangulate(tri_input,opts='pcq') #pcqa0.03 
         print('Finished delanuay triangularization')
         tris          = triangulation['triangles']
         tris          = tris.flatten()

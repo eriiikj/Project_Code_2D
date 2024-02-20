@@ -100,15 +100,15 @@ subroutine solve_diffusion_problem_global(diffsys,i_IMC,lssys,mesh,pq,input_loca
   call generate_global_diffusion_mesh()
 
   ! Solve diffusion problem for all grains seperately
-  do g=1,lssys%ngrains    
-    call diffusion_grain(diffsys,i_IMC, mesh, diffsys%grain_meshes(g), g, input_location, lssys, omp_run, pq)
-  enddo 
+  ! do g=1,lssys%ngrains    
+  !   call diffusion_grain(diffsys,i_IMC, mesh, diffsys%grain_meshes(g), g, input_location, lssys, omp_run, pq)
+  ! enddo 
 
-  ! Compute IMC area
-  call compute_IMC_area(lssys,diffsys)
-  if (i_IMC.eq.1) then
-    lssys%IMC_area_init = lssys%IMC_area
-  endif  
+  ! ! Compute IMC area
+  ! call compute_IMC_area(lssys,diffsys)
+  ! if (i_IMC.eq.1) then
+  !   lssys%IMC_area_init = lssys%IMC_area
+  ! endif  
 
   return
 end subroutine solve_diffusion_problem_global
