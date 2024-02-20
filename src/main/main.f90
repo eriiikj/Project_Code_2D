@@ -76,9 +76,9 @@ program main
    call getcwd(main_location)
 
    ! --- Read input data from json ---
-   call read_json_input_location(input_location)                                                      ! Loc input files
-   call read_json_mesh(input_location, mesh%coord, mesh%newcoord, mesh%enod, mesh%bcnod, mesh%bcval)  ! Mesh data
-   call read_json_input_2(input_location, IMC_vol_transf, IMC_steps, lssys, diffsys)                  ! Input data
+   call read_json_input_location(input_location)                                                                     ! Loc input files
+   call read_json_mesh(input_location, mesh%coord, mesh%newcoord, mesh%enod, mesh%bcnod, mesh%bcval, mesh%bcnod_all) ! Mesh data
+   call read_json_input_2(input_location, IMC_vol_transf, IMC_steps, lssys, diffsys)                                 ! Input data
 
    ! --- Create VTK and Matlab and Python folder in input location. Erase old if exists. Go back. ---
    call chdir(input_location)
@@ -163,12 +163,9 @@ program main
             call exit()
          endif
 
-      enddo
+      enddo      
 
-      ! Update time
-      lssys%time = lssys%time + lssys%h
-
-      ! ! --- Solve diffusion problem for all grains ---
+      ! --- Solve diffusion problem for all grains ---
       ! call solve_diffusion_problem_global(diffsys, i_IMC, lssys, mesh, pq, input_location, omp_run)
 
       ! ! --- Compute new velocity field --- 
@@ -189,6 +186,9 @@ program main
       ! print *, 'Entering plot_vtk'
       ! call plot_vtk(pq, input_location, mesh%nnodgp, mesh, lssys, i_IMC)
       ! print *, 'Leaving plot_vtk'
+
+      ! Update time
+      lssys%time = lssys%time + lssys%h
 
    enddo
 

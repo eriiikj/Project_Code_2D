@@ -69,6 +69,11 @@ class MainClass(object):
         self.input_data.mesh_el_size_y_finest  = 25e-3
         self.input_data.mesh_el_distrib_val    = 1
         
+        # Markers
+        self.lowerSupportMarker                = 10
+        self.sideSupportMarker                 = 20
+        self.upperSupportMarker                = 30
+        
         # MFC (remove lower right and left node from bc)
         self.input_data.mfc                    = False
         

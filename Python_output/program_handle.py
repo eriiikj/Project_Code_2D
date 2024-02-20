@@ -314,6 +314,7 @@ class OutputData(object):
         output_data_file["ndof"]            = self.ndof
         output_data_file["nodel"]           = self.nodel
         output_data_file["dofel"]           = self.dofel
+        output_data_file["bcnod_all"]      = self.bcnod_all.tolist()
         output_data_file["input_location"]  = self.input_location
         
         
@@ -339,6 +340,7 @@ class OutputData(object):
         self.ndof          = np.asarray(output_data_file["ndof"])
         self.nodel         = np.asarray(output_data_file["nodel"])
         self.dofel         = output_data_file["dofel"]
+        self.bcnods_all    = output_data_file["bcnods_all"]
         
         self.ex, self.ey   = cfc.coordxtr(self.edof, self.coord, self.dofs)
 
@@ -404,6 +406,8 @@ class Solver(object):
         # --- Extract bcnod ---
         
         
+        
+        
         # -- Lower bc nods
         bcnods_lower = np.asarray(bdofs[self.input_data.lowerSupportMarker])\
             [0:-1:2]
@@ -437,6 +441,20 @@ class Solver(object):
         bcdofsx_lower = 1*np.ones(nbc_lower)
         
         bcnods_lower = bcnods_lower.astype(int)
+        
+        
+        # Side bc nods
+        bcnods_sides = np.asarray(bdofs[self.input_data.sideSupportMarker])\
+            [0:-1:2]
+        bcnods_sides = bcnods_sides[2:] # Dont include corners again
+        bcnods_sides = (bcnods_sides+1)/2
+        bcnods_sides = bcnods_sides.astype('int')
+        
+        
+        bcnod_all = np.unique(np.concatenate([bcnods_lower,bcnods_upper,bcnods_sides]))
+        bcnod_all = bcnod_all.astype('int')
+        
+        s = 9
         
         
         
@@ -503,6 +521,7 @@ class Solver(object):
         
         
         
+        
         nbc    = np.size(bcnods)
         
         bcnod      = np.zeros((nbc,2), dtype=np.int32)
@@ -536,6 +555,7 @@ class Solver(object):
         self.output_data.ndof          = ndof
         self.output_data.nodel         = nodel
         self.output_data.dofel         = dofel
+        self.output_data.bcnod_all    = bcnod_all
         
   
     def reorder_enod(self, coord,enod):

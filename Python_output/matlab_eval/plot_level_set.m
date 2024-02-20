@@ -27,7 +27,7 @@ my_colors2 = [[255,58,58]; [255,165,41]; [8,81,156]; [136,86,167]
 mm_to_um  = 1e3;
 
 % IMC steps
-IMC_steps = 1;
+IMC_steps = 4;
 
 
 %% Level set evolution
@@ -39,7 +39,7 @@ tvec             = zeros(niterations,1);
 IMC_vol_per_area = zeros(niterations,1);
 
 k = 1;
-for i_IMC=1:step_size:IMC_steps
+for i_IMC=1%1:step_size:IMC_steps
     
     disp('--------')
     disp(['IMC step ', num2str(i_IMC)])
@@ -50,13 +50,13 @@ for i_IMC=1:step_size:IMC_steps
     = load_level_set(i_IMC,edof_1D); 
 
     % Load deformed configuration from stress state
-    if (i_IMC>1)
-        [newex,newey,newcoord] = load_stress(i_IMC-1);
-    else
-        newex = ex; newey=ey; newcoord = coord;
-    end
+%     if (i_IMC>1)
+%         [newex,newey,newcoord] = load_stress(i_IMC-1);
+%     else
+%         newex = ex; newey=ey; newcoord = coord;
+%     end
 
-%     newex = ex; newey=ey; newcoord = coord;
+    newex = ex; newey=ey; newcoord = coord;
 
     % Store IMC vol/area
     IMC_vol_per_area(k) = IMC_area/L;

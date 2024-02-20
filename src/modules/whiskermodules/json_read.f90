@@ -255,7 +255,7 @@ end subroutine read_json_input_2
 
 
 
-subroutine read_json_mesh(input_location, coord, newcoord, enod, bcnod, bcval)
+subroutine read_json_mesh(input_location, coord, newcoord, enod, bcnod, bcval, bcnod_all)
   implicit none
 
   ! Input location
@@ -279,7 +279,7 @@ subroutine read_json_mesh(input_location, coord, newcoord, enod, bcnod, bcval)
 
   ! Out
   real(dp), allocatable, intent(inout)     :: coord(:,:), newcoord(:,:), bcval(:)
-  integer , allocatable, intent(inout)     :: enod(:,:), bcnod(:,:)
+  integer , allocatable, intent(inout)     :: enod(:,:), bcnod(:,:), bcnod_all(:)
 
   filename = 'python_mesh.json'
   
@@ -354,14 +354,16 @@ subroutine read_json_mesh(input_location, coord, newcoord, enod, bcnod, bcval)
 
 
   ! ----- bcval -----
-  call my_json_file%get('bcval', bcval, found); if (.not. found) call exit(0)
-
+  call my_json_file%get('bcval', bcval, found); if (.not. found) call exit(0)  
+  
+  ! ----- bcnod_all -----
+  call my_json_file%get('bcnod_all', bcnod_all, found); if (.not. found) call exit(0)
 
   ! ----- Destroy -----
   call my_json_file%destroy()
 
   ! --- Convert to mm ---
-  coord = coord*1d-3
+  coord    = coord*1d-3
   newcoord = coord
 
   ! ----- Go back to program -----

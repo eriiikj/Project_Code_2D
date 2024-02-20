@@ -572,7 +572,7 @@ end subroutine add_line_segments
 
 
 
-subroutine remove_line_segments_noSorting(line_ex, line_ey, nseg, lseg)
+subroutine remove_line_segments_noSorting(line_ex, line_ey, nseg, tppoints, lseg)
     ! --- Routine for removing line segments shorter than threshhold. No sorting of line segments required --- 
 
     implicit none
@@ -582,17 +582,20 @@ subroutine remove_line_segments_noSorting(line_ex, line_ey, nseg, lseg)
     integer, intent(inout)  :: nseg
 
     ! Intent in    
-    real(dp), intent(in)    :: lseg
+    real(dp), intent(in)    :: tppoints(:,:), lseg
 
     ! Subroutine variables
     integer, allocatable    :: rm_seg(:), keep_seg(:)
     real(dp), allocatable   :: line_ex_new(:,:), line_ey_new(:,:)
     integer                 :: ierr, iseg, nrm, nkeep, i
     real(dp)                :: P1(2), P2(2), line_length, N(2)  
+    logical :: as=.true., P1tp, P2tp
+    logical , allocatable :: idx(:,:)
     
     ! Copy line_ex and line_ey
     allocate(line_ex_new(nseg,2),stat=ierr)
     allocate(line_ey_new(nseg,2),stat=ierr)
+    allocate(idx(nseg,2),stat=ierr)
     line_ex_new = line_ex(1:nseg,:)
     line_ey_new = line_ey(1:nseg,:)    
     
@@ -610,29 +613,30 @@ subroutine remove_line_segments_noSorting(line_ex, line_ey, nseg, lseg)
         P1 = [line_ex_new(iseg,1),line_ey_new(iseg,1)]
         P2 = [line_ex_new(iseg,2),line_ey_new(iseg,2)]
 
-        ! 2) Compute line length
+        ! 2) Check if P1 or P2 is a triple junction point
+        P1tp =  any(sqrt((tppoints(:,1)-P1(1))**2 + (tppoints(:,2)-P1(2))**2).lt.1d-12)
+        P2tp =  any(sqrt((tppoints(:,1)-P2(1))**2 + (tppoints(:,2)-P2(2))**2).lt.1d-12)
+
+        ! 3) Compute line length
         line_length = norm2(P1-P2)
 
-        ! 3) Check if line_length smaller than threshhold
-        if (line_length.lt.lseg) then
+        ! 4) Check if line_length smaller than threshhold (do not remove segments containing triple junction point)
+        if (line_length.lt.lseg .and. (.not. P1tp) .and. (.not. P2tp)) then
 
             ! Add line to lines to be removed
             nrm         = nrm + 1
             rm_seg(nrm) = iseg
-            
-
-            print *, 'as', ((abs(line_ex_new-P1(1)).lt.1d-12) .and. (abs(line_ey_new-P1(2)).lt.1d-12)) .or. &
-            ((abs(line_ex_new-P2(1)).lt.1d-12) .and. (abs(line_ey_new-P2(2)).lt.1d-12))
 
             ! New coordinates
-            N = (P1 + P2) / 2
-            print *, 'as'
-            where ( ((abs(line_ex_new-P1(1)).lt.1d-12) .and. (abs(line_ey_new-P1(2)).lt.1d-12)) .or. &
-                    ((abs(line_ex_new-P2(1)).lt.1d-12) .and. (abs(line_ey_new-P2(2)).lt.1d-12)) ) line_ex_new = N(1)
-            where ( ((abs(line_ex_new-P1(1)).lt.1d-12) .and. (abs(line_ey_new-P1(2)).lt.1d-12)) .or. &
-                    ((abs(line_ex_new-P2(1)).lt.1d-12) .and. (abs(line_ey_new-P2(2)).lt.1d-12)) ) line_ey_new = N(2)
-            print *, 'as'
+            N = (P1 + P2) / 2            
+            idx = ( ((abs(line_ex_new-P1(1)).lt.1d-13) .and. (abs(line_ey_new-P1(2)).lt.1d-13)) .or. &
+                    ((abs(line_ex_new-P2(1)).lt.1d-13) .and. (abs(line_ey_new-P2(2)).lt.1d-13)) )
+
+            where (idx) line_ex_new = N(1)
+            where (idx) line_ey_new = N(2)            
             
+
+            ! TODO: Line segments at domain boundary should not be included!!!!
             
 
             ! % Check if P1 or P2 on boundary
@@ -655,11 +659,6 @@ subroutine remove_line_segments_noSorting(line_ex, line_ey, nseg, lseg)
             !     idx = abs(line_ex-P1(1))<1e-12 & abs(line_ey-P1(2))<1e-12;
             !     N   = P2;
             ! end
-
-            ! Update line coordinates
-            ! line_ex(idx) = N(1)
-            ! line_ey(idx) = N(2)  
-            print *, 'as'
         else
             ! Add line to lines to be kept
             nkeep           = nkeep + 1

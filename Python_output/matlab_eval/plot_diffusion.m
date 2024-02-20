@@ -37,45 +37,44 @@ grainArr = repmat(grain, 1, ngrains);
 
 %% Diffusion equation
 step_size = 1;
-for i_IMC = 1:step_size:IMC_steps
+for i_IMC = 4%1:step_size:IMC_steps
 
-%     % Load grain mesh
-%     for g=1:ngrains
-%         [grainArr(g).edof,grainArr(g).enod,grainArr(g).coord,...
-%          grainArr(g).dofs,grainArr(g).ex,grainArr(g).ey,...
-%          grainArr(g).bcnod,grainArr(g).bcval,grainArr(g).bcval_idx,...
-%          grainArr(g).nodel,grainArr(g).nelm,grainArr(g).ndof]...
-%          = import_grain_mesh(i_IMC,g);
-%     
-%         % Load grain results
-%         [grainArr(g).a,grainArr(g).r,grainArr(g).ed,...
-%          grainArr(g).jint, grainArr(g).j_flux,grainArr(g).p,...
-%          grainArr(g).p_ed] = load_diffusion(i_IMC,g,grainArr(g).edof);
-%     end
+    % Load grain mesh
+    for g=1:ngrains
+        [grainArr(g).edof,grainArr(g).enod,grainArr(g).coord,...
+         grainArr(g).dofs,grainArr(g).ex,grainArr(g).ey,...
+         grainArr(g).bcnod,grainArr(g).bcval,grainArr(g).bcval_idx,...
+         grainArr(g).nodel,grainArr(g).nelm,grainArr(g).ndof]...
+         = import_grain_mesh(i_IMC,g);
+    
+        % Load grain results
+        [grainArr(g).a,grainArr(g).r,grainArr(g).ed,...
+         grainArr(g).jint, grainArr(g).j_flux,grainArr(g).p,...
+         grainArr(g).p_ed] = load_diffusion(i_IMC,g,grainArr(g).edof);
+    end
 
 
-%     % Plot grain mesh with concentration
-%     f1 = figure(1);
-%     cla;
-%     for g=1:ngrains
-% %         plot_mesh(grainArr(g).ex,grainArr(g).ey)
-%         plot_2D_conc(grainArr(g).ex,grainArr(g).ey,grainArr(g).ed,i_IMC)
-%         hold on
-%         plot_j(grainArr(g).ex,grainArr(g).ey,grainArr(g).j_flux)
-%         axis equal  
-%         box on
-%     end
+    % Plot grain mesh with concentration
+    f1 = figure(1);
+    cla;
+    for g=1:ngrains
+%         plot_mesh(grainArr(g).ex,grainArr(g).ey)
+        plot_2D_conc(grainArr(g).ex,grainArr(g).ey,grainArr(g).ed,i_IMC)
+        hold on
+        plot_j(grainArr(g).ex,grainArr(g).ey,grainArr(g).j_flux)
+        axis equal  
+        box on
+    end
 
 % %     Plot grain mesh with hydrostatic pressure
 %     f2 = figure(2);
 %     cla;
-%     for g=4
+%     for g=1:ngrains
 %         plot_mesh(grainArr(g).ex,grainArr(g).ey)
 %         plot_2D_pressure(grainArr(g).ex,grainArr(g).ey,...
 %         grainArr(g).p_ed,i_IMC)
 %         hold on
-%         axis equal
-%         axis(axisbc*1e3)    
+%         axis equal 
 %         box on
 %         clim([-10 10])
 %     end

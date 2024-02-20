@@ -16,7 +16,7 @@ module mesh_module
   implicit none
 
   type mesh_system
-    integer,  allocatable :: enod(:,:),  bcnod1(:,:), bcdof1(:), bcnod(:,:), bcdof(:)
+    integer,  allocatable :: enod(:,:),  bcnod1(:,:), bcdof1(:), bcnod(:,:), bcdof(:), bcnod_all(:)
     real(dp), allocatable :: coord(:,:), newcoord(:,:), bcval1(:), bcval(:)
     real(dp), allocatable :: ex(:,:), ey(:,:), newex(:,:), newey(:,:)
     integer               :: dofnod, nelm, enlmx, nelmx, nelmy, nrgp, nodel, nnod, ndof, dofel, nnodgp
