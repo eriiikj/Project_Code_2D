@@ -472,7 +472,6 @@ subroutine add_line_segments(line_ex, line_ey, critical_length, line_seg, sep_li
     enddo
 
     
-
     ! Allocate new arrays for storing old lines as well as new added lines
     allocate(line_ex_new(2,nseg_extended),stat=ierr)
     allocate(line_ey_new(2,nseg_extended),stat=ierr)
@@ -572,7 +571,10 @@ end subroutine add_line_segments
 
 
 
-subroutine remove_line_segments_noSorting(line_ex, line_ey, nseg, tppoints, lseg)
+! subroutine remove_
+
+
+subroutine remove_line_segments_noSorting(line_ex, line_ey, nseg, tppoints, bcnod_all, meshcoord, lseg)
     ! --- Routine for removing line segments shorter than threshhold. No sorting of line segments required --- 
 
     implicit none
@@ -581,106 +583,118 @@ subroutine remove_line_segments_noSorting(line_ex, line_ey, nseg, tppoints, lseg
     real(dp), intent(inout) :: line_ex(:,:), line_ey(:,:)
     integer, intent(inout)  :: nseg
 
-    ! Intent in    
-    real(dp), intent(in)    :: tppoints(:,:), lseg
+    ! Intent in        
+    real(dp), intent(in)    :: tppoints(:,:), meshcoord(:,:), lseg
+    integer, intent(in)     :: bcnod_all(:)
 
     ! Subroutine variables
-    integer, allocatable    :: rm_seg(:), keep_seg(:)
-    real(dp), allocatable   :: line_ex_new(:,:), line_ey_new(:,:)
-    integer                 :: ierr, iseg, nrm, nkeep, i
-    real(dp)                :: P1(2), P2(2), line_length, N(2)  
-    logical :: as=.true., P1tp, P2tp
-    logical , allocatable :: idx(:,:)
+    integer, allocatable    :: isegs(:), segloop(:)
+    real(dp), allocatable   :: line_ex_new(:,:), line_ey_new(:,:), line_ex_o(:,:), line_ey_o(:,:)
+    integer                 :: ierr, iseg, i, step
+    real(dp)                :: P1(2), P2(2), line_length, N(2), bdist=2d-5
+    logical                 :: rm, P1tp, P2tp, P1onB, P2onB
+    logical , allocatable   :: idx(:,:), rmseg(:)
     
     ! Copy line_ex and line_ey
     allocate(line_ex_new(nseg,2),stat=ierr)
     allocate(line_ey_new(nseg,2),stat=ierr)
+    allocate(line_ex_o(nseg,2),stat=ierr)
+    allocate(line_ey_o(nseg,2),stat=ierr)
     allocate(idx(nseg,2),stat=ierr)
+    allocate(isegs(nseg),stat=ierr)
+    allocate(rmseg(nseg),stat=ierr)
     line_ex_new = line_ex(1:nseg,:)
-    line_ey_new = line_ey(1:nseg,:)    
+    line_ey_new = line_ey(1:nseg,:)
+    line_ex_o   = line_ex_new
+    line_ey_o   = line_ey_new
+    rmseg       = .false.
+    rm          = .true.
     
-
-    ! Remove lines shorter than lseg
-    allocate(rm_seg(nseg), stat=ierr)
-    rm_seg   = 0
-    nrm      = 0
-    allocate(keep_seg(nseg), stat=ierr)
-    keep_seg = 0
-    nkeep    = 0
-    do iseg=1,nseg
-
-        ! 1) Take out vertex coordinates
-        P1 = [line_ex_new(iseg,1),line_ey_new(iseg,1)]
-        P2 = [line_ex_new(iseg,2),line_ey_new(iseg,2)]
-
-        ! 2) Check if P1 or P2 is a triple junction point
-        P1tp =  any(sqrt((tppoints(:,1)-P1(1))**2 + (tppoints(:,2)-P1(2))**2).lt.1d-12)
-        P2tp =  any(sqrt((tppoints(:,1)-P2(1))**2 + (tppoints(:,2)-P2(2))**2).lt.1d-12)
-
-        ! 3) Compute line length
-        line_length = norm2(P1-P2)
-
-        ! 4) Check if line_length smaller than threshhold (do not remove segments containing triple junction point)
-        if (line_length.lt.lseg .and. (.not. P1tp) .and. (.not. P2tp)) then
-
-            ! Add line to lines to be removed
-            nrm         = nrm + 1
-            rm_seg(nrm) = iseg
-
-            ! New coordinates
-            N = (P1 + P2) / 2            
-            idx = ( ((abs(line_ex_new-P1(1)).lt.1d-13) .and. (abs(line_ey_new-P1(2)).lt.1d-13)) .or. &
-                    ((abs(line_ex_new-P2(1)).lt.1d-13) .and. (abs(line_ey_new-P2(2)).lt.1d-13)) )
-
-            where (idx) line_ex_new = N(1)
-            where (idx) line_ey_new = N(2)            
-            
-
-            ! TODO: Line segments at domain boundary should not be included!!!!
-            
-
-            ! % Check if P1 or P2 on boundary
-            ! P1B = abs(P1(1)-min(ex))<1e-12 | abs(P1(1)-max(ex))<1e-12 | ...
-            !     abs(P1(2)-min(ey))<1e-12 | abs(P1(2)-max(ey))<1e-12;
-            ! P2B = abs(P2(1)-min(ex))<1e-12 | abs(P2(1)-max(ex))<1e-12 | ...
-            !     abs(P2(2)-min(ey))<1e-12 | abs(P2(2)-max(ey))<1e-12;
-            
-            ! if (~P1B && ~P2B)
-            !     % Neither P1 or P2 on domain boundary
-            !     idx = abs(line_ex-P1(1))<1e-12 & abs(line_ey-P1(2))<1e-12 | ...
-            !         abs(line_ex-P2(1))<1e-12 & abs(line_ey-P2(2))<1e-12;            
-            !     N   = (P1+P2)/2;
-            ! elseif (P1B)
-            !     % P1 on domain boundary. Set P2 at P1 pos.
-            !     idx = abs(line_ex-P2(1))<1e-12 & abs(line_ey-P2(2))<1e-12;
-            !     N   = P1;
-            ! elseif(P2B)
-            !     % P2 on domain boundary. Set P1 at P2 pos.
-            !     idx = abs(line_ex-P1(1))<1e-12 & abs(line_ey-P1(2))<1e-12;
-            !     N   = P2;
-            ! end
-        else
-            ! Add line to lines to be kept
-            nkeep           = nkeep + 1
-            keep_seg(nkeep) = iseg
-        endif
-
+    do i=1,nseg
+        isegs(i)=i
     enddo
+
+    step = 1
+    do while (rm .and. step<=20)
+        rm      = .false.
+        segloop = pack(isegs,rmseg.eqv..false.)
+        nseg    = size(segloop)
+
+        do i=1,nseg
+
+            ! Line segment
+            iseg = segloop(i)
+
+            ! 1) Take out vertex coordinates
+            P1 = [line_ex_o(iseg,1),line_ey_o(iseg,1)]
+            P2 = [line_ex_o(iseg,2),line_ey_o(iseg,2)]        
+
+            ! 2) Check if P1 or P2 is a triple junction point
+            P1tp =  any(sqrt((tppoints(:,1)-P1(1))**2 + (tppoints(:,2)-P1(2))**2).lt.1d-12)
+            P2tp =  any(sqrt((tppoints(:,1)-P2(1))**2 + (tppoints(:,2)-P2(2))**2).lt.1d-12)
+
+            ! 3) Compute line length
+            line_length = norm2(P1-P2)
+
+            ! 4) Check if line_length smaller than threshhold (do not remove segments containing triple junction point)
+            if (line_length.lt.lseg .and. (.not. P1tp) .and. (.not. P2tp)) then
+
+                ! Continue looping
+                rm = .true.
+
+                ! Check if P1 or P2 is located along domain boundary (naive check)
+                bdist = 1.1d-5
+                P1onB = any(sqrt((meshcoord(1,bcnod_all) - P1(1))**2 + (meshcoord(2,bcnod_all) - P1(2))**2 ).lt.bdist)
+                P2onB = any(sqrt((meshcoord(1,bcnod_all) - P2(1))**2 + (meshcoord(2,bcnod_all) - P2(2))**2 ).lt.bdist)
+
+                if ((.not. P1onB) .and. (.not. P2onB)) then
+                    ! New coordinates
+                    N = (P1 + P2) / 2            
+                    idx = ( ((abs(line_ex_new-P1(1)).lt.1d-13) .and. (abs(line_ey_new-P1(2)).lt.1d-13)) .or. &
+                            ((abs(line_ex_new-P2(1)).lt.1d-13) .and. (abs(line_ey_new-P2(2)).lt.1d-13)) )
+                elseif (P1onB) then
+                    ! P1 on domain boundary. Set P2 at P1 pos.
+                    N   = P1
+                    idx = (abs(line_ex_new-P2(1)).lt.1d-13) .and. (abs(line_ey_new-P2(2)).lt.1d-13)
+                elseif (P2onB) then
+                    ! P2 on domain boundary. Set P1 at P2 pos.
+                    N   = P2
+                    idx = (abs(line_ex_new-P1(1)).lt.1d-13) .and. (abs(line_ey_new-P1(2)).lt.1d-13)
+                endif
+
+                ! Update line coordinates
+                where (idx) line_ex_new = N(1)
+                where (idx) line_ey_new = N(2)
+            endif
+        enddo
+        ! Extract lines
+        rmseg     = rmseg .or.  (abs(line_ex_new(:,1)-line_ex_new(:,2)).lt.1d-12 &
+        .and. abs(line_ey_new(:,1)-line_ey_new(:,2)).lt.1d-12)
+        line_ex_o = line_ex_new
+        line_ey_o = line_ey_new
+        step = step + 1
+    enddo
+
+
+    ! Lines to be kept
+    segloop = pack(isegs,rmseg.eqv..false.)
+    nseg    = size(segloop)
+
 
     ! Adjust line_ex and line_ey and assign line_ex_red and line_ey_red to them
     line_ex            = 0d0
     line_ey            = 0d0
-    line_ex(1:nkeep,:) = line_ex_new(keep_seg(1:nkeep),:)
-    line_ey(1:nkeep,:) = line_ey_new(keep_seg(1:nkeep),:)
-
-    ! Update nseg
-    nseg = nkeep
+    line_ex(1:nseg,:) = line_ex_new(segloop,:)
+    line_ey(1:nseg,:) = line_ey_new(segloop,:)
 
     ! Deallocate
+    deallocate(line_ex_o)
+    deallocate(line_ey_o)
     deallocate(line_ex_new)
     deallocate(line_ey_new)
-    deallocate(rm_seg)
-    deallocate(keep_seg)    
+    deallocate(idx)  
+    deallocate(isegs)  
+    deallocate(rmseg)  
 
     return
 
@@ -688,4 +702,211 @@ end subroutine remove_line_segments_noSorting
 
 
 
+subroutine add_line_segments_noSorting(line_ex, line_ey, nseg, lseg)
+    ! Routine for adding node in middle of line segment if line longer than threshold
+
+    ! Intent inout
+    real(dp), intent(inout) :: line_ex(:,:), line_ey(:,:)
+    integer, intent(inout)  :: nseg
+
+    ! Intent in
+    real(dp), intent(in)    :: lseg    
+
+    ! Subroutine variables
+    real(dp), allocatable   :: line_ex_new(:,:), line_ey_new(:,:)
+    real(dp), allocatable   :: line_ex_new_copy(:,:), line_ey_new_copy(:,:), line_lengths(:)
+    real(dp)                :: new_x, new_y, A(2), B(2)
+    integer                 :: nseg_extended, n_add_lines, k, ierr, line_idx, i, isegA, isegB
+    real(dp), allocatable   :: sep_points(:,:), jk(:)
+
+    ! 
+    ! Number of extended line segments
+    nseg_extended = 10*nseg        
+    
+    ! Allocate new arrays for storing old lines as well as new added lines
+    allocate(line_ex_new(2,nseg_extended),stat=ierr)
+    allocate(line_ey_new(2,nseg_extended),stat=ierr)
+    line_ex_new(:,1:nseg) = transpose(line_ex(1:nseg,:))
+    line_ey_new(:,1:nseg) = transpose(line_ey(1:nseg,:))
+
+    ! Allocate copy of new lines
+    allocate(line_ex_new_copy(2,nseg_extended),stat=ierr)
+    allocate(line_ey_new_copy(2,nseg_extended),stat=ierr)
+
+    ! Length of line segments
+    allocate(line_lengths(nseg_extended),stat=ierr)
+    line_lengths(1:nseg) = sqrt((line_ex_new(1,1:nseg)-line_ex_new(2,1:nseg))**2 + (line_ey_new(1,1:nseg)-line_ey_new(2,1:nseg))**2)
+
+    ! Number of lines to add
+    n_add_lines = count(line_lengths(1:nseg).gt.lseg)
+
+    ! Add lines as until no line segemnt longer than threshold
+    do while (n_add_lines.gt.0)
+
+      ! Print info
+      print *, 'Number of lines added: ', n_add_lines
+
+      ! Copy lines
+      line_ex_new_copy = line_ex_new
+      line_ey_new_copy = line_ey_new
+
+      ! Loop through lines and add point in middle
+      k = 0
+      do line_idx=1,nseg
+        if (line_lengths(line_idx).gt.lseg) then
+          k = k + 2
+          new_x              = (line_ex_new_copy(1,line_idx) + line_ex_new_copy(2,line_idx))/2d0
+          new_y              = (line_ey_new_copy(1,line_idx) + line_ey_new_copy(2,line_idx))/2d0
+          line_ex_new(:,k-1) = [line_ex_new_copy(1,line_idx), new_x]
+          line_ey_new(:,k-1) = [line_ey_new_copy(1,line_idx), new_y]
+          line_ex_new(:,k)   = [new_x,line_ex_new_copy(2,line_idx)]
+          line_ey_new(:,k)   = [new_y,line_ey_new_copy(2,line_idx)]
+        else 
+          k = k + 1
+          line_ex_new(:,k)   = line_ex_new_copy(:,line_idx)
+          line_ey_new(:,k)   = line_ey_new_copy(:,line_idx)
+        endif
+      enddo
+
+      ! New number of line segments
+      nseg = nseg + n_add_lines
+
+      ! Compute n_add_lines for new line segments
+      line_lengths(1:nseg) = sqrt((line_ex_new(1,1:nseg)-line_ex_new(2,1:nseg))**2 + (line_ey_new(1,1:nseg)-line_ey_new(2,1:nseg))**2)      
+      n_add_lines = count(line_lengths(1:nseg).gt.lseg)
+
+    enddo
+
+    if (nseg.gt.nseg_extended) then
+      print *, 'Error in add_lines - to few nseg_extended'
+    endif
+
+    ! Adjust line_ex and line_ey and assign line_ex_red and line_ey_red to them
+    line_ex           = 0d0
+    line_ey           = 0d0
+    line_ex(1:nseg,:) = transpose(line_ex_new(:,1:nseg))
+    line_ey(1:nseg,:) = transpose(line_ey_new(:,1:nseg))
+
+    ! Deallocate
+    deallocate(line_ex_new)
+    deallocate(line_ey_new)
+    deallocate(line_ex_new_copy)
+    deallocate(line_ey_new_copy)
+    deallocate(line_lengths)
+
+    return
+end subroutine add_line_segments_noSorting
+
+
+
+
+
+
+! --- Other ---
+! line_segments_noSorting(line_ex, line_ey, nseg, tppoints, bcnod_all, meshcoord, lseg)
+!     ! --- Routine for removing line segments shorter than threshhold. No sorting of line segments required --- 
+
+!     implicit none
+
+!     ! Intent inout
+!     real(dp), intent(inout) :: line_ex(:,:), line_ey(:,:)
+!     integer, intent(inout)  :: nseg
+
+!     ! Intent in        
+!     real(dp), intent(in)    :: tppoints(:,:), meshcoord(:,:), lseg
+!     integer, intent(in)     :: bcnod_all(:)
+
+!     ! Subroutine variables
+!     integer, allocatable    :: rm_seg(:), keep_seg(:)
+!     real(dp), allocatable   :: line_ex_new(:,:), line_ey_new(:,:)
+!     integer                 :: ierr, iseg, nrm, nkeep, i
+!     real(dp)                :: P1(2), P2(2), line_length, N(2), bdist=2d-5
+!     logical                 :: P1tp, P2tp, P1onB, P2onB
+!     logical , allocatable :: idx(:,:)
+    
+!     ! Copy line_ex and line_ey
+!     allocate(line_ex_new(nseg,2),stat=ierr)
+!     allocate(line_ey_new(nseg,2),stat=ierr)
+!     allocate(idx(nseg,2),stat=ierr)
+!     line_ex_new = line_ex(1:nseg,:)
+!     line_ey_new = line_ey(1:nseg,:)    
+    
+
+!     ! Remove lines shorter than lseg
+!     allocate(rm_seg(nseg), stat=ierr)
+!     rm_seg   = 0
+!     nrm      = 0
+!     allocate(keep_seg(nseg), stat=ierr)
+!     keep_seg = 0
+!     nkeep    = 0
+!     do iseg=1,nseg
+
+!         ! 1) Take out vertex coordinates
+!         P1 = [line_ex_new(iseg,1),line_ey_new(iseg,1)]
+!         P2 = [line_ex_new(iseg,2),line_ey_new(iseg,2)]        
+
+!         ! 2) Check if P1 or P2 is a triple junction point
+!         P1tp =  any(sqrt((tppoints(:,1)-P1(1))**2 + (tppoints(:,2)-P1(2))**2).lt.1d-12)
+!         P2tp =  any(sqrt((tppoints(:,1)-P2(1))**2 + (tppoints(:,2)-P2(2))**2).lt.1d-12)
+
+!         ! 3) Compute line length
+!         line_length = norm2(P1-P2)
+
+!         ! 4) Check if line_length smaller than threshhold (do not remove segments containing triple junction point)
+!         if (line_length.lt.lseg .and. (.not. P1tp) .and. (.not. P2tp)) then
+
+!             ! Add line to lines to be removed
+!             nrm         = nrm + 1
+!             rm_seg(nrm) = iseg
+
+
+!             ! Check if P1 or P2 is located along domain boundary (naive check)
+!             bdist = 1d-5
+!             P1onB = any(sqrt((meshcoord(1,bcnod_all) - P1(1))**2 + (meshcoord(2,bcnod_all) - P1(2))**2 ).lt.bdist)
+!             P2onB = any(sqrt((meshcoord(1,bcnod_all) - P2(1))**2 + (meshcoord(2,bcnod_all) - P2(2))**2 ).lt.bdist)
+
+!             if ((.not. P1onB) .and. (.not. P2onB)) then
+!                 ! New coordinates
+!                 N = (P1 + P2) / 2            
+!                 idx = ( ((abs(line_ex_new-P1(1)).lt.1d-13) .and. (abs(line_ey_new-P1(2)).lt.1d-13)) .or. &
+!                         ((abs(line_ex_new-P2(1)).lt.1d-13) .and. (abs(line_ey_new-P2(2)).lt.1d-13)) )
+!             elseif (P1onB) then
+!                 ! P1 on domain boundary. Set P2 at P1 pos.
+!                 N   = P1
+!                 idx = (abs(line_ex_new-P2(1)).lt.1d-13) .and. (abs(line_ey_new-P2(2)).lt.1d-13)
+!             elseif (P2onB) then
+!                 ! P2 on domain boundary. Set P1 at P2 pos.
+!                 N   = P2
+!                 idx = (abs(line_ex_new-P1(1)).lt.1d-13) .and. (abs(line_ey_new-P1(2)).lt.1d-13)
+!             endif
+
+!             ! Update line coordinates
+!             where (idx) line_ex_new = N(1)
+!             where (idx) line_ey_new = N(2)
+!         else
+!             ! Add line to lines to be kept
+!             nkeep           = nkeep + 1
+!             keep_seg(nkeep) = iseg
+!         endif
+
+!     enddo
+
+!     ! Adjust line_ex and line_ey and assign line_ex_red and line_ey_red to them
+!     line_ex            = 0d0
+!     line_ey            = 0d0
+!     line_ex(1:nkeep,:) = line_ex_new(keep_seg(1:nkeep),:)
+!     line_ey(1:nkeep,:) = line_ey_new(keep_seg(1:nkeep),:)
+
+!     ! Update nseg
+!     nseg = nkeep
+
+!     ! Deallocate
+!     deallocate(line_ex_new)
+!     deallocate(line_ey_new)
+!     deallocate(rm_seg)
+!     deallocate(keep_seg)    
+
+!     return
+
+! end subroutine remove_line_segments_noSorting
 end module ls_sorting_routines

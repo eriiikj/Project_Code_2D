@@ -519,7 +519,7 @@ subroutine sort_lines(line_ex,line_ey,tplines,line_seg,sep_lines,nsep_lines, mes
 
 ! 2) Remove line segments shorter than threshold
     sep_l_idx_ext = 0
-    critical_length = 0.2d0*mesh%min_elm_width
+    critical_length = 0.5d0*mesh%min_elm_width
     call remove_line_segments(line_ex,line_ey,tplines,critical_length,separate_lines_idx,line_seg,sep_l_idx_ext)
 
 ! Sep lines
@@ -528,8 +528,8 @@ subroutine sort_lines(line_ex,line_ey,tplines,line_seg,sep_lines,nsep_lines, mes
 ! OBS this does not work with sep_lines!!
 
 ! 3) Add line segements longer than threshold
-! critical_length = 1.2d0*mesh%min_elm_width
-! call add_line_segments(line_ex, line_ey, critical_length, line_seg, sep_lines, nsep_lines)
+    critical_length = 0.7d0*mesh%min_elm_width
+    call add_line_segments(line_ex, line_ey, critical_length, line_seg, sep_lines, nsep_lines)
 
 
 ! Deallocate
@@ -541,20 +541,22 @@ subroutine sort_lines(line_ex,line_ey,tplines,line_seg,sep_lines,nsep_lines, mes
 end subroutine sort_lines
 
 
-subroutine interface_lseg_adjustment(line_ex,line_ey, nseg, tppoints, lseg)
+subroutine interface_lseg_adjustment(line_ex,line_ey, nseg, tppoints, bcnod_all, meshcoord, lseg)
 
 ! Intent inout
     real(dp), intent(inout) :: line_ex(:,:), line_ey(:,:)
     integer, intent(inout)  :: nseg
 
 ! Intent in
-    real(dp), intent(in)    :: tppoints(:,:), lseg
+    real(dp), intent(in)    :: tppoints(:,:), meshcoord(:,:), lseg
+    integer, intent(in)     :: bcnod_all(:)
 
 
 ! Remove line segments shorter than lseg
-    call remove_line_segments_noSorting(line_ex, line_ey, nseg, tppoints, lseg)
+    call remove_line_segments_noSorting(line_ex, line_ey, nseg, tppoints, bcnod_all, meshcoord, lseg)
 
 ! Add line segments at segments longer than lseg
+    call add_line_segments_noSorting(line_ex, line_ey, nseg, lseg)
 
     return
 

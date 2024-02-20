@@ -167,7 +167,7 @@ program main
       enddo      
 
 ! --- Solve diffusion problem for all grains ---
-! call solve_diffusion_problem_global(diffsys, i_IMC, lssys, mesh, pq, input_location, omp_run)
+      call solve_diffusion_problem_global(diffsys, i_IMC, lssys, mesh, pq, input_location, omp_run)
 
 ! ! --- Compute new velocity field ---
 ! print *, 'Entering compute_common_vp'

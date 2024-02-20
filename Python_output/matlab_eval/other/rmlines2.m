@@ -7,10 +7,10 @@ patch(ex,ey,'white')
 hold on
 
 % Line coordinates
-line_coord = [0.0 1.6; 0.2 1.4; 0.1 1.5; 0.57 1.2; 1.9 1.0; 2.0 0.9];
+line_coord = [0.0 1.6; 0.62 1.4; 0.74 1.5; 0.9 1.4; 1.4 1.0; 2.0 0.9];
 
 % Line conn OBS not sorted
-line_conn = [2 3; 4 2; 1 3; 6 5; 4 5]
+line_conn = [1 2; 2 3; 3 4; 4 5; 5 6]
 
 % Line ex and line ey
 line_ex = reshape(line_coord(reshape(line_conn', 1, []),1),2,[])'

@@ -1,97 +1,38 @@
 #!/usr/bin/env python3
 # -*- coding: utf-8 -*-
 """
-Created on Fri Feb  9 10:14:13 2024
+Created on Tue Feb 20 15:29:59 2024
 
 @author: Erik Jacobsson
 """
 
+from matplotlib import pyplot as plt
 import numpy as np
-import gmsh
-import sys
-import triangle
 
-# Initialize Gmsh
-gmsh.initialize()
+x = np.array([1321.4, 598.6, 580.6, 563.8, 548.6, 535.4, 524.5, 516.2, 511,
+509.2, 509.2, 511, 516.2, 524.5, 535.4, 548.6, 563.8, 580.6, 598.6, 1321.4, 1339.4,
+1356.2, 1371.4, 1384.6, 1395.5, 1403.8, 1409, 1410.8, 1410.8, 1409, 1403.8, 1395.5,
+1384.6, 1371.4, 1356.2, 1339.4, 1321.4])
+y = np.array([805.4, 805.4, 803.5, 798.3, 790.1,
+779.2, 766, 750.8, 734, 716, 364, 346, 329.2, 314, 300.8, 289.9, 281.7, 276.5, 274.6,
+274.6, 276.5, 281.7, 289.9, 300.8, 314, 329.2, 346, 364, 716, 734, 750.8, 766, 779.2,
+790.1, 798.3, 803.5, 805.4])
 
-# Corner points
-P1 = [0, 0, 0]
-P2 = [1, 0, 0]
-P3 = [1, 1, 0]
-P4 = [0, 1, 0]
+fig, ax = plt.subplots(1)
+ax.set_aspect('equal')
+ax.scatter(x, y, s=40, zorder=3, alpha=0.3)
 
-corner_coord = np.vstack((P1, P2, P3, P4))
-ncorners     = np.shape(corner_coord)[0]
+# compute the distances, ds, between points
+dx, dy = x[+1:]-x[:-1],  y[+1:]-y[:-1]
+ds = np.array((0, *np.sqrt(dx*dx+dy*dy)))
 
-# Points along interpolated segment
-xcoord = [0, 0.5, 1]
-ycoord = [0.4, 0.5, 0.4]
-zcoord = np.zeros_like(xcoord)
-coord  = np.vstack((xcoord, ycoord, zcoord)).transpose()
-nseg   = np.shape(coord)[0]
-N      = nseg + ncorners
+# compute the total distance from the 1st point, measured on the curve
+s = np.cumsum(ds)
 
-# xy points
-xy = np.zeros(2 * N)
-xy[:2 * ncorners:2] = corner_coord[:, 0]
-xy[1:2 * ncorners:2] = corner_coord[:, 1]
-xy[2 * ncorners::2] = coord[:, 0]
-xy[2 * ncorners + 1::2] = coord[:, 1]
+# interpolate using 200 point
+xinter = np.interp(np.linspace(0,s[-1], 200), s, x)
+yinter = np.interp(np.linspace(0,s[-1], 200), s, y)
 
-# # xyz points
-# xyz = np.zeros(3 * N)
-# xyz[:3 * ncorners:3]     = corner_coord[:, 0]
-# xyz[1:3 * ncorners:3]    = corner_coord[:, 1]
-# xyz[2:3 * ncorners:3]    = corner_coord[:, 2]
-# xyz[3 * ncorners::3]     = coord[:, 0]
-# xyz[3 * ncorners + 1::3] = coord[:, 1]
-# xyz[3 * ncorners + 2::3] = coord[:, 2]
-
-# Triangularize
-tri_input     = dict(vertices=xy.reshape((N, 2)))
-triangulation = triangle.triangulate(tri_input, 'a0.1')
-tris1         = triangulation['triangles']
-tris1         = tris1 + 1 # 1 based
-tris1         = tris1.flatten()
-newcoord      = triangulation['vertices']
-N             = np.shape(newcoord)[0]
-
-# xyz points
-xyz = np.zeros(3 * N)
-xyz[::3]  = newcoord[:, 0]
-xyz[1::3] = newcoord[:, 1]
-xyz[2::3] = np.zeros_like(newcoord[:, 0])
-
-
-tris = gmsh.model.mesh.triangulate(xy)
-# 
-# v = [[0, 0], [0, 1], [1, 1], [1, 0]]
-# tri_input2 = {'vertices': v}
-# tri_input3 = dict(vertices=np.array(v).reshape((4, 2)))
-# t = triangle.triangulate(tri_input3, 'a0.2')
-# t['vertices'].tolist()
-# [[0.0, 0.0], [0.0, 1.0], [1.0, 1.0], [1.0, 0.0], [0.5, 0.5], [0.0, 0.5], [0.5, 0.0], [1.0, 0.5], [0.5, 1.0]]
-# t['vertex_markers'].tolist()
-# [[1], [1], [1], [1], [0], [1], [1], [1], [1]]
-# t['triangles'].tolist()
-# [[7, 2, 4], [5, 0, 4], [4, 8, 1], [4, 1, 5], [4, 0, 6], [6, 3, 4], [4, 3, 7], [4, 2, 8]]
-
-
-# Add triangles to mesh
-surf = gmsh.model.addDiscreteEntity(2)
-gmsh.model.mesh.addNodes(2, surf, range(1, N + 1), xyz)
-gmsh.model.mesh.addElementsByType(surf, 2, [], tris)
-
-
-# Generate mesh
-gmsh.model.mesh.generate(2)  # 2D mesh generation
-
-
-# --- Graphical illustration of mesh ---
-if 'close' not in sys.argv:
-    gmsh.fltk.run()
-
-entities = gmsh.model.getEntities()
-
-# Finalize Gmsh
-gmsh.finalize()
+# plot the interpolated points
+ax.scatter(xinter, yinter, s=5, zorder=4)
+plt.show()
