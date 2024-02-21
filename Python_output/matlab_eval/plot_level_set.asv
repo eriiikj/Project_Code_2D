@@ -46,7 +46,17 @@ for i_IMC=1%1:step_size:IMC_steps
 
     % Load level set
     [a,ed,vp,line_ex,line_ey,line_seg,sep_lines,ngrains,IMC_area,...
-    tvec(k),newex,newey,newcoord] = load_level_set(i_IMC,edof_1D); 
+    tvec(k),line_ex_s,line_ey_s,line_seg_s] ...
+    = load_level_set(i_IMC,edof_1D); 
+
+    % Load deformed configuration from stress state
+%     if (i_IMC>1)
+%         [newex,newey,newcoord] = load_stress(i_IMC-1);
+%     else
+%         newex = ex; newey=ey; newcoord = coord;
+%     end
+
+    newex = ex; newey=ey; newcoord = coord;
 
     % Store IMC vol/area
     IMC_vol_per_area(k) = IMC_area/L;
@@ -54,7 +64,7 @@ for i_IMC=1%1:step_size:IMC_steps
     % Plot level set contour 
     f1 = figure(1);
     clf;
-    plot_mesh(ex*1.002,ey*0.993,'black')    
+%     plot_mesh(ex,ey,'black')    
     plot_mesh(newex,newey,'green')
     hold on
     plot_speed_gp(newex,newey,vp)
@@ -154,13 +164,9 @@ load(filename,'newex')
 load(filename,'newey')
 load(filename,'newcoord')
 
-
 % Rearrange arrays
 line_seg   = double(line_seg);
 sep_lines  = double(sep_lines);
-newex      = newex';
-newey      = newey';
-newcoord   = newcoord';
 
 % Extract other properties
 ngrains = size(a,2);

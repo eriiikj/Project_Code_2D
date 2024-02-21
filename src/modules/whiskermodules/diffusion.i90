@@ -98,7 +98,7 @@ subroutine solve_diffusion_problem_global(diffsys,i_IMC,lssys,mesh,pq,input_loca
   integer :: g
   
 ! Obtain global diffusion mesh
-  call generate_global_diffusion_mesh()
+  call generate_global_diffusion_mesh(diffsys, mesh, lssys, i_IMC)
 
 ! Solve diffusion problem for all grains seperately
 ! do g=1,lssys%ngrains
@@ -116,20 +116,52 @@ end subroutine solve_diffusion_problem_global
 
 
 
-subroutine generate_global_diffusion_mesh()
+subroutine generate_global_diffusion_mesh(diffsys, mesh, lssys, i_IMC)
 ! --- Routine for generating and partiotioning a global diffusion mesh ---
   implicit none
 
+! Intent inout
+  type(diffusion_system), intent(inout) :: diffsys 
+
+! Intent in
+  type(mesh_system), intent(in)         :: mesh
+  type(ls_system), intent(in)           :: lssys
+  integer, intent(in)                   :: i_IMC
+
 ! Subroutine variables
-  character(len=40)                          :: command_line
-  character(len=80)                          :: diffusion_mesh_script_location
+  character(len=40)                     :: command_line  
+  character(len=80)                     :: diffusion_mesh_script_location 
+  character(len=:),allocatable          :: diffusion_mesh_location
+  integer                               :: g
 
   diffusion_mesh_script_location = '/home/er7128ja/Nextcloud/Projekt/Project_Code_2D/Python_output/phase_mesh_script'  
+  diffusion_mesh_location        = '/home/er7128ja/Nextcloud/Projekt/Project_Code_2D/Python_output/single_study/phase_meshes'
 
 ! Generete mesh by running python script
   call chdir(diffusion_mesh_script_location)
   write(command_line,'(A29)'), 'python diffusion_mesh_Main.py'
   call execute_command_line(trim(command_line))
+
+! Read global diffusion mesh
+  if (allocated(diffsys%ls)) then
+    deallocate(diffsys%ls)
+  endif
+  if (allocated(diffsys%coord)) then
+    deallocate(diffsys%coord)
+  endif
+  if (allocated(diffsys%enod)) then
+    deallocate(diffsys%enod)
+  endif
+
+  call read_json_diffusion_mesh(diffusion_mesh_location, i_IMC, diffsys%coord, diffsys%enod)  
+
+! Interpolate old level set values to new mesh
+! do g=1,lssys%ngrains
+  g = 1
+  call interpolate_scalar_mesh1_to_mesh2(mesh%enod, mesh%coord, lssys%ed(:,:,g), diffsys%enod,diffsys%coord, diffsys%ls)
+! enddo
+
+print *, 'as'
 
   return
 end subroutine generate_global_diffusion_mesh
@@ -200,10 +232,10 @@ subroutine diffusion_grain(diffsys, i_IMC, global_mesh, grain_mesh, g, input_loc
 ! Print mesh info
     call print_diffusion_mesh_info(grain_mesh)
 
-! ! If Sn phase, interpolate hydrostatic pressure field from global mesh (stored in pq) to grain_mesh
-! if (lssys%material(g).eq.3) then
-!   call interpolate_glob_to_grain(global_mesh,grain_mesh,pq%p_ed)
-! endif
+! If Sn phase, interpolate hydrostatic pressure field from global mesh (stored in pq) to grain_mesh
+    if (lssys%material(g).eq.3) then
+      call interpolate_glob_to_grain(global_mesh,grain_mesh,pq%p_ed)
+    endif
 
 ! Solve diffusion equation
     print *, 'Before solve diffusion problem'
@@ -1031,6 +1063,106 @@ subroutine interpolate_glob_to_grain(global_mesh,grain_mesh,p_ed)
 
   return
 end subroutine interpolate_glob_to_grain
+
+
+subroutine interpolate_scalar_mesh1_to_mesh2(mesh1_enod, mesh1_coord, mesh1_ed, mesh2_enod,mesh2_coord, mesh2_a)
+! Interpolate scalar field mesh1_a from mesh1 to mesh2
+  implicit none
+
+! Intent inout
+  real(dp), allocatable, intent(inout) :: mesh2_a(:)
+
+! Intent in
+  real(dp), intent(in)                 :: mesh1_coord(:,:), mesh2_coord(:,:)
+  real(dp), intent(in)                 :: mesh1_ed(:,:)
+  integer, intent(in)                  :: mesh1_enod(:,:), mesh2_enod(:,:)
+
+! Subroutine variables
+  integer  :: inod, ie, ierr
+  real(dp) :: x, y, xecoords(4), yecoords(4), x1, x2, x3, x4, y1, y2, y3, y4, pevals(4)
+  real(dp) :: xsi,eta, Nvec(4)
+  logical  :: pwt
+  integer  :: nelm1, nelm2, nnod1, nnod2
+
+!
+  nelm1 = size(mesh1_enod,2)
+  nelm2 = size(mesh2_enod,2)
+  nnod1 = size(mesh1_coord,2)
+  nnod2 = size(mesh2_coord,2)
+
+
+! Allocate the field variable in mesh 2
+  if (allocated(mesh2_a)) then
+    deallocate(mesh2_a)
+  endif
+  allocate(mesh2_a(nnod2),stat=ierr)
+
+! Interpolate pq%p from global mesh to grain_mesh
+  do inod=1,nnod2
+
+! Global coordinates of point
+    x = mesh2_coord(1,inod)
+    y = mesh2_coord(2,inod)
+    
+! Find which element in the global mesh that the point (x,y) belong to
+    pwt = .false.
+    do ie=1,nelm1
+      xecoords = mesh1_coord(1,mesh1_enod(:,ie))
+      yecoords = mesh1_coord(2,mesh1_enod(:,ie))
+
+! Divide element in two triangles and use point in triangle function
+
+! 4 --- 3      4 --- 3         3
+! |     |      |    /       /  |
+! |     |  ->  |(1)/       /(2)|
+! |     |      |  /       /    |
+! 1 --- 2      1         1 --- 2
+
+! First triangle
+      x1=xecoords(1); x2=xecoords(3); x3=xecoords(4)
+      y1=yecoords(1); y2=yecoords(3); y3=yecoords(4)
+      call point_within_triangle(pwt,x,y,x1,x2,x3,y1,y2,y3)
+      if (pwt) then
+        exit
+      endif  
+      
+! Second triangle
+      x1=xecoords(1); x2=xecoords(2); x3=xecoords(3)
+      y1=yecoords(1); y2=yecoords(2); y3=yecoords(3)
+      call point_within_triangle(pwt,x,y,x1,x2,x3,y1,y2,y3)
+      if (pwt) then
+        exit
+      endif 
+
+    enddo
+
+! Element in global mesh found. Global element number is ie and node coordinates are given in xecoords and yecoords
+! Now the task is, given (x,y), interpolate the node values of the element to (x,y)
+
+! Global element coordinates
+    x1 = xecoords(1); x2 = xecoords(2); x3 = xecoords(3); x4 = xecoords(4);
+    y1 = yecoords(1); y2 = yecoords(2); y3 = yecoords(3); y4 = yecoords(4);
+
+! Global node values
+    pevals = mesh1_ed(:,ie)
+
+! Natural coordinates (isoparametric coordinates) of (x,y). Assuming fixed parallel grid!
+    xsi = 2d0*(x-x1)/(x2-x1) - 1d0
+    eta = 2d0*(y-y1)/(y3-y1) - 1d0
+
+! Shape functions evaluated at (xsi,eta). Nvec = [N1,N2,N3,N4]
+    Nvec(1) = (1d0-xsi)*(1d0-eta)/4d0
+    Nvec(2) = (1d0+xsi)*(1d0-eta)/4d0
+    Nvec(3) = (1d0+xsi)*(1d0+eta)/4d0
+    Nvec(4) = (1d0-xsi)*(1d0+eta)/4d0
+
+! Interpolated pressure at (x,y)
+    mesh2_a(inod) = dot_product(Nvec, pevals)
+
+  enddo
+
+  return
+end subroutine interpolate_scalar_mesh1_to_mesh2
 
 
 subroutine point_within_triangle(condition_satisfied,x,y,x1,x2,x3,y1,y2,y3)

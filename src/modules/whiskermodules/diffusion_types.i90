@@ -42,6 +42,11 @@ module diffusion_types
 ! Time
         real(dp)              :: generate_mesh_time=0d0, read_mesh_time=0d0, solve_time=0d0
 
+! Global diffusion mesh
+        integer,  allocatable :: enod(:,:)
+        real(dp), allocatable :: coord(:,:)
+        real(dp), allocatable :: ls(:)
+
     end type diffusion_system
 
 
