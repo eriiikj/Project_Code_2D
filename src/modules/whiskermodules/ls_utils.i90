@@ -433,22 +433,26 @@ end subroutine interface_reconstruction_spatial
 
 
 
-subroutine lines_to_coord(line_ex, line_ey, N, unique_coord)
+subroutine lines_to_coord(line_ex, line_ey, nseg, unique_coord)
 ! --- Routine for finding unique coordinates in lines ---
     implicit none
-    integer, intent(in)                :: N
-    real(dp), intent(in)               :: line_ex(:,:), line_ey(:,:)
-    real(dp)                           :: coord(2*N, 2)
-    real(dp), allocatable, intent(out) :: unique_coord(:,:)
+
+! Intent inout
+    real(dp), allocatable, intent(inout) :: unique_coord(:,:)
+
+! Intent in
+    integer, intent(in)                  :: nseg
+    real(dp), intent(in)                 :: line_ex(:,:), line_ey(:,:)
+    real(dp)                             :: coord(2*nseg, 2)
   
 ! Copy line_ex and line_ey to coord
-    coord(1:N, 1)     = line_ex(:, 1)
-    coord(N+1:2*N, 1) = line_ex(:, 2)
-    coord(1:N, 2)     = line_ey(:, 1)
-    coord(N+1:2*N, 2) = line_ey(:, 2)
+    coord(1:nseg, 1)        = line_ex(:, 1)
+    coord(nseg+1:2*nseg, 1) = line_ex(:, 2)
+    coord(1:nseg, 2)        = line_ey(:, 1)
+    coord(nseg+1:2*nseg, 2) = line_ey(:, 2)
   
 ! Find unique coordinates in coord
-    call find_unique_coordinates(coord, 2*N, unique_coord)
+    call find_unique_coordinates(coord, 2*nseg, unique_coord)
 
     return
   end subroutine lines_to_coord
@@ -1164,5 +1168,6 @@ subroutine GetUniqueIndices(inputArray, uniqueIndices_out)
     uniqueIndices_out = uniqueIndices(1:k)
 
 end subroutine GetUniqueIndices
+
 
 end module ls_utils

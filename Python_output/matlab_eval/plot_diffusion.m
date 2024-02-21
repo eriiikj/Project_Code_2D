@@ -81,26 +81,81 @@ for i_IMC = 1%1:step_size:IMC_steps
 %         clim([-10 10])
 %     end
 
-    % Plot mesh generated with Triangle
-%     f3 = figure(3);
-    [coord,enod,nelm,ndof,dofspernode,ex,ey] = import_triangle_mesh(i_IMC);
-%     plot_mesh(ex,ey)
-%     axis equal
-%     box on
-
     % Load level set
-    [a,ed,line_ex,line_ey,line_seg,newex,newey,newcoord] = ...
+    [a,ed,line_ex,line_ey,line_seg,line_coord,line_coordN,ex,ey,coord] = ...
         load_level_set(i_IMC,edof);
 
-    figure(4)
-    plot_mesh(newex,newey,'k')
+    % Load triangle mesh
+    [coordT,enodT,edofT,nelmT,ndofT,dofspernodeT,nodelT,exT,eyT] = ...
+    import_triangle_mesh(i_IMC);
+
+    % Load interpolated level set field
+    [ls,ls_ed] = import_diffusion_glob(i_IMC,edofT,nodelT);
+
+%     figure(4)
+% %     plot_mesh(ex,ey,'k') % Original mesh
+% %     hold on
+% %     plot_mesh(exT,eyT,'b') % New triangle mesh
+
+% 
+%     figure(11)
+%     patch(ex',ey',ed(:,:,g)'*1e6)
+%     colorbar
+%     axis equal
+% 
+%     figure(12)
+%     patch(exT',eyT',ls_ed(:,:,g)'*1e6)
+%     colorbar
+%     axis equal
+    
+    
+
+
+    figure(13)
+    g = 5;
+    plot_field2(ex,ey,ed(:,:,g),'k')
     hold on
-    plot_mesh(ex,ey,'b')
-    g = 2;
+    plot_field(exT,eyT,ls_ed(:,:,g),'k')    
     g_cols = [2*(g-1) + 1,2*(g-1) + 2];
     plot_interface(line_ex(1:line_seg(g),g_cols),...
-                   line_ey(1:line_seg(g),g_cols),'r',g)
+                   line_ey(1:line_seg(g),g_cols),'k',g)
     axis equal
+    box on
+
+
+    % Extract nodes
+    elmsTG  = sum((ls_ed(:,:,g)<=2e-6),2)==nodelT;
+    nelmTG  = sum(elmsTG);
+    enodTG  = enodT(elmsTG,:);   
+    nodsTG  = unique(enodTG);
+    coordTG = coordT(nodsTG,:);
+    nnodTG  = size(coordTG,1);
+%     exTG    = exT(elmsTG,:);
+%     eyTG    = eyT(elmsTG,:);
+    
+
+    % New enod
+    newGrainNods = (1:nnodTG)';
+    for k=1:nnodTG
+        mask = enodTG == nodsTG(k);
+        enodTG(mask) = newGrainNods(k);
+    end
+    edofTG = [(1:nelmTG)',enodTG];
+    dofsTG = (1:nnodTG)';
+
+    % Ex and Ey
+    [exTG,eyTG] = coordxtr(edofTG,coordTG,dofsTG,nodelT);
+
+    figure()
+    patch(exTG',eyTG','white')
+    axis equal
+    box on
+
+
+
+
+
+
     
 
 end
@@ -216,8 +271,8 @@ IMC_steps       = numel(files);
 end
 
 
-function [a,ed,line_ex,line_ey,line_seg,newex,newey,...
-    newcoord] = load_level_set(i_IMC,edof)
+function [a,ed,line_ex,line_ey,line_seg,line_coord,line_coordN,...
+    newex,newey,newcoord] = load_level_set(i_IMC,edof)
 % --- Function for loading quantities from a level set step ---
 
 % Filename
@@ -234,12 +289,15 @@ load(filename,'line_seg')
 load(filename,'newex')
 load(filename,'newey')
 load(filename,'newcoord')
+load(filename,'line_coord')
+load(filename,'line_coordN')
 
 % Rearrange arrays
-line_seg   = double(line_seg);
-newex      = newex';
-newey      = newey';
-newcoord   = newcoord';
+line_seg    = double(line_seg);
+line_coordN = double(line_coordN);
+newex       = newex';
+newey       = newey';
+newcoord    = newcoord';
 
 ngrains = size(a,2);
 nelm    = size(edof,1);
@@ -291,7 +349,7 @@ end
 end
 
 
-function [coord,enod,nelm,ndof,dofspernode,ex,ey] = ...
+function [coord,enod,edof,nelm,ndof,dofspernode,nodel,ex,ey] = ...
     import_triangle_mesh(i_IMC)
 
 
@@ -310,9 +368,6 @@ clear fid raw str
 
 % Extract mesh data from mesh_struct
 enod           = mesh_struct.enod' + 1;
-% bcnod          = mesh_struct.bcnod;
-% bcval          = mesh_struct.bcval;
-% bcval_idx      = mesh_struct.bcval_idx;
 coord          = mesh_struct.coord'*1e-3;
 nodel          = mesh_struct.nodel;
 nelm           = mesh_struct.nelm;
@@ -331,6 +386,21 @@ edof = [(1:nelm)',enod];
 [ex,ey] = coordxtr(edof,coord,dofs,nodel);
 end
 
+function [ls,ls_ed] = import_diffusion_glob(i_IMC, edof, nodel)
+% Input data and mesh location
+s = what('../single_study/mat_files/');
+input_mesh_location = s.path;
+filename=[input_mesh_location, '/diffusion_',num2str(i_IMC),'.mat'];
+load(filename,'ls')
+
+ngrains = size(ls,2);
+nelm    = size(edof,1);
+ls_ed      = zeros(nelm,nodel,ngrains);
+for g=1:ngrains
+    ls_ed(:,:,g) = extract(edof,ls(:,g));
+end
+
+end
 
 function [a,r,ed,jint,j_flux,p,p_ed] = load_diffusion(i_IMC,g,edof)
 
@@ -362,6 +432,25 @@ end
 
 
 
+function coord = lines_to_coord(line_ex, line_ey)
+    % Function for extracting unique vertices in lines
+    N = size(line_ex, 1);
+    
+    % Initialize coord matrix
+    coord = zeros(2 * N, 2);
+    
+    % Assign values to coord matrix
+    coord(1:N, 1) = line_ex(:, 1);
+    coord(N+1:end, 1) = line_ex(:, 2);
+    coord(1:N, 2) = line_ey(:, 1);
+    coord(N+1:end, 2) = line_ey(:, 2);
+    
+    % Find unique vertices
+    unique_coord = unique(coord, 'rows');
+    
+    % Return coord matrix
+    coord = unique_coord;
+end
 
 
 %% Plot functions
@@ -372,6 +461,28 @@ nm_to_um  = 1e3;
 % Plot mesh
 patch(ex'*nm_to_um,ey'*nm_to_um,'white','EdgeColor',color,...
     'FaceColor','none','HandleVisibility','off')
+end
+
+function plot_field(ex,ey,ed,color)
+nm_to_um  = 1e3;
+
+% Plot mesh
+patch(ex'*nm_to_um,ey'*nm_to_um,ed',ed','EdgeColor',color,...
+    'HandleVisibility','off')
+
+cc                = colorbar;
+cc.Label.String   = '\bf Value';
+cc.Label.FontSize = 10;
+
+end
+
+function plot_field2(ex,ey,ed,color)
+nm_to_um  = 1e3;
+
+% Plot mesh
+patch(ex'*nm_to_um,ey'*nm_to_um,ed','white','EdgeColor',color,...
+    'FaceColor','none','HandleVisibility','off')
+
 end
 
 function plot_2D_conc(ex,ey,ed,i_IMC)
@@ -436,11 +547,11 @@ mm_to_um  = 1e3;
 
 % Plot interface
 plot(line_ex'*mm_to_um,line_ey'*mm_to_um,'Color',...
-color,'LineWidth',2,'Marker','o','Markersize',4,'HandleVisibility',...
+color,'LineWidth',3,'Marker','o','Markersize',4,'HandleVisibility',...
 'off','MarkerFaceColor',color)
 
 plot(line_ex(end,:)*mm_to_um,line_ey(end,:)*mm_to_um,'Color',...
-color,'LineWidth',2,'Marker','o','Markersize',4,...
+color,'LineWidth',3,'Marker','o','Markersize',4,...
 'DisplayName',['GB ' num2str(g)])
 
 end

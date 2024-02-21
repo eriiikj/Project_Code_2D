@@ -543,9 +543,11 @@ contains
     call matWrt2f(trim(matfilename), lssys%a              , 'a'            , 'w')
     call matWrt2f(trim(matfilename), lssys%line_ex        , 'line_ex'      , 'u')
     call matWrt2f(trim(matfilename), lssys%line_ey        , 'line_ey'      , 'u')
+    call matWrt2f(trim(matfilename), lssys%line_seg       , 'line_seg'     , 'u')
+    call matWrt2f(trim(matfilename), lssys%line_coord     , 'line_coord'   , 'u')
+    call matWrt2f(trim(matfilename), lssys%line_coordN    , 'line_coordN'  , 'u')
     call matWrt2f(trim(matfilename), lssys%vp(1,:,:)      , 'vpx'          , 'u')
     call matWrt2f(trim(matfilename), lssys%vp(2,:,:)      , 'vpy'          , 'u')
-    call matWrt2f(trim(matfilename), lssys%line_seg       , 'line_seg'     , 'u')
     call matWrt2f(trim(matfilename), lssys%sep_lines      , 'sep_lines'    , 'u')
     call matWrt2f(trim(matfilename), [lssys%time]         , 'time'         , 'u')
     call matWrt2f(trim(matfilename), lssys%material       , 'material'     , 'u')
@@ -619,11 +621,40 @@ contains
     call matWrt2f(trim(matfilename), ed    , 'ed'    , 'u')
     call matWrt2f(trim(matfilename), jint  , 'jint'  , 'u')
     call matWrt2f(trim(matfilename), j_flux, 'j_flux', 'u')
-    call matWrt2f(trim(matfilename), p     , 'p'     , 'u')
-    
+    call matWrt2f(trim(matfilename), p     , 'p'     , 'u')    
 
     return
   end subroutine write_diffusion_iter_to_matlab
+
+  subroutine write_diffusion_glob_iter_to_matlab(input_location, i_IMC, ls)
+! Routine for writing level set to matlab
+    implicit none
+
+! Intent in
+    character(len=:), allocatable, intent(in) :: input_location
+    integer, intent(in)                       :: i_IMC
+    real(dp), intent(in)                      :: ls(:,:)
+    character(len=25)                         :: matfilename
+
+    call chdir(input_location)
+    call chdir('mat_files')
+
+! Filename
+    if (i_IMC.lt.10) then
+      write (matfilename, "(A10,I1,A4)") 'diffusion_', i_IMC, '.mat'
+    elseif (i_IMC.lt.100) then
+      write (matfilename, "(A10,I2,A4)") 'diffusion_', i_IMC, '.mat'
+    elseif (i_IMC.lt.1000) then
+      write (matfilename, "(A10,I3,A4)") 'diffusion_', i_IMC, '.mat'
+    endif
+
+    write(*,'(A16,A)') 'Saving matfile: ', matfilename
+
+! Write to file
+    call matWrt2f(trim(matfilename), ls     , 'ls'     , 'w') 
+
+    return
+  end subroutine write_diffusion_glob_iter_to_matlab
 
 ! subroutine append_diffusion_sn_vel_iter_to_matlab(vnod, i_IMC, input_location)
 !   ! Routine for writing level set to matlab

@@ -98,7 +98,7 @@ subroutine solve_diffusion_problem_global(diffsys,i_IMC,lssys,mesh,pq,input_loca
   integer :: g
   
 ! Obtain global diffusion mesh
-  call generate_global_diffusion_mesh(diffsys, mesh, lssys, i_IMC)
+  call generate_global_diffusion_mesh(input_location, diffsys, mesh, lssys, i_IMC)
 
 ! Solve diffusion problem for all grains seperately
 ! do g=1,lssys%ngrains
@@ -116,7 +116,7 @@ end subroutine solve_diffusion_problem_global
 
 
 
-subroutine generate_global_diffusion_mesh(diffsys, mesh, lssys, i_IMC)
+subroutine generate_global_diffusion_mesh(input_location, diffsys, mesh, lssys, i_IMC)
 ! --- Routine for generating and partiotioning a global diffusion mesh ---
   implicit none
 
@@ -127,12 +127,13 @@ subroutine generate_global_diffusion_mesh(diffsys, mesh, lssys, i_IMC)
   type(mesh_system), intent(in)         :: mesh
   type(ls_system), intent(in)           :: lssys
   integer, intent(in)                   :: i_IMC
+  character(len=:), allocatable, intent(in)  :: input_location
 
 ! Subroutine variables
   character(len=40)                     :: command_line  
   character(len=80)                     :: diffusion_mesh_script_location 
-  character(len=:),allocatable          :: diffusion_mesh_location
-  integer                               :: g
+  character(len=:),allocatable          :: diffusion_mesh_location  
+  integer                               :: g, ierr, i, g_cols(2)
 
   diffusion_mesh_script_location = '/home/er7128ja/Nextcloud/Projekt/Project_Code_2D/Python_output/phase_mesh_script'  
   diffusion_mesh_location        = '/home/er7128ja/Nextcloud/Projekt/Project_Code_2D/Python_output/single_study/phase_meshes'
@@ -151,15 +152,38 @@ subroutine generate_global_diffusion_mesh(diffsys, mesh, lssys, i_IMC)
   endif
   if (allocated(diffsys%enod)) then
     deallocate(diffsys%enod)
-  endif
+  endif  
 
+! Generate new diffusion mesh
   call read_json_diffusion_mesh(diffusion_mesh_location, i_IMC, diffsys%coord, diffsys%enod)  
 
+  diffsys%nnod = size(diffsys%coord,2)
+  diffsys%nelm = size(diffsys%enod,2)
+
+! Allocated ls in new mesh
+  if (allocated(diffsys%ls)) then
+    deallocate(diffsys%ls)
+  endif
+  allocate(diffsys%ls(diffsys%nnod,lssys%ngrains),stat=ierr)
+  diffsys%ls = 0d0
+
 ! Interpolate old level set values to new mesh
-! do g=1,lssys%ngrains
-  g = 1
-  call interpolate_scalar_mesh1_to_mesh2(mesh%enod, mesh%coord, lssys%ed(:,:,g), diffsys%enod,diffsys%coord, diffsys%ls)
-! enddo
+  do g=1,lssys%ngrains
+    call interpolate_scalar_mesh1_to_mesh2(mesh%enod, mesh%coord, lssys%ed(:,:,g), diffsys%enod, diffsys%coord, diffsys%ls(:,g))
+
+! Set value at interface nods to 0
+    g_cols = [2*(g-1) + 1, 2*(g-1) + 2]
+    do i=1,lssys%line_coordN(g)
+      where (sqrt((diffsys%coord(1,:)-lssys%line_coord(i,g_cols(1)))**2 + &
+      (diffsys%coord(2,:)-lssys%line_coord(i,g_cols(2)))**2).lt.1d-7) diffsys%ls(:,g) = 0d0
+    enddo
+
+  enddo
+
+! Write data
+  call write_diffusion_glob_iter_to_matlab(input_location, i_IMC, diffsys%ls)
+
+
 
 print *, 'as'
 
@@ -244,10 +268,6 @@ subroutine diffusion_grain(diffsys, i_IMC, global_mesh, grain_mesh, g, input_loc
     call clock_time(t2, omp_run)
     diffsys%solve_time = diffsys%solve_time + (t2-t1)
     print *, 'After solve diffusion problem'
-    
-    
-    call write_diffusion_iter_to_matlab(grain_mesh%a, grain_mesh%r,grain_mesh%ed, tmp, grain_mesh%j_flux, &
-    grain_mesh%p, i_IMC, input_location, g)
 
 
 ! Obtain jint of grain
@@ -1070,7 +1090,7 @@ subroutine interpolate_scalar_mesh1_to_mesh2(mesh1_enod, mesh1_coord, mesh1_ed, 
   implicit none
 
 ! Intent inout
-  real(dp), allocatable, intent(inout) :: mesh2_a(:)
+  real(dp), intent(inout)              :: mesh2_a(:)
 
 ! Intent in
   real(dp), intent(in)                 :: mesh1_coord(:,:), mesh2_coord(:,:)
@@ -1078,7 +1098,7 @@ subroutine interpolate_scalar_mesh1_to_mesh2(mesh1_enod, mesh1_coord, mesh1_ed, 
   integer, intent(in)                  :: mesh1_enod(:,:), mesh2_enod(:,:)
 
 ! Subroutine variables
-  integer  :: inod, ie, ierr
+  integer  :: inod, ie
   real(dp) :: x, y, xecoords(4), yecoords(4), x1, x2, x3, x4, y1, y2, y3, y4, pevals(4)
   real(dp) :: xsi,eta, Nvec(4)
   logical  :: pwt
@@ -1090,17 +1110,10 @@ subroutine interpolate_scalar_mesh1_to_mesh2(mesh1_enod, mesh1_coord, mesh1_ed, 
   nnod1 = size(mesh1_coord,2)
   nnod2 = size(mesh2_coord,2)
 
-
-! Allocate the field variable in mesh 2
-  if (allocated(mesh2_a)) then
-    deallocate(mesh2_a)
-  endif
-  allocate(mesh2_a(nnod2),stat=ierr)
-
 ! Interpolate pq%p from global mesh to grain_mesh
   do inod=1,nnod2
 
-! Global coordinates of point
+! Coordinates of point in new mesh
     x = mesh2_coord(1,inod)
     y = mesh2_coord(2,inod)
     
@@ -1135,6 +1148,11 @@ subroutine interpolate_scalar_mesh1_to_mesh2(mesh1_enod, mesh1_coord, mesh1_ed, 
       endif 
 
     enddo
+
+    if (pwt.eqv..false.) then
+      print *, 'Error in interpolating. No element found'
+      call exit(0)
+    endif
 
 ! Element in global mesh found. Global element number is ie and node coordinates are given in xecoords and yecoords
 ! Now the task is, given (x,y), interpolate the node values of the element to (x,y)
@@ -1176,7 +1194,7 @@ subroutine point_within_triangle(condition_satisfied,x,y,x1,x2,x3,y1,y2,y3)
   real(dp), intent(in)   :: x, y, x1, x2, x3, y1, y2, y3
 
 ! Subroutine variables
-  real(dp)               :: detT, c1, c2, c3
+  real(dp)               :: detT, c1, c2, c3, tol=1d-13
 
 ! Barycentric coordinates of (x,y) in the triangle
   detT = (x1-x3)*(y2-y3) - (x2-x3)*(y1-y3)
@@ -1184,9 +1202,9 @@ subroutine point_within_triangle(condition_satisfied,x,y,x1,x2,x3,y1,y2,y3)
   c2   = ((y3-y1)*(x-x3) + (x1-x3)*(y-y3))/detT
   c3   = 1d0 - c1 - c2
 
-  if ((0d0.le.c1 .and. c1.le.1d0) .and. (0d0.le.c2 .and. c2.le.1d0) .and. (0d0.le.c3 .and. c3.le.1d0) &
-  .and. ((c1+c2+c3).le.1d0)) then
-    condition_satisfied = .true.    
+  if (((0d0-tol).le.c1 .and. c1.le.(1d0+tol)) .and. ((0d0-tol).le.c2 .and. c2.le.(1d0+tol)) .and. &
+  ((0d0-tol).le.c3 .and. c3.le.(1d0+tol)) .and. ((c1+c2+c3).le.1d0)) then
+    condition_satisfied = .true.
   endif
 
   return

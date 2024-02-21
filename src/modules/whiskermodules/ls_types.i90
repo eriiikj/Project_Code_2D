@@ -21,8 +21,8 @@ module ls_types
       real(dp), allocatable :: vp(:,:,:), vpm(:,:)
       integer, allocatable  :: rm_lines(:,:), rm_lines_tmp(:,:), sep_lines(:,:), nsep_lines(:)
       real(dp)              :: alpha=1d4, IMC_area, IMC_area_init
-! real(dp), allocatable :: line_coord(:,:)
-! integer, allocatable  :: line_coordN(:)
+      real(dp), allocatable :: line_coord(:,:)
+      integer, allocatable  :: line_coordN(:)
       real(dp),allocatable  :: tp_points(:,:)
       integer               :: ntp_points
       
