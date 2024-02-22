@@ -156,15 +156,21 @@ subroutine generate_global_diffusion_mesh(input_location, diffsys, mesh, lssys, 
   ! Generate new diffusion mesh
   call read_json_diffusion_mesh(diffusion_mesh_location, i_IMC, diffsys%coord, diffsys%enod)  
 
-  diffsys%nnod = size(diffsys%coord,2)
-  diffsys%nelm = size(diffsys%enod,2)
+  diffsys%nnod  = size(diffsys%coord,2)
+  diffsys%nelm  = size(diffsys%enod,2)
+  diffsys%nodel = size(diffsys%enod,1)
 
   ! Allocated ls in new mesh
   if (allocated(diffsys%ls)) then
     deallocate(diffsys%ls)
   endif
+  if (allocated(diffsys%ls_ed)) then
+    deallocate(diffsys%ls_ed)
+  endif
   allocate(diffsys%ls(diffsys%nnod,lssys%ngrains),stat=ierr)
-  diffsys%ls = 0d0
+  allocate(diffsys%ls_ed(diffsys%nodel,diffsys%nelm,lssys%ngrains),stat=ierr)
+  diffsys%ls    = 0d0
+  diffsys%ls_ed = 0d0
 
   ! Interpolate old level set values to new mesh
   do g=1,lssys%ngrains
@@ -178,6 +184,18 @@ subroutine generate_global_diffusion_mesh(input_location, diffsys, mesh, lssys, 
     enddo
 
   enddo
+
+  ! ! Extract ls_ed
+  ! do g=1,lssys%ngrains
+  !   call extract(diffsys%ls_ed(:,:,g),diffsys%ls(:,g),diffsys%enod,1)
+  ! enddo
+
+  ! ! Extract local grain data
+  ! do g=1,lssys%ngrains
+  !   print *, 'Calling a grain data extract'
+  !   call execute_command_line(trim('python extract_grain_data.py'))
+  ! enddo
+
 
   ! Write data
   call write_diffusion_glob_iter_to_matlab(input_location, i_IMC, diffsys%ls)

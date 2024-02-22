@@ -44,8 +44,8 @@ module diffusion_types
         ! Global diffusion mesh
         integer,  allocatable :: enod(:,:)
         real(dp), allocatable :: coord(:,:)
-        integer               :: nelm, nnod
-        real(dp), allocatable :: ls(:,:)
+        integer               :: nelm, nnod, nodel
+        real(dp), allocatable :: ls(:,:), ls_ed(:,:,:)
 
     end type diffusion_system
 

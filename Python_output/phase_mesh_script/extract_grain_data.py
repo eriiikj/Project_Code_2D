@@ -19,15 +19,10 @@ import matplotlib.pyplot as plt
 import itertools
 import scipy.io
 
-import pyvtk as vtk
-
 import subprocess
 
 import gmsh
 import triangle
-
-# Calfem
-import calfem.core as cfc
 
 
 class InputData(object):
@@ -45,7 +40,6 @@ class InputData(object):
         self.ex                 = 0
         self.ey                 = 0 
         self.coord              = 0
-        self.enod               = 0
         self.axisbc             = 0
         self.line_ex            = 0
         self.line_ey            = 0
@@ -110,42 +104,42 @@ class InputData(object):
     
      # --- Define the geometry ---
     
-    def geometry(self):
-        """Define geometry in gmsh"""
+    # def geometry(self):
+    #     """Define geometry in gmsh"""
         
         
-        # --- Constraint Delanuay triangularization using triangle ---
-        tri_input     = dict(vertices=self.mesh_points,segments=self.line_conn) # segments=self.line_conn
-        print('Creating a constraint delanuay triangularization...')
-        triangulation = triangle.triangulate(tri_input,opts='pcq') #pcqa0.03 
-        print('Finished delanuay triangularization')
-        tris          = triangulation['triangles']
-        tris          = tris.flatten()
-        tris          = tris + 1
-        vertices      = triangulation['vertices']
-        N             = np.shape(vertices)[0]
+    #     # --- Constraint Delanuay triangularization using triangle ---
+    #     tri_input     = dict(vertices=self.mesh_points,segments=self.line_conn) 
+    #     print('Creating a constraint delanuay triangularization...')
+    #     triangulation = triangle.triangulate(tri_input,opts='pcq') #pcqa0.03 
+    #     print('Finished delanuay triangularization')
+    #     tris          = triangulation['triangles']
+    #     tris          = tris.flatten()
+    #     tris          = tris + 1
+    #     vertices      = triangulation['vertices']
+    #     N             = np.shape(vertices)[0]
         
-        # Extract xyz data
-        xyz = self.xyz_from_coord(vertices)
+    #     # Extract xyz data
+    #     xyz = self.xyz_from_coord(vertices)
             
             
-        # Add triangles to gmsh
-        surf = gmsh.model.addDiscreteEntity(2)
-        gmsh.model.mesh.addNodes(2, surf, range(1, N + 1), xyz)
-        gmsh.model.mesh.addElementsByType(surf, 2, [], tris)
+    #     # Add triangles to gmsh
+    #     surf = gmsh.model.addDiscreteEntity(2)
+    #     gmsh.model.mesh.addNodes(2, surf, range(1, N + 1), xyz)
+    #     gmsh.model.mesh.addElementsByType(surf, 2, [], tris)
         
-        # Create the relevant Gmsh data structures from gmsh model
-        gmsh.model.geo.synchronize()
+    #     # Create the relevant Gmsh data structures from gmsh model
+    #     gmsh.model.geo.synchronize()
         
-        return triangulation
+    #     return triangulation
     
-    def xyz_from_coord(self, coord):
-        N         = np.shape(coord)[0]
-        xyz       = np.zeros(3 * N)
-        xyz[::3]  = coord[:, 0]
-        xyz[1::3] = coord[:, 1]
-        xyz[2::3] = np.zeros_like(coord[:, 0])
-        return xyz
+    # def xyz_from_coord(self, coord):
+    #     N         = np.shape(coord)[0]
+    #     xyz       = np.zeros(3 * N)
+    #     xyz[::3]  = coord[:, 0]
+    #     xyz[1::3] = coord[:, 1]
+    #     xyz[2::3] = np.zeros_like(coord[:, 0])
+    #     return xyz
     
     
     
@@ -167,66 +161,6 @@ class InputData(object):
             json.dump(input_data_file, ofile, sort_keys = True, indent = 4)
             
     
-
-    def load(self, filename):
-        """Read indata from file."""
-
-        with open(filename, "r") as ifile:
-            input_data_file = json.load(ifile)
-
-        # Version
-        self.version          = input_data_file["version"]
-        
-        # Location
-        self.location         = input_data_file["location"]
-        
-        
-    def load_LsInit(self):
-        """Read indata from file."""
-        
-        cwd = os.getcwd()
-        path = self.python_location + '/single_study/mat_files'
-        
-        # Filename initial level set data
-        filename = path + '/level_setinit.mat'
-        
-        
-
-        with open(filename, "r") as ifile:
-            
-            # Load the .mat file
-            data = scipy.io.loadmat(filename)
-
-            # Access the variable by its name
-            self.ex     = np.transpose(data['ex'])*1e3
-            self.ey     = np.transpose(data['ey'])*1e3
-            self.coord  = np.transpose(data['coord'])*1e3
-            
-
-        axisbc = np.array([np.min(self.ex),np.max(self.ex),\
-                           np.min(self.ey),np.max(self.ey)])
-            
-        # Identify domain corners:
-        #  P4 ----- P3
-        #  |         |
-        #  |         |
-        #  |         |
-        #  P1 ----- P2
-        
-        P1   = np.array([axisbc[0],axisbc[2]])
-        P2   = np.array([axisbc[1],axisbc[2]])
-        P3   = np.array([axisbc[1],axisbc[3]])
-        P4   = np.array([axisbc[0],axisbc[3]])
-        
-        # Mesh nodes
-        self.P1nod = np.where(np.sqrt(((self.coord[:,0]-P1[0]))**2 + \
-                                 ((self.coord[:,1]-P1[1]))**2)<1e-12)[0][0]
-        self.P2nod = np.where(np.sqrt(((self.coord[:,0]-P2[0]))**2 + \
-                                 ((self.coord[:,1]-P2[1]))**2)<1e-12)[0][0]
-        self.P3nod = np.where(np.sqrt(((self.coord[:,0]-P3[0]))**2 + \
-                                 ((self.coord[:,1]-P3[1]))**2)<1e-12)[0][0]
-        self.P4nod = np.where(np.sqrt(((self.coord[:,0]-P4[0]))**2 + \
-                                 ((self.coord[:,1]-P4[1]))**2)<1e-12)[0][0]
 
             
     def load_LsStep(self):
@@ -257,7 +191,7 @@ class InputData(object):
             data = scipy.io.loadmat(filename)
             
             # Global variables
-            self.a              = data['a']
+            self.a              = data['a']*1e3
             self.ngrains        = np.shape(self.a)[1]
             self.line_ex_all    = (data['line_ex']*1e3)
             self.line_ey_all    = data['line_ey']*1e3
@@ -266,20 +200,11 @@ class InputData(object):
             self.ex             = np.transpose(data['newex'])*1e3
             self.ey             = np.transpose(data['newey'])*1e3
             self.coord          = np.transpose(data['newcoord'])*1e3
-            self.enod           = np.transpose(data['enod']) - 1
-        
+    
             
         # Round line coords to 6 decimals 
         self.line_ex_all = self.line_ex_all.round(decimals=6)
-        self.line_ey_all = self.line_ey_all.round(decimals=6)
-            
-        # Domain corners
-        self.P1   = self.coord[self.P1nod]
-        self.P2   = self.coord[self.P2nod]
-        self.P3   = self.coord[self.P3nod]
-        self.P4   = self.coord[self.P4nod]
-            
-        
+        self.line_ey_all = self.line_ey_all.round(decimals=6)    
         
         # --- Extract all line coords ---
         line_coord = np.empty((0, 2), dtype=float)
@@ -297,13 +222,6 @@ class InputData(object):
         # Unique line coords
         self.line_coord = np.unique(line_coord, axis=0)
             
-        # Domain corners
-        corner_coords = np.vstack((self.P1, self.P2, self.P3, self.P4))
-        
-        # All mesh_points (line_coord + domain corners)
-        self.mesh_points = np.unique(np.vstack((self.line_coord, corner_coords)), axis=0)
-        
-        
         
         
         # --- Extract line connectivity matrix line_conn ---
@@ -317,7 +235,7 @@ class InputData(object):
             line_ey       = self.line_ey_all[:nseg,g_cols]
  
             # Line segment connectivity of coords
-            line_conn     = np.vstack((line_conn, self.get_line_conn(self.mesh_points, line_ex, line_ey)))
+            line_conn     = np.vstack((line_conn, self.get_line_conn(self.line_coord, line_ex, line_ey)))
             
         # Unique line connectivity
         self.line_conn = np.unique(line_conn, axis=0)
@@ -329,6 +247,7 @@ class InputData(object):
             self.sn_c0 = (self.sn_c0_fix - self.sn_imc)*\
                 (self.tot_imc_area_init/self.tot_imc_area)\
                 +self.sn_imc
+                
                 
                 
     def get_line_conn(self, line_coord, line_ex, line_ey):
@@ -357,11 +276,11 @@ class InputData(object):
         coord[N:, 1]  = line_ey[:, 1]
         unique_coord  = np.unique(coord, axis=0)
         return coord
-            
         
 class OutputData(object):
     """Class for storing output data from calculation."""
     def __init__(self):
+    
         
         # Python output
         self.coord           = None
@@ -375,8 +294,7 @@ class OutputData(object):
         self.ndof            = None
         self.nodel           = None
         self.dofel           = None
-        self.bot_c           = None
-        self.top_c           = None
+        self.ls              = None
         
         # Locations - not saved
         self.single_location = None
@@ -408,28 +326,66 @@ class OutputData(object):
         with open(filename, "w") as ofile:
             json.dump(output_data_file, ofile, sort_keys = True, indent = 4)
 
-    def loadmesh(self, filename):
+    def loadmesh(self, python_location):
         """Read output data from file."""
 
+        cwd  = os.getcwd()
+        path = python_location + '/single_study/phase_meshes'
+        
+        # Find file 'phase_mesh_X.mat' with highest index X in mat_files
+        files = []
+        for i in os.listdir(path):
+            if os.path.isfile(os.path.join(path,i)) and 'phase_mesh_' in i:
+                files.append(i)
+        max_number = 0
+        for file in files:
+            file_number = int(file.split('phase_mesh_')[1].split('.json')[0])
+            if (file_number>max_number):
+                max_number = file_number
+            
+        filename = path + '/phase_mesh_' + str(max_number) + '.json'
+        
+        
         with open(filename, "r") as ifile:
             output_data_file = json.load(ifile)
             
         self.coord         = np.transpose(np.asarray(output_data_file["coord"]))
         self.enod          = np.transpose(np.asarray(output_data_file["enod"]))
-        self.edof          = np.asarray(output_data_file["edof"])
-        self.ex            = np.asarray(output_data_file["ex"])
-        self.ey            = np.asarray(output_data_file["ey"])
-        self.bcnod         = output_data_file["bcnod"]
-        self.bcval         = np.asarray(output_data_file["bcval"])
-        self.dofs          = np.asarray(output_data_file["dofs"])
-        self.dofs_per_node = output_data_file["dofs_per_node"]
-        self.el_type       = np.asarray(output_data_file["el_type"])
         self.nelm          = np.asarray(output_data_file["nelm"])
         self.nnod          = output_data_file["nnod"]
         self.ndof          = np.asarray(output_data_file["ndof"])
         self.nodel         = np.asarray(output_data_file["nodel"])
-        self.dofel         = output_data_file["dofel"]
 
+    def load_LSInterpolated(self,python_location):
+        """Read indata from file."""
+        
+        cwd  = os.getcwd()
+        path = python_location + '/single_study/mat_files'
+        
+        # Find file 'level_set_X.mat' with highest index X in mat_files
+        files = []
+        for i in os.listdir(path):
+            if os.path.isfile(os.path.join(path,i)) and 'diffusion_' in i:
+                files.append(i)
+        max_number = 0
+        for file in files:
+            file_number = int(file.split('diffusion_')[1].split('.mat')[0])
+            if (file_number>max_number):
+                max_number = file_number
+            
+        filename = path + '/diffusion_' + str(max_number) + '.mat'
+        
+        self.version = max_number
+        
+    
+        with open(filename, "r") as ifile:
+            
+            # Access variables from level set file
+            data = scipy.io.loadmat(filename)
+            
+            # Global variables
+            self.ls = data['ls']
+            
         
         
 class Mesh(object):
@@ -446,79 +402,23 @@ class Mesh(object):
         #     line_ex  = self.input_data.line_ex_all[:line_seg,g_cols]
         #     line_ey  = self.input_data.line_ey_all[:line_seg,g_cols]
         
-        
-        # --- gmsh mesh generation ---
-        
-        # Initialize gmsh
-        gmsh.initialize()
-   
-        # Create gmsh geometry
-        triangulation = self.input_data.geometry()
-        
-        # Location
-        print('Generating mesh in folder: ', os.getcwd())
-        
-        # Generate mesh
-        gmsh.model.mesh.generate(2)
-        
-        # Graphical illustration of mesh
-        # if 'close' not in sys.argv:
-        #     gmsh.fltk.run()
-        
-        # Finalize Gmsh
-        gmsh.finalize()
-  
-        # Extract coord and enod
-        coord = triangulation['vertices']
-        enod  = triangulation['triangles']
-        
-        # Make sure that enod is numbered counter-clockwise for 3-node elm
-        self.reorder_enod_triangle(coord, enod)
-        
-        
-        # --- Topology quantities ---
-        dofs_per_node = 1
-        nelm  = np.shape(enod)[0]
-        nnod  = np.shape(coord)[0]
-        ndof  = nnod*dofs_per_node
-        nodel = np.size(enod[0])
-        dofel = nodel*dofs_per_node
-        
-        # Interpolate level set functions from old to new mesh
-        
-        # Short form
-        ngrains    = self.input_data.ngrains
-        coord_mesh = self.input_data.coord
-        enod_mesh  = self.input_data.enod
-        nelm_mesh  = np.shape(enod_mesh)[0]
-        coordT     = coord
-        enodT      = enod
-        aT         = np.zeros((nnod,ngrains))
-        
-        # edof_mesh = np.zeros((nelm_mesh,5))
-        # edof_mesh[:,0] = np.linspace(1,nelm_mesh,nelm_mesh,dtype=int)
-        # edof_mesh[:,1:] = enod_mesh
-        # edof_mesh = np.asarray(edof_mesh,dtype=int)
-        ed = cfc.extract_ed(enod_mesh,self.input_data.a[:,0])
-        # for g in range(ngrains):
-        #     ed = cfc.extract_ed(enod_mesh,self.input_data.a[:,g])
-        #     self.interpolate_scalar_mesh1_to_mesh2(enod_mesh, coord_mesh, ed, \
-        #                                            enodT, coordT, aT[:,g])
-      
-        #   ! Set value at interface nods to 0
-        #   g_cols = [2*(g-1) + 1, 2*(g-1) + 2]
-        #   do i=1,lssys%line_coordN(g)
-        #     where (sqrt((diffsys%coord(1,:)-lssys%line_coord(i,g_cols(1)))**2 + &
-        #     (diffsys%coord(2,:)-lssys%line_coord(i,g_cols(2)))**2).lt.1d-7) diffsys%ls(:,g) = 0d0
-        #   enddo
-      
-        # enddo
-        
-        s = 9
-      
-        
         # Extract local coord and enod for each grain using ls. Extract bcnods.
         # Apply boundary conditions. Save as file.
+        
+        
+        # Short form
+        line_ex_all = self.input_data.line_ex_all
+        line_ey_all = self.input_data.line_ey_all
+        ex          = self.input_data.ex
+        ey          = self.input_data.ey
+        coord       = self.input_data.coord
+        enodT       = self.output_data.enod
+        coordT      = self.output_data.coord
+        lsT         = self.output_data.ls
+        s = 9;
+        
+        
+        
         
         
         
@@ -540,7 +440,8 @@ class Mesh(object):
         
         
         
-        
+        # Dofs per node
+        dofs_per_node = 1
 
         # # Line ex all
         # line_ex_all  = self.input_data.line_ex_all
@@ -738,120 +639,31 @@ class Mesh(object):
         # bcval_idx = bcval.copy()
 
       
+        # # # --- Topology quantities ---
+            
+        # nelm  = np.shape(enod)[0]
         
+        # nnod  = np.shape(coord)[0]
+        
+        # ndof  = nnod*dofs_per_node
+        
+        # nodel = np.size(enod[0])
+        
+        # dofel = nodel*dofs_per_node
     
 
-        # # --- Transfer model variables to output data ---
-        self.output_data.coord          = coord
-        self.output_data.enod           = enod
-        # self.output_data.bcnod          = bcnod
-        # self.output_data.bcval          = bcval
-        # self.output_data.bcval_idx      = bcval_idx
-        self.output_data.dofs_per_node  = dofs_per_node
-        self.output_data.nelm           = nelm
-        self.output_data.nnod           = nnod
-        self.output_data.ndof           = ndof
-        self.output_data.nodel          = nodel
-        self.output_data.dofel          = dofel
-        
-    def interpolate_scalar_mesh1_to_mesh2(self, mesh1_enod, mesh1_coord, \
-        mesh1_ed, mesh2_enod,mesh2_coord, mesh2_a):
-        # --- Interpolate scalar field mesh1_a from mesh1 to mesh2 ---
-
-        #
-        nelm1 = np.shape(mesh1_enod)[0]
-        nelm2 = np.shape(mesh2_enod)[0]
-        nnod1 = np.shape(mesh1_coord)[0]
-        nnod2 = np.shape(mesh2_coord)[0]
-
-        # Interpolate mesh1_ed from mesh1 to mesh2
-        for inod in range(nnod2):
-    
-         # Coordinates of point in new mesh
-          x = mesh2_coord[inod,0]
-          y = mesh2_coord[inod,1]
-        
-          # Find which element in the global mesh that the point (x,y) belong to
-          pwt = False
-          for ie in range(nelm1):
-              xecoords = mesh1_coord[mesh1_enod[ie,:],0]
-              yecoords = mesh1_coord[mesh1_enod[ie,:],1]
-    
-              # ! Divide element in two triangles and use point in triangle function
-        
-              # ! 4 --- 3      4 --- 3         3
-              # ! |     |      |    /       /  |
-              # ! |     |  ->  |(1)/       /(2)|
-              # ! |     |      |  /       /    |
-              # ! 1 --- 2      1         1 --- 2
-    
-              # First triangle
-              x1=xecoords[0]; x2=xecoords[2]; x3=xecoords[3]
-              y1=yecoords[0]; y2=yecoords[2]; y3=yecoords[3]
-              pwt = self.point_within_triangle(x,y,x1,x2,x3,y1,y2,y3)
-              if (pwt):
-                break 
-          
-              # Second triangle
-              x1=xecoords[0]; x2=xecoords[1]; x3=xecoords[2]
-              y1=yecoords[0]; y2=yecoords[1]; y3=yecoords[2]
-              pwt = self.point_within_triangle(x,y,x1,x2,x3,y1,y2,y3)
-              if (pwt):
-                break
-            
-          if (pwt==False):
-              print('Error in interpolating. No element found')
-              exit
-            
-          # Element in global mesh found. Global element number is ie and node coordinates are given in xecoords and yecoords 
-          # Now the task is, given (x,y), interpolate the node values of the element to (x,y)
-            
-          # Global element coordinates
-          x1 = xecoords[0]; x2 = xecoords[1]; x3 = xecoords[2]; x4 = xecoords[3];
-          y1 = yecoords[0]; y2 = yecoords[1]; y3 = yecoords[2]; y4 = yecoords[3];
-            
-          # Global node values
-          edvals = mesh1_ed[ie,:]
-            
-          # Natural coordinates (isoparametric coordinates) of (x,y). Assuming fixed parallel grid!
-          xsi = 2*(x-x1)/(x2-x1) - 1
-          eta = 2*(y-y1)/(y3-y1) - 1
-            
-          # Shape functions evaluated at (xsi,eta). Nvec = [N1,N2,N3,N4]
-          Nvec    = np.zeros(4)
-          Nvec[0] = (1-xsi)*(1-eta)/4
-          Nvec[1] = (1+xsi)*(1-eta)/4
-          Nvec[2] = (1+xsi)*(1+eta)/4
-          Nvec[3] = (1-xsi)*(1+eta)/4
-            
-          # Interpolated pressure at (x,y)
-          mesh2_a[inod] = np.dot(Nvec, edvals)
-            
-            
-    def point_within_triangle(self, x, y, x1, x2, x3, y1, y2, y3):
-        """
-        Function to determine if point (x, y) is within the triangle with vertices (x1, y1), (x2, y2), and (x3, y3).
-        :param x: x-coordinate of the point
-        :param y: y-coordinate of the point
-        :param x1, x2, x3: x-coordinates of the triangle vertices
-        :param y1, y2, y3: y-coordinates of the triangle vertices
-        :return: True if the point is within the triangle, False otherwise
-        """
-        tol = 1e-13
-    
-        # Barycentric coordinates of (x, y) in the triangle
-        detT = (x1 - x3) * (y2 - y3) - (x2 - x3) * (y1 - y3)
-        c1 = ((y2 - y3) * (x - x3) + (x3 - x2) * (y - y3)) / detT
-        c2 = ((y3 - y1) * (x - x3) + (x1 - x3) * (y - y3)) / detT
-        c3 = 1.0 - c1 - c2
-    
-        # Check if the point is within the triangle
-        condition_satisfied = (0.0 - tol <= c1 <= 1.0 + tol) and \
-                              (0.0 - tol <= c2 <= 1.0 + tol) and \
-                              (0.0 - tol <= c3 <= 1.0 + tol) and \
-                              (c1 + c2 + c3 <= 1.0)
-    
-        return condition_satisfied
+        # # # --- Transfer model variables to output data ---
+        # self.output_data.coord          = coord
+        # self.output_data.enod           = enod
+        # # self.output_data.bcnod          = bcnod
+        # # self.output_data.bcval          = bcval
+        # # self.output_data.bcval_idx      = bcval_idx
+        # self.output_data.dofs_per_node  = dofs_per_node
+        # self.output_data.nelm           = nelm
+        # self.output_data.nnod           = nnod
+        # self.output_data.ndof           = ndof
+        # self.output_data.nodel          = nodel
+        # self.output_data.dofel          = dofel
         
     def extract_mesh_data(self,inpmatrix):
         # Convert mesh data from .inp file to float
@@ -958,7 +770,7 @@ class Mesh(object):
         self.generateMesh()
           
         # --- Save output data as json file ---
-        self.output_data.save('phase_mesh_' + str(self.input_data.version) + '.json')
+        # self.output_data.save('phase_mesh_' + str(self.input_data.version) + '.json')
         
         # # # --- Export location to Fortran ---
         # # self.exportLocationToFortran()
