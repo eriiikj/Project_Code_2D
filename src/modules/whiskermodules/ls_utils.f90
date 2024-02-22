@@ -633,16 +633,18 @@ subroutine reinit_level_set(a_g,line_ex,line_ey,closest_line,nseg,mesh)
 end subroutine reinit_level_set
 
 
-subroutine reinit_level_set_spatial(a_g,line_ex,line_ey,closest_line,nseg,mesh)
+subroutine reinit_level_set_spatial(a_g,a_g_old,line_ex,line_ey,closest_line,nseg,mesh)
     ! --- Routine for reinitializing level set function in deformed configuration ---
     implicit none
 
     ! Intent inout
     real(dp),intent(inout)         :: a_g(:), line_ex(:,:), line_ey(:,:)
-    integer, intent(inout)         :: closest_line(:), nseg
+    integer, intent(inout)         :: closest_line(:)
 
     ! Intent in
     type(mesh_system), intent(in)  :: mesh    
+    integer, intent(in)            :: nseg
+    real(dp), intent(in)           :: a_g_old(:)
 
     ! Subroutine variables
     integer                        :: inod, iIntElm, ierr
@@ -687,7 +689,7 @@ subroutine reinit_level_set_spatial(a_g,line_ex,line_ey,closest_line,nseg,mesh)
         enddo
 
         ! Signed distance function
-        a_g(inod) = sign(1d0,a_g(inod))*abs(minval(seg_dists))
+        a_g(inod) = sign(1d0,a_g_old(inod))*abs(minval(seg_dists))
 
         ! Store closest line
         closest_line(inod) = minloc(seg_dists, 1)

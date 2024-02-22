@@ -86,7 +86,7 @@ for i_IMC = 1%1:step_size:IMC_steps
 
 
 
-
+    
 
 
     % Load level set
@@ -100,10 +100,13 @@ for i_IMC = 1%1:step_size:IMC_steps
     % Load interpolated level set field
     [ls,ls_ed] = import_diffusion_glob(i_IMC,edofT,nodelT);
 
+    inod = 1;
+    a    = enodT(sum(enodT==inod,2)==1,:)
+    nods = a(:)
 
     figure(13)
-    g = 2;
-    plot_field2(ex,ey,ed(:,:,g),'k')
+    g = 1;
+%     plot_field2(ex,ey,ed(:,:,g),'k')
     hold on
     plot_field(exT,eyT,ls_ed(:,:,g),'k')    
     g_cols = [2*(g-1) + 1,2*(g-1) + 2];
@@ -358,7 +361,7 @@ mesh_struct = jsondecode(str);
 clear fid raw str
 
 % Extract mesh data from mesh_struct
-enod           = mesh_struct.enod' + 1;
+enod           = mesh_struct.enod';
 coord          = mesh_struct.coord'*1e-3;
 nodel          = mesh_struct.nodel;
 nelm           = mesh_struct.nelm;

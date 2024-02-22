@@ -297,7 +297,7 @@ subroutine update_ls_system(lssys,mesh,i_IMC,input_location, omp_run, pq, diffsy
   logical, intent(in)                       :: ls_spatial
 
   ! Subroutine variables
-  integer                                   :: g, g_cols(2), nindecies, counter, i, inod
+  integer                                   :: g, g_cols(2), nindecies, counter, i, j, inod
   integer, allocatable                      :: indecies(:), indecies2(:), uniqueIndices(:)
   real(dp)                                  :: lseg
   real(dp), allocatable                     :: unique_coord(:,:)
@@ -376,21 +376,20 @@ subroutine update_ls_system(lssys,mesh,i_IMC,input_location, omp_run, pq, diffsy
   else
     call interface_reconstruction(lssys, mesh)
   endif
-  
 
   ! 6) --- Sort line segments ---
-  do g = 1,lssys%ngrains
-    g_cols = [2*(g-1) + 1, 2*(g-1) + 2]
-    call sort_lines(lssys%line_ex(:,g_cols(1):g_cols(2)),lssys%line_ey(:,g_cols(1):g_cols(2)),lssys%tplines(:,g), &
-    lssys%line_seg(g),lssys%sep_lines(:,g_cols(1):g_cols(2)),lssys%nsep_lines(g),mesh)
-  enddo
+  ! do g = 1,lssys%ngrains
+  !   g_cols = [2*(g-1) + 1, 2*(g-1) + 2]
+  !   call sort_lines(lssys%line_ex(:,g_cols(1):g_cols(2)),lssys%line_ey(:,g_cols(1):g_cols(2)),lssys%tplines(:,g), &
+  !   lssys%line_seg(g),lssys%sep_lines(:,g_cols(1):g_cols(2)),lssys%nsep_lines(g),mesh)
+  ! enddo
 
   ! 6) --- Reinitialize level set function ---
   do g = 1,lssys%ngrains
     g_cols = [2*(g-1) + 1, 2*(g-1) + 2]
     if (ls_spatial) then
-      call reinit_level_set_spatial(lssys%a(:,g),lssys%line_ex(:,g_cols(1):g_cols(2)),lssys%line_ey(:,g_cols(1):g_cols(2)), &
-      lssys%closest_line(:,g),lssys%line_seg(g),mesh)
+      call reinit_level_set_spatial(lssys%a(:,g),lssys%a(:,g),lssys%line_ex(:,g_cols(1):g_cols(2)), &
+      lssys%line_ey(:,g_cols(1):g_cols(2)), lssys%closest_line(:,g),lssys%line_seg(g),mesh)
     else
       call reinit_level_set(lssys%a(:,g),lssys%line_ex(:,g_cols(1):g_cols(2)),lssys%line_ey(:,g_cols(1):g_cols(2)), &
       lssys%closest_line(:,g),lssys%line_seg(g),mesh)
@@ -402,12 +401,12 @@ subroutine update_ls_system(lssys,mesh,i_IMC,input_location, omp_run, pq, diffsy
   enddo
 
   ! ! 7) --- Adaptive mesh refinement with refinement length lseg ---
-  ! lseg = 1d-5
-  ! do g = 1,lssys%ngrains      
-  !   g_cols = [2*(g-1) + 1, 2*(g-1) + 2]
-  !   call interface_lseg_adjustment(lssys%line_ex(:,g_cols(1):g_cols(2)), lssys%line_ey(:,g_cols(1):g_cols(2)), &
-  !   lssys%line_seg(g), lssys%tp_points([1:lssys%ntp_points],:), mesh%bcnod_all, mesh%newcoord, lseg)
-  ! enddo
+  lseg = 0.5d-5
+  do g = 1,lssys%ngrains      
+    g_cols = [2*(g-1) + 1, 2*(g-1) + 2]
+    call interface_lseg_adjustment(lssys%line_ex(:,g_cols(1):g_cols(2)), lssys%line_ey(:,g_cols(1):g_cols(2)), &
+    lssys%line_seg(g), lssys%tp_points([1:lssys%ntp_points],:), mesh%bcnod_all, mesh%newcoord, lseg)
+  enddo
 
   ! Extract line_coord
   do g = 1,lssys%ngrains      

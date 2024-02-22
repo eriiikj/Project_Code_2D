@@ -42,7 +42,7 @@ module diffusion_types
         real(dp)              :: generate_mesh_time=0d0, read_mesh_time=0d0, solve_time=0d0
 
         ! Global diffusion mesh
-        integer,  allocatable :: enod(:,:)
+        integer,  allocatable :: enod(:,:), closest_line(:,:)
         real(dp), allocatable :: coord(:,:)
         integer               :: nelm, nnod, nodel
         real(dp), allocatable :: ls(:,:), ls_ed(:,:,:)

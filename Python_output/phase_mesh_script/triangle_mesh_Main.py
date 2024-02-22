@@ -73,8 +73,8 @@ class MainClass(object):
         
     
 if __name__ == "__main__":
-    
 
+    
     # --- Create main instance ---
     main_instance = MainClass()
     

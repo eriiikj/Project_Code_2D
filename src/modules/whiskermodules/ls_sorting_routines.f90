@@ -716,7 +716,7 @@ subroutine add_line_segments_noSorting(line_ex, line_ey, nseg, lseg)
 
     ! 
     ! Number of extended line segments
-    nseg_extended = 10*nseg        
+    nseg_extended = 40*nseg        
     
     ! Allocate new arrays for storing old lines as well as new added lines
     allocate(line_ex_new(2,nseg_extended),stat=ierr)

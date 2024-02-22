@@ -454,7 +454,7 @@ class Mesh(object):
 
         # --- Transfer model variables to output data ---
         self.output_data.coord          = coord
-        self.output_data.enod           = enod
+        self.output_data.enod           = enod + 1
         self.output_data.dofs_per_node  = dofs_per_node
         self.output_data.nelm           = nelm
         self.output_data.nnod           = nnod

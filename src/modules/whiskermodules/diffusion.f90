@@ -73,7 +73,7 @@ subroutine init_diffusion_system(diffsys, ngrains)
   integer ::ierr
 
   ! Allocate grain mesh system
-  allocate(diffsys%grain_meshes(ngrains),stat=ierr)
+  allocate(diffsys%grain_meshes(ngrains),stat=ierr)  
 
   return
 end subroutine init_diffusion_system
@@ -104,11 +104,11 @@ subroutine solve_diffusion_problem_global(diffsys,i_IMC,lssys,mesh,pq,input_loca
     call diffusion_grain(diffsys,i_IMC, mesh, diffsys%grain_meshes(g), g, input_location, lssys, omp_run, pq)
   enddo 
 
-  ! Compute IMC area
-  call compute_IMC_area(lssys,diffsys)
-  if (i_IMC.eq.1) then
-    lssys%IMC_area_init = lssys%IMC_area
-  endif  
+  ! ! Compute IMC area
+  ! call compute_IMC_area(lssys,diffsys)
+  ! if (i_IMC.eq.1) then
+  !   lssys%IMC_area_init = lssys%IMC_area
+  ! endif  
 
   return
 end subroutine solve_diffusion_problem_global
@@ -132,7 +132,9 @@ subroutine generate_global_diffusion_mesh(input_location, diffsys, mesh, lssys, 
   character(len=40)                     :: command_line  
   character(len=80)                     :: diffusion_mesh_script_location 
   character(len=:),allocatable          :: diffusion_mesh_location  
-  integer                               :: g, ierr, i, g_cols(2)
+  integer                               :: g, ierr, i, g_cols(2), nelm, ii(1), inod
+  integer, allocatable :: elmidx(:), nodidx(:), nodidx2(:), uniqueArr(:)
+  logical :: ch
 
   diffusion_mesh_script_location = '/home/er7128ja/Nextcloud/Projekt/Project_Code_2D/Python_output/phase_mesh_script'  
   diffusion_mesh_location        = '/home/er7128ja/Nextcloud/Projekt/Project_Code_2D/Python_output/single_study/phase_meshes'
@@ -167,42 +169,85 @@ subroutine generate_global_diffusion_mesh(input_location, diffsys, mesh, lssys, 
   if (allocated(diffsys%ls_ed)) then
     deallocate(diffsys%ls_ed)
   endif
+  if (allocated(diffsys%closest_line)) then
+    deallocate(diffsys%closest_line)
+  endif
   allocate(diffsys%ls(diffsys%nnod,lssys%ngrains),stat=ierr)
   allocate(diffsys%ls_ed(diffsys%nodel,diffsys%nelm,lssys%ngrains),stat=ierr)
+  allocate(diffsys%closest_line(diffsys%nnod,lssys%ngrains),stat=ierr)
   diffsys%ls    = 0d0
   diffsys%ls_ed = 0d0
 
   ! Interpolate old level set values to new mesh
   do g=1,lssys%ngrains
     call interpolate_scalar_mesh1_to_mesh2(mesh%enod, mesh%coord, lssys%ed(:,:,g), diffsys%enod, diffsys%coord, diffsys%ls(:,g))
-
-    ! Set value at interface nods to 0
-    g_cols = [2*(g-1) + 1, 2*(g-1) + 2]
-    do i=1,lssys%line_coordN(g)
-      where (sqrt((diffsys%coord(1,:)-lssys%line_coord(i,g_cols(1)))**2 + &
-      (diffsys%coord(2,:)-lssys%line_coord(i,g_cols(2)))**2).lt.1d-7) diffsys%ls(:,g) = 0d0
-    enddo
-
   enddo
 
-  ! Write data
+  if (allocated(elmidx)) then
+    deallocate(elmidx)
+  endif
+  allocate(elmidx(diffsys%nelm))
+  do i=1,diffsys%nelm
+    elmidx(i)=i
+  enddo
+
+  if (allocated(nodidx)) then
+    deallocate(nodidx)
+  endif
+  allocate(nodidx(diffsys%nnod))
+  do i=1,diffsys%nnod
+    nodidx(i)=i
+  enddo
+
+  ! --- Reinitialize triangle mesh ---
+  do g = 1,lssys%ngrains
+    g_cols = [2*(g-1) + 1, 2*(g-1) + 2]
+    call reinit_level_set_spatial2(diffsys%ls(:,g),lssys%line_ex(:,g_cols(1):g_cols(2)),&
+    lssys%line_ey(:,g_cols(1):g_cols(2)), diffsys%closest_line(:,g),lssys%line_seg(g),diffsys%coord)
+    where(abs(diffsys%ls(:,g)).lt.1d-8) diffsys%ls(:,g) = 0d0
+
+    ! Post-processing sign of reinitialized mesh as this is not always true from the last state
+    print *, 'changing signs...'
+    ch = .true.
+    do while (ch)
+      ch = .false.  
+      nodidx2 = pack(nodidx,diffsys%ls(:,g).lt.0d0)    
+      do i=1,size(nodidx2)
+        inod = nodidx2(i)
+        ! Find elements containing node
+        nelm = count(count(diffsys%enod.eq.inod,1).gt.0)
+        call FindUniqueIntegers(reshape(diffsys%enod(:,pack(elmidx, count(diffsys%enod.eq.inod,1).gt.0)),[nelm*diffsys%nodel]), &
+        uniqueArr)
+        ii = inod
+        call setdiff_int_1D(uniqueArr, ii, uniqueArr)
+        ! if (abs(diffsys%coord(1,i)-0.334833d-3).lt.1d-7 .and. abs(diffsys%coord(2,i)-0.58539d-3).lt.1d-7) then
+        !   print *, 'coord', diffsys%coord(:,i)
+        !   print *, 'as', diffsys%ls(uniqueArr,g)
+        ! endif
+        if (count((diffsys%ls(uniqueArr,g)).lt.0d0).ge.count((diffsys%ls(uniqueArr,g)).gt.0d0) .and.diffsys%ls(inod,g).gt.0d0) then
+          diffsys%ls(inod,g) = -1d0*abs(diffsys%ls(inod,g))
+          ch = .true.
+        endif
+      enddo
+    enddo
+
+    ! Update ed
+    call extract(diffsys%ls_ed(:,:,g),diffsys%ls(:,g),diffsys%enod,1)
+  enddo
+
+  ! Write interpolated ls data to file
   call write_diffusion_glob_iter_to_matlab(input_location, i_IMC, diffsys%ls)
 
-  ! ! Extract ls_ed
-  ! do g=1,lssys%ngrains
-  !   call extract(diffsys%ls_ed(:,:,g),diffsys%ls(:,g),diffsys%enod,1)
-  ! enddo
-
-  ! ! Extract local grain data
-  ! do g=1,lssys%ngrains
-  !   print *, 'Calling a grain data extract'
-  !   call execute_command_line(trim('python extract_grain_data.py'))
-  ! enddo
-
-
+  ! Generete partitioned grain meshes by running python script
+  call chdir(diffusion_mesh_script_location)
+  write(command_line,'(A33)'), 'python extract_grain_data_Main.py'
+  call execute_command_line(trim(command_line))
 
   return
 end subroutine generate_global_diffusion_mesh
+
+
+
 
 subroutine diffusion_grain(diffsys, i_IMC, global_mesh, grain_mesh, g, input_location, lssys, omp_run, pq)
   ! --- Routine for solving diffusion equation in grain ---
@@ -247,14 +292,15 @@ subroutine diffusion_grain(diffsys, i_IMC, global_mesh, grain_mesh, g, input_loc
     phase_mesh_script_location = '/home/er7128ja/Nextcloud/Projekt/Project_Code_2D/Python_output/phase_mesh_script'
     phase_mesh_location        = '/home/er7128ja/Nextcloud/Projekt/Project_Code_2D/Python_output/single_study/phase_meshes'
 
-    ! Generete mesh by running python script
-    call chdir(phase_mesh_script_location)
-    call clock_time(t1, omp_run)
-    write(command_line,'(A37,I1)'), 'python grain_mesh_triangular_Main.py ', g
-    call execute_command_line(trim(command_line))
-    call clock_time(t2, omp_run)
-    diffsys%generate_mesh_time = diffsys%generate_mesh_time + (t2 - t1)    
-    call chdir(main_location)
+
+    ! ! Generete mesh by running python script
+    ! call chdir(phase_mesh_script_location)
+    ! call clock_time(t1, omp_run)
+    ! write(command_line,'(A37,I1)'), 'python grain_mesh_triangular_Main.py ', g
+    ! call execute_command_line(trim(command_line))
+    ! call clock_time(t2, omp_run)
+    ! diffsys%generate_mesh_time = diffsys%generate_mesh_time + (t2 - t1)    
+    ! call chdir(main_location)
 
     ! Read mesh from json file
     call clock_time(t1, omp_run)    
@@ -269,10 +315,10 @@ subroutine diffusion_grain(diffsys, i_IMC, global_mesh, grain_mesh, g, input_loc
     ! Print mesh info
     call print_diffusion_mesh_info(grain_mesh)
 
-    ! If Sn phase, interpolate hydrostatic pressure field from global mesh (stored in pq) to grain_mesh
-    if (lssys%material(g).eq.3) then
-      call interpolate_glob_to_grain(global_mesh,grain_mesh,pq%p_ed)
-    endif
+    ! ! If Sn phase, interpolate hydrostatic pressure field from global mesh (stored in pq) to grain_mesh
+    ! if (lssys%material(g).eq.3) then
+    !   call interpolate_glob_to_grain(global_mesh,grain_mesh,pq%p_ed)
+    ! endif
 
     ! Solve diffusion equation
     print *, 'Before solve diffusion problem'
@@ -284,16 +330,14 @@ subroutine diffusion_grain(diffsys, i_IMC, global_mesh, grain_mesh, g, input_loc
 
 
     ! Obtain jint of grain
-    g_cols = [2*(g-1) + 1, 2*(g-1) + 2]
-    print *, 'Before compute jint'
-    call compute_jint2(grain_mesh, I_IMC)
-    print *, 'After compute jint'
+    ! g_cols = [2*(g-1) + 1, 2*(g-1) + 2]
+    ! print *, 'Before compute jint'
+    ! call compute_jint2(grain_mesh, I_IMC)
+    ! print *, 'After compute jint'
   
-    ! Save diffusion results
-    print *, 'Before write_diffusion_iter_to_matlab'    
+    ! Save diffusion results    
     call write_diffusion_iter_to_matlab(grain_mesh%a, grain_mesh%r,grain_mesh%ed, grain_mesh%jint, grain_mesh%j_flux, &
     grain_mesh%p, i_IMC, input_location, g)
-    print *, 'After write_diffusion_iter_to_matlab'
 
     print *, 'Leaving diffusion_grain'
 
@@ -309,43 +353,11 @@ subroutine mesh_reset(mesh)
 
 
   ! Deallocate variables
-  ! if (allocated(mesh%coord)) then
-  !   deallocate(mesh%coord)
-  !   deallocate(mesh%enod)
-  !   deallocate(mesh%a)
-  !   deallocate(mesh%r)
-  !   deallocate(mesh%ed)
-  !   deallocate(mesh%j_flux)
-  !   deallocate(mesh%bcnod)
-  !   deallocate(mesh%bcval)
-  !   deallocate(mesh%bcval_idx)    
-  ! endif
-
   if (allocated(mesh%coord)) then
     deallocate(mesh%coord)
-  endif
-
-  if (allocated(mesh%enod)) then
     deallocate(mesh%enod)
-  endif
-
-  if (allocated(mesh%a)) then
     deallocate(mesh%a)
-  endif
-
-  if (allocated(mesh%r)) then
     deallocate(mesh%r)
-  endif
-
-  if (allocated(mesh%ed)) then
-    deallocate(mesh%ed)
-  endif
-
-  if (allocated(mesh%j_flux)) then
-    deallocate(mesh%j_flux)
-  endif
-
-  if (allocated(mesh%bcnod)) then
     deallocate(mesh%bcnod)
   endif
 
@@ -362,7 +374,7 @@ subroutine mesh_reset(mesh)
   endif
 
 
-  ! ! Reset variables
+  ! Reset variables
   ! mesh%nelm   = 0
   ! mesh%nnod   = 0
   ! mesh%coord  = 0d0
@@ -399,9 +411,6 @@ subroutine init_grain_mesh_system(mesh, lssys, diffsys, g)
   mesh%dofnod = 1
   mesh%nodel  = 3
 
-  ! Define nbr of Gauss points
-  mesh%nrgp = 4
-
   ! Allocate variables in grain_mesh. OBS allocation made larger in order to avoid reallocation
   allocate(mesh%a(mesh%nnod),stat=ierr)
   allocate(mesh%r(mesh%nnod),stat=ierr)
@@ -435,7 +444,7 @@ subroutine solve_diffusion_problem(grain_mesh, global_mesh, lssys_ag, material)
 
   ! Subroutine variables
   real(dp)                               :: M(2,2)
-  real(dp)                               :: ke3(3,3), scale_factor=1d26
+  real(dp)                               :: ke3(3,3), scale_factor=1d30
   type(sparse)                           :: K
   integer                                :: ie, ierr
   real(dp), allocatable                  :: Ksave(:)
@@ -500,27 +509,27 @@ subroutine solve_diffusion_problem(grain_mesh, global_mesh, lssys_ag, material)
   ! Compute element values
   call extract(grain_mesh%ed,grain_mesh%a,grain_mesh%enod,grain_mesh%dofnod)
 
-  ! Compute flux J and jmean in each element
-  do ie=1,grain_mesh%nelm
+  ! ! Compute flux J and jmean in each element
+  ! do ie=1,grain_mesh%nelm
 
-    ! Change diffusion coefficient according to grain boundary diffusion
-    ! Find point in global mesh closest to (mean_x,mean_y)
-    ! Mean x and y of element
-    ! mean_x = sum(grain_mesh%coord(1,grain_mesh%enod(:,ie)))/size(grain_mesh%enod(:,ie))
-    ! mean_y = sum(grain_mesh%coord(2,grain_mesh%enod(:,ie)))/size(grain_mesh%enod(:,ie))
-    ! minIdx = minloc((global_mesh%coord(1,:) - mean_x)**2 + (global_mesh%coord(2,:) - mean_y)**2)
-    ! mean_distance         = abs(lssys_ag(minIdx(1)))
-    ! model_edge_x_distance = minval([abs(global_mesh%model_width-mean_x), abs(0d0 - mean_x)])
-    ! mean_distance         = minval([mean_distance,model_edge_x_distance])
-    ! Mt                    = M + (Mgb - M)*exp(-alpha*model_edge_x_distance)
-    ! if (material.eq.3) then
-    !   mean_x                = sum(grain_mesh%coord(1,grain_mesh%enod(:,ie)))/size(grain_mesh%enod(:,ie))
-    !   model_edge_x_distance = minval([abs(global_mesh%model_width-mean_x), abs(0d0 - mean_x)])
-    !   Mt                    = M + (Mgb - M)*exp(-alpha*model_edge_x_distance)
-    ! endif
+  !   ! Change diffusion coefficient according to grain boundary diffusion
+  !   ! Find point in global mesh closest to (mean_x,mean_y)
+  !   ! Mean x and y of element
+  !   ! mean_x = sum(grain_mesh%coord(1,grain_mesh%enod(:,ie)))/size(grain_mesh%enod(:,ie))
+  !   ! mean_y = sum(grain_mesh%coord(2,grain_mesh%enod(:,ie)))/size(grain_mesh%enod(:,ie))
+  !   ! minIdx = minloc((global_mesh%coord(1,:) - mean_x)**2 + (global_mesh%coord(2,:) - mean_y)**2)
+  !   ! mean_distance         = abs(lssys_ag(minIdx(1)))
+  !   ! model_edge_x_distance = minval([abs(global_mesh%model_width-mean_x), abs(0d0 - mean_x)])
+  !   ! mean_distance         = minval([mean_distance,model_edge_x_distance])
+  !   ! Mt                    = M + (Mgb - M)*exp(-alpha*model_edge_x_distance)
+  !   ! if (material.eq.3) then
+  !   !   mean_x                = sum(grain_mesh%coord(1,grain_mesh%enod(:,ie)))/size(grain_mesh%enod(:,ie))
+  !   !   model_edge_x_distance = minval([abs(global_mesh%model_width-mean_x), abs(0d0 - mean_x)])
+  !   !   Mt                    = M + (Mgb - M)*exp(-alpha*model_edge_x_distance)
+  !   ! endif
 
-    call diffusion2D3j(grain_mesh%j_flux(:,ie),grain_mesh%coord(:,grain_mesh%enod(:,ie)),grain_mesh%ed(:,ie),Mt)
-  enddo
+  !   call diffusion2D3j(grain_mesh%j_flux(:,ie),grain_mesh%coord(:,grain_mesh%enod(:,ie)),grain_mesh%ed(:,ie),Mt)
+  ! enddo
 
 
   ! Deallocate
@@ -1274,6 +1283,113 @@ subroutine print_diffusion_mesh_info(mesh)
   return
 end subroutine print_diffusion_mesh_info
 
+subroutine reinit_level_set_spatial2(a_g,line_ex,line_ey,closest_line,nseg,coord)
+  ! --- Routine for reinitializing level set function in deformed configuration ---
+  implicit none
+
+  ! Intent inout
+  real(dp),intent(inout)         :: a_g(:)
+  integer, intent(inout)         :: closest_line(:)
+
+  ! Intent in   
+  integer, intent(in)            :: nseg
+  real(dp), intent(in)           :: coord(:,:), line_ex(:,:), line_ey(:,:)
+
+  ! Subroutine variables
+  integer                        :: inod, iIntElm, ierr
+  real(dp)                       :: P(2), A(2), B(2), E(2),v(2), u(2), t, seg_dists(nseg)
+  ! real(dp), allocatable          :: seg_dists(nseg)
+
+
+  ! Loop through all nodes. For each node -> compute distance to all line segments
+  do inod = 1,size(coord,2)
+
+      ! Coordinates of node
+      P = coord(:,inod)
+
+      ! Compute distance to all line segments for given node P
+      seg_dists  = 0d0
+      do iIntElm = 1,nseg
+
+          A = [line_ex(iIntElm,1), line_ey(iIntElm,1)]
+          B = [line_ex(iIntElm,2), line_ey(iIntElm,2)]
+          
+          v = B - A
+          u = A - P
+          t = -dot_product(v, u)/dot_product(v, v)
+                  
+          ! Determine point D on line segment closest to P
+          if (t.le.0d0) then
+              E = A
+          elseif (t.ge.1d0) then
+              E = B
+          else
+              E = (1d0-t)*A + t*B
+          endif
+          
+          ! Compute closest distance from P to line segment (to point D)
+          seg_dists(iIntElm) = norm2(E - P)
+
+          if (isnan(norm2(E - P))) then
+              print *, 'distance is nan'
+              ! call exit(0)
+          endif
+      enddo
+
+
+      ! Signed distance function
+      a_g(inod) = sign(1d0,a_g(inod))*abs(minval(seg_dists))
+
+      ! if (abs(a_g(inod)).lt.1d-9) then
+      !   iIntElm = 1
+      !   A = [line_ex(iIntElm,1), line_ey(iIntElm,1)]
+      !   B = [line_ex(iIntElm,2), line_ey(iIntElm,2)]
+      !   v = B - A
+      !   u = A - P
+      !   t = -dot_product(v, u)/dot_product(v, v)
+      !   ! print *, 'as'
+      ! endif
+
+      ! Store closest line
+      closest_line(inod) = minloc(seg_dists, 1)
+  enddo
+
+  return
+end subroutine reinit_level_set_spatial2
+
+
+SUBROUTINE FindUniqueIntegers(arr, uniqueArr)
+  INTEGER, INTENT(IN)               :: arr(:)      ! Input integer array
+  INTEGER, ALLOCATABLE, INTENT(OUT) :: uniqueArr(:)  ! Output array for unique integers
+  INTEGER, ALLOCATABLE              :: uniqueArr2(:)  ! Output array for unique integers
+  INTEGER :: i, j, counter
+
+
+  ALLOCATE(uniqueArr2(size(arr)))
+  uniqueArr2 = 0
+
+  ! Initialize count to zero
+  uniqueArr2(1) = arr(1)
+  counter       = 1
+  
+  ! Check each element in the input array
+  DO i = 2, size(arr)
+    ! Check if the current element is unique
+    IF (all((uniqueArr2(1:counter) - arr(i)) .ne. 0)) THEN
+      ! Increment count and add the unique element to the output array
+      counter = counter + 1
+      uniqueArr2(counter) = arr(i)
+    END IF
+  END DO
+
+  ! Allocate the output array with the correct size
+  ALLOCATE(uniqueArr(counter))
+  uniqueArr = uniqueArr2(1:counter)
+  deallocate(uniqueArr2)
+
+  return
+
+END SUBROUTINE FindUniqueIntegers
 
 
 end module diffusion

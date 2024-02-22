@@ -43,8 +43,8 @@ class MainClass(object):
         """Loading output data"""
       
         # --- Load python mesh data ---
-        self.output_data.loadmesh(self.input_data.python_location)
-        self.output_data.load_LSInterpolated(self.input_data.python_location)
+        self.input_data.loadmesh(self.input_data.python_location)
+        self.input_data.load_LSInterpolated(self.input_data.python_location)
         
         
     def onLoadLsStep(self):

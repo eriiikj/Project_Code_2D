@@ -110,7 +110,7 @@ program main
    ! Initiate plot system
    call init_plot_system(pq, input_location, mesh)   
 
-   ! ----- Find global dofs for boundary condition and loads and print in table format -----
+   ! ----- Find global dofs for boundary condition and loads and in table format -----
    call finddof(mesh%bcdof,mesh%bcnod,mesh%dofnod)
 
    ! Take init time

@@ -35,8 +35,12 @@ class InputData(object):
         self.version            = 1
         
         # Geometry [microns]
+        self.enod               = 0
+        self.coord              = 0
+        self.nelm               = 0
+        self.nnod               = 0
+        self.nodel              = 0
         self.ls                 = 0
-        self.dofspernode        = 0
         self.a                  = 0
         self.line_ex            = 0
         self.line_ey            = 0
@@ -125,9 +129,6 @@ class InputData(object):
             self.line_ey_all    = data['line_ey']*1e3
             self.line_seg_all   = data['line_seg'].flatten()
             self.material       = data['material'].flatten()
-            self.ex             = np.transpose(data['newex'])*1e3
-            self.ey             = np.transpose(data['newey'])*1e3
-            self.coord          = np.transpose(data['newcoord'])*1e3
             self.tppoints       = data['tppoints']*1e3
     
             
@@ -187,10 +188,9 @@ class InputData(object):
             output_data_file = json.load(ifile)
             
         self.coord         = np.transpose(np.asarray(output_data_file["coord"]))
-        self.enod          = np.transpose(np.asarray(output_data_file["enod"]))
+        self.enod          = np.transpose(np.asarray(output_data_file["enod"]))-1
         self.nelm          = np.asarray(output_data_file["nelm"])
         self.nnod          = output_data_file["nnod"]
-        self.ndof          = np.asarray(output_data_file["ndof"])
         self.nodel         = np.asarray(output_data_file["nodel"])
 
     def load_LSInterpolated(self,python_location):
@@ -263,7 +263,7 @@ class OutputData(object):
         output_data_file["enod"]            = np.transpose(self.enod).tolist()
         output_data_file["bcnod"]           = self.bcnod.tolist()
         output_data_file["bcval"]           = self.bcval.tolist()
-        # output_data_file["bcval_idx"]       = self.bcval_idx.tolist()
+        output_data_file["bcval_idx"]       = self.bcval_idx.tolist()
         output_data_file["nelm"]            = self.nelm
         output_data_file["nnod"]            = self.nnod
         output_data_file["nodel"]           = self.nodel
@@ -289,19 +289,19 @@ class Mesh(object):
         line_ey_all  = self.input_data.line_ey_all
         line_seg_all = self.input_data.line_seg_all
         tppoints     = self.input_data.tppoints
-        enodT        = self.output_data.enod
-        coordT       = self.output_data.coord
-        nodelT       = self.output_data.nodel
-        ls           = self.output_data.ls
+        enod         = self.input_data.enod
+        coord        = self.input_data.coord
+        nodel        = self.input_data.nodel
+        ls           = self.input_data.ls
  
         # Extract partitioned mesh for each grain
-        ls_ed      = ls[enodT,g]
-        line_elms  = np.sum((ls_ed<=0),1)==nodelT
-        enod_g     = np.asarray(enodT[line_elms,:],dtype=np.int32)
+        ls_ed      = ls[enod,g]
+        line_elms  = np.sum((ls_ed<=0),1)==nodel
+        enod_g     = np.asarray(enod[line_elms,:],dtype=np.int32)
         nelm_g     = np.shape(enod_g)[0]
         nods_g     = np.unique(enod_g)
         nnod_g     = np.size(nods_g)
-        coord_g    = coordT[nods_g,:]
+        coord_g    = coord[nods_g,:]
         
         
         # New enod
@@ -331,7 +331,7 @@ class Mesh(object):
         # Boundary nodes
         bcnods = np.where(bnods_logical)[0]
         nbc    = np.size(bcnods)
-        bcval  = np.zeros_like(bcnods)
+        bcval  = np.zeros_like(bcnods,dtype=float)
         
         # Equilibrium chemical potentials
         eq_comp,mu_imc_imc = self.getChemicalPotentials()
@@ -428,7 +428,7 @@ class Mesh(object):
         self.output_data.enod           = enod_g + 1
         self.output_data.bcnod          = bcnod_g
         self.output_data.bcval          = bcval_g
-        # self.output_data.bcval_idx      = bcval_idx
+        self.output_data.bcval_idx      = bcval_idx
         self.output_data.nelm           = nelm_g
         self.output_data.nnod           = nnod_g
         self.output_data.nodel          = nodel_g
@@ -545,9 +545,8 @@ class Mesh(object):
             
             # Generate mesh
             self.generateMesh(g)
-          
+      
             # --- Save output data as json file ---
-            
             self.output_data.save('phase_mesh_' + str(self.input_data.version) + '_g' +  str(g+1) + '.json')
         
         
