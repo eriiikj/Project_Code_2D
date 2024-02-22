@@ -533,11 +533,11 @@ subroutine read_json_diffusion_mesh(input_location, i_IMC, coord, enod)
 
 ! Filename phase mesh file
   if (i_IMC.lt.10) then
-    write(filename, '(A,I1,A,I1,A)' ), 'phase_mesh_', i_IMC, '.json'
+    write(filename, '(A,I1,A,I1,A)' ), 'triangle_mesh_', i_IMC, '.json'
   elseif (i_IMC.ge.10 .and. i_IMC.lt.100) then
-    write(filename, '(A,I2,A,I1,A)' ), 'phase_mesh_', i_IMC, '.json'
+    write(filename, '(A,I2,A,I1,A)' ), 'triangle_mesh_', i_IMC, '.json'
   elseif (i_IMC.ge.100 .and. i_IMC.lt.1000) then
-    write(filename, '(A,I3,A,I1,A)' ), 'phase_mesh_', i_IMC, '.json'
+    write(filename, '(A,I3,A,I1,A)' ), 'triangle_mesh_', i_IMC, '.json'
   endif
 
 ! ----- Locate file -----

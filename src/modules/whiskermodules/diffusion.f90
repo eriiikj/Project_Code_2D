@@ -100,15 +100,15 @@ subroutine solve_diffusion_problem_global(diffsys,i_IMC,lssys,mesh,pq,input_loca
   call generate_global_diffusion_mesh(input_location, diffsys, mesh, lssys, i_IMC)
 
   ! Solve diffusion problem for all grains seperately
-  ! do g=1,lssys%ngrains    
-  !   call diffusion_grain(diffsys,i_IMC, mesh, diffsys%grain_meshes(g), g, input_location, lssys, omp_run, pq)
-  ! enddo 
+  do g=1,lssys%ngrains    
+    call diffusion_grain(diffsys,i_IMC, mesh, diffsys%grain_meshes(g), g, input_location, lssys, omp_run, pq)
+  enddo 
 
-  ! ! Compute IMC area
-  ! call compute_IMC_area(lssys,diffsys)
-  ! if (i_IMC.eq.1) then
-  !   lssys%IMC_area_init = lssys%IMC_area
-  ! endif  
+  ! Compute IMC area
+  call compute_IMC_area(lssys,diffsys)
+  if (i_IMC.eq.1) then
+    lssys%IMC_area_init = lssys%IMC_area
+  endif  
 
   return
 end subroutine solve_diffusion_problem_global
@@ -139,7 +139,7 @@ subroutine generate_global_diffusion_mesh(input_location, diffsys, mesh, lssys, 
 
   ! Generete mesh by running python script
   call chdir(diffusion_mesh_script_location)
-  write(command_line,'(A29)'), 'python diffusion_mesh_Main.py'
+  write(command_line,'(A28)'), 'python triangle_mesh_Main.py'
   call execute_command_line(trim(command_line))
 
   ! Read global diffusion mesh
@@ -185,6 +185,9 @@ subroutine generate_global_diffusion_mesh(input_location, diffsys, mesh, lssys, 
 
   enddo
 
+  ! Write data
+  call write_diffusion_glob_iter_to_matlab(input_location, i_IMC, diffsys%ls)
+
   ! ! Extract ls_ed
   ! do g=1,lssys%ngrains
   !   call extract(diffsys%ls_ed(:,:,g),diffsys%ls(:,g),diffsys%enod,1)
@@ -197,12 +200,6 @@ subroutine generate_global_diffusion_mesh(input_location, diffsys, mesh, lssys, 
   ! enddo
 
 
-  ! Write data
-  call write_diffusion_glob_iter_to_matlab(input_location, i_IMC, diffsys%ls)
-
-
-
-print *, 'as'
 
   return
 end subroutine generate_global_diffusion_mesh
@@ -254,7 +251,6 @@ subroutine diffusion_grain(diffsys, i_IMC, global_mesh, grain_mesh, g, input_loc
     call chdir(phase_mesh_script_location)
     call clock_time(t1, omp_run)
     write(command_line,'(A37,I1)'), 'python grain_mesh_triangular_Main.py ', g
-    ! write(command_line,'(A37,I1)'), 'python grain_mesh_local_Main.py ', g
     call execute_command_line(trim(command_line))
     call clock_time(t2, omp_run)
     diffsys%generate_mesh_time = diffsys%generate_mesh_time + (t2 - t1)    

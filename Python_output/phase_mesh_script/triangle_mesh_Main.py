@@ -5,7 +5,7 @@ Created on Tue Jun 15 09:44:29 2022
 @author: Erik Jacobsson
 """
 
-import diffusion_mesh as ph
+import triangle_mesh as ph
 import json
 import numpy as np
 import math

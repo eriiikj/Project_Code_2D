@@ -76,30 +76,6 @@ class InputData(object):
         self.line_coord         = 0
         self.line_conn          = 0
         self.mesh_points        = 0
-        
-        # Equilibrium compositions
-        self.cu_cu              = 111
-        self.cu_imc             = 0.1  # OBS not acc. to pd
-        self.cu_sn              = 0.31117
-        self.imc_cu             = 0.38214
-        self.imc_imc            = 112
-        self.imc_sn             = 0.45292
-        self.sn_cu              = 0.999763
-        self.sn_imc             = 0.99941
-        self.sn_sn              = 113
-        self.sn_c0_fix          = 0.999
-        self.sn_c0              = 0
-    
-        
-        self.cu_params          = [1.0133e5, -2.1146e4, -1.2842e4, 0.10569]
-        self.imc_params         = [4e5     , -6.9892e3, -1.9185e4, 0.41753]
-        self.sn_params          = [4.2059e6, 7.1680e3 , -1.5265e4, 0.99941]
-        self.molar_volumes      = np.array([7.09, 10.7, 16.3])*1e3
-
-        # Mesh
-        self.el_size_x          = 15e-3
-        self.el_size_y          = 15e-3
-        self.el_size_factor     = 0.05
 
         # Location
         self.location           = None
@@ -321,14 +297,6 @@ class InputData(object):
             
         # Unique line connectivity
         self.line_conn = np.unique(line_conn, axis=0)
-        
-        # Set concentration
-        if (self.tot_imc_area_init==0):
-            self.sn_c0 = self.sn_c0_fix
-        else:
-            self.sn_c0 = (self.sn_c0_fix - self.sn_imc)*\
-                (self.tot_imc_area_init/self.tot_imc_area)\
-                +self.sn_imc
                 
                 
     def get_line_conn(self, line_coord, line_ex, line_ey):
@@ -475,7 +443,6 @@ class Mesh(object):
         # Make sure that enod is numbered counter-clockwise for 3-node elm
         self.reorder_enod_triangle(coord, enod)
         
-        
         # --- Topology quantities ---
         dofs_per_node = 1
         nelm  = np.shape(enod)[0]
@@ -483,270 +450,11 @@ class Mesh(object):
         ndof  = nnod*dofs_per_node
         nodel = np.size(enod[0])
         dofel = nodel*dofs_per_node
-        
-        # Interpolate level set functions from old to new mesh
-        
-        # Short form
-        ngrains    = self.input_data.ngrains
-        coord_mesh = self.input_data.coord
-        enod_mesh  = self.input_data.enod
-        nelm_mesh  = np.shape(enod_mesh)[0]
-        coordT     = coord
-        enodT      = enod
-        aT         = np.zeros((nnod,ngrains))
-        
-        # edof_mesh = np.zeros((nelm_mesh,5))
-        # edof_mesh[:,0] = np.linspace(1,nelm_mesh,nelm_mesh,dtype=int)
-        # edof_mesh[:,1:] = enod_mesh
-        # edof_mesh = np.asarray(edof_mesh,dtype=int)
-        ed = cfc.extract_ed(enod_mesh,self.input_data.a[:,0])
-        # for g in range(ngrains):
-        #     ed = cfc.extract_ed(enod_mesh,self.input_data.a[:,g])
-        #     self.interpolate_scalar_mesh1_to_mesh2(enod_mesh, coord_mesh, ed, \
-        #                                            enodT, coordT, aT[:,g])
-      
-        #   ! Set value at interface nods to 0
-        #   g_cols = [2*(g-1) + 1, 2*(g-1) + 2]
-        #   do i=1,lssys%line_coordN(g)
-        #     where (sqrt((diffsys%coord(1,:)-lssys%line_coord(i,g_cols(1)))**2 + &
-        #     (diffsys%coord(2,:)-lssys%line_coord(i,g_cols(2)))**2).lt.1d-7) diffsys%ls(:,g) = 0d0
-        #   enddo
-      
-        # enddo
-        
-        s = 9
-      
-        
-        # Extract local coord and enod for each grain using ls. Extract bcnods.
-        # Apply boundary conditions. Save as file.
-        
-        
-        
-        
-        
-        # # --- Extract bcnod ---
-        # bcnods = []
-        # for line_tag in interface_splines:
-        #     line_nods,_,_ = gmsh.model.mesh.getNodes(dim=1,tag=line_tag,includeBoundary=True)
-        #     bcnods.extend(line_nods)
-        # bcnods = sorted(set(bcnods))
-        # bcnods = np.asarray(bcnods,dtype=int)
-        # bcval  = np.zeros(np.size(bcnods))
-        
-        # # Number of bcnods
-        # n_interface_points = np.size(bcnods)
-        
- 
-        
-        
-        
-        
 
-        # # Line ex all
-        # line_ex_all  = self.input_data.line_ex_all
-        # line_ey_all  = self.input_data.line_ey_all
-        # line_seg_all = self.input_data.line_seg_all
-        
-        
-        # # --- Equilibrium concentrations of all materials ---
-        # cu_cu   = self.input_data.cu_cu
-        # cu_imc  = self.input_data.cu_imc
-        # cu_sn   = self.input_data.cu_sn
-        # imc_cu  = self.input_data.imc_cu
-        # imc_imc = self.input_data.imc_imc
-        # imc_sn  = self.input_data.imc_sn
-        # sn_cu   = self.input_data.sn_cu
-        # sn_imc  = self.input_data.sn_imc
-        # sn_sn   = self.input_data.sn_sn
-        # sn_c0   = self.input_data.sn_c0
-        # sn_c0_fix = self.input_data.sn_c0_fix
-        
-        
-        # # Short form
-        # cu_params     = self.input_data.cu_params
-        # imc_params    = self.input_data.imc_params
-        # sn_params     = self.input_data.sn_params
-        # molar_volumes = self.input_data.molar_volumes
-        
-        
-        # # Diffusion potentials
-        # mu_cu_cu   = cu_params[0]*(cu_cu  - cu_params[3]) + cu_params[1]
-        # mu_cu_imc  = cu_params[0]*(cu_imc - cu_params[3]) + cu_params[1]
-        # mu_cu_sn   = cu_params[0]*(cu_sn  - cu_params[3]) + cu_params[1]
-        
-        # mu_imc_cu  = imc_params[0]*(imc_cu  - imc_params[3]) + imc_params[1]
-        # mu_imc_imc = imc_params[0]*(imc_imc - imc_params[3]) + imc_params[1]
-        # mu_imc_sn  = imc_params[0]*(imc_sn  - imc_params[3]) + imc_params[1]
-        
-        # mu_sn_cu   = sn_params[0]*(sn_cu  - sn_params[3]) + sn_params[1]
-        # mu_sn_imc  = sn_params[0]*(sn_imc - sn_params[3]) + sn_params[1]
-        # mu_sn_sn   = sn_params[0]*(sn_sn  - sn_params[3]) + sn_params[1]
-        
-        # # Equilibrium compositions
-        # # Row 1: Cu eq comps
-        # # Row 2: IMC eq comps
-        # # Row 3: Sn eq comps
-        # eq_comp = np.array([[mu_cu_cu , mu_cu_imc , mu_cu_sn],\
-        #                     [mu_imc_cu, mu_imc_imc, mu_imc_sn],\
-        #                     [mu_sn_cu , mu_sn_imc , mu_sn_sn]])
-        
-        
-        # grain_material = self.input_data.material[grain] - 1
-        
-        # # Save triple junction points
-        # tp_points_x = []
-        # tp_points_y = []
-        
-        # # Determine what other grain has smallest value at that node
-        # other_grains = grain_idx[grain_idx != grain]
-        
-        # # Add bcval
-        # line_counter  = 0
-        # point_counter = 0
-        # for sep_idx in range(nsep_lines):
-            
-        #     # Cols of sep_idx
-        #     sep_idx_cols = [2*sep_idx, 2*sep_idx + 1]
-            
-        #     # Number of segments lines in separate line
-        #     nseg_sep     = sep_lines[sep_idx,1] - sep_lines[sep_idx,0] + 1
-        #     line_counter_start = line_counter
-        #     for k in range(nseg_sep):
-                
-        #         # Point P
-        #         P = [line_ex[line_counter][0],line_ey[line_counter][0]]
-                
-        #         # See if point P is in other grain
-        #         P_in_g = []
-        #         for g in other_grains:
-        #             g_cols = [2*g, 2*g + 1]
-        #             line_ex_g = line_ex_all[:line_seg_all[g],[g_cols[0],g_cols[1]]]
-        #             line_ey_g = line_ey_all[:line_seg_all[g],[g_cols[0],g_cols[1]]]
-        #             if ((abs((line_ex_g - P[0]) + (line_ey_g - P[1]))<1e-15).any()):
-        #                 P_in_g.append(g)
-                
-        #         P_in_g = np.array(P_in_g)
-                    
-        #         if (np.size(P_in_g)==2):
-        #             # triple junction
-        #             tp_points_x.append(P[0])
-        #             tp_points_y.append(P[1])
-                    
-        #         if (np.size(P_in_g)>1):
-        #             other_materials = self.input_data.material[P_in_g] - 1
-        #             if (any((other_materials-grain_material) == 0)):
-        #                 P_in_g = P_in_g[other_materials != grain_material]
-        #             else:
-        #                 P_in_g = P_in_g[0]
-                            
-        #         other_material = self.input_data.material[P_in_g] - 1
 
-                        
-        #         if (np.size(other_material)>1):
-        #             print('Error in bcval')
-
-        #         # Find equilibrium composition grain, lowest_grain
-        #         bcval[point_counter] = eq_comp[grain_material,other_material]
-                
-        #         # Update counter
-        #         line_counter  = line_counter  + 1
-        #         point_counter = point_counter + 1
-     
-        
-     
-        #     # Check if first and last point of current separate segment coincide
-        #     A = np.array([line_ex[line_counter_start][0],line_ey[line_counter_start][0]])
-        #     B = np.array([line_ex[line_counter-1][1],line_ey[line_counter-1][1]])
-            
-        #     if (np.linalg.norm(A-B)>1e-12):
-        #         # If points dont coincide we must add one more bcval
-                
-        #         # Point P
-        #         P = B
-                
-                
-        #         # See if point P is in other grain
-        #         P_in_g = []
-        #         for g in other_grains:
-        #             g_cols = [2*g, 2*g + 1]
-        #             line_ex_g = line_ex_all[:line_seg_all[g],[g_cols[0],g_cols[1]]]
-        #             line_ey_g = line_ey_all[:line_seg_all[g],[g_cols[0],g_cols[1]]]
-        #             if ((abs((line_ex_g - P[0]) + (line_ey_g - P[1]))<1e-15).any()):
-        #                 P_in_g.append(g)
-                
-                
-        #         P_in_g = np.array(P_in_g)
-                
-        #         if (np.size(P_in_g)==2):
-        #             # triple junction
-        #             tp_points_x.append(P[0])
-        #             tp_points_y.append(P[1])
-                    
-        #         if (np.size(P_in_g)>1):
-        #             other_materials = self.input_data.material[P_in_g] - 1
-        #             if (any((other_materials-grain_material) == 0)):
-        #                 P_in_g = P_in_g[other_materials != grain_material]
-        #             else:
-        #                 P_in_g = P_in_g[0]
-                            
-        #         other_material = self.input_data.material[P_in_g] - 1
-                
-                
-        #         if (np.size(other_material)>1):
-        #             print('Error in bcval')
-                
-        #         bcval[point_counter] = eq_comp[grain_material,other_material]
-        #         point_counter = point_counter + 1
-                
-            
-        # # Rearrange bcnod
-        # nbc        = np.size(bcnods)
-        # bcnod      = np.zeros((nbc,2), dtype=np.int32)
-        # bcnod[:,0] = bcnods
-        # bcnod[:,1] = np.ones((nbc), dtype=np.int32)
-        
-        
-        # # Create a boolean mask and remove imc_imc values from bc
-        # # mask  = np.abs(bcval - self.input_data.imc_imc)>1e-12
-        # mask  = np.abs(bcval - mu_imc_imc) > 1e-12
-        # bcval = bcval[mask]
-        # bcnod = bcnod[mask]
-        
-        
-        # # Create a boolean mask and remove sn_sn values from bc
-        # # mask  = np.abs(bcval - self.input_data.imc_imc)>1e-12
-        # mask  = np.abs(bcval - mu_sn_sn)>1e-12
-        # bcval = bcval[mask]
-        # bcnod = bcnod[mask]
-        
-        
-        # # Remove tp points from bc
-        # tp_points_x = np.array(tp_points_x)
-        # tp_points_y = np.array(tp_points_y)
-        # ntp = np.size(tp_points_x)
-        # mask = np.full(np.size(bcnod[:,0]), True, dtype=bool)
-        # for (xtp,ytp) in zip(tp_points_x,tp_points_y):
-        #     grain_nod = np.where(np.logical_and(abs(coord[bcnod[:,0]-1,0]-xtp) \
-        #               <1e-13,abs(coord[bcnod[:,0]-1,1]-ytp)<1e-13))[0][0]
-        #     mask[grain_nod] = False 
-                
-            
-        # # Update bcnod and bcval
-        # bcval = bcval[mask]
-        # bcnod = bcnod[mask]
-        
-        # bcval_idx = bcval.copy()
-
-      
-        
-    
-
-        # # --- Transfer model variables to output data ---
+        # --- Transfer model variables to output data ---
         self.output_data.coord          = coord
         self.output_data.enod           = enod
-        # self.output_data.bcnod          = bcnod
-        # self.output_data.bcval          = bcval
-        # self.output_data.bcval_idx      = bcval_idx
         self.output_data.dofs_per_node  = dofs_per_node
         self.output_data.nelm           = nelm
         self.output_data.nnod           = nnod
@@ -754,104 +462,6 @@ class Mesh(object):
         self.output_data.nodel          = nodel
         self.output_data.dofel          = dofel
         
-    def interpolate_scalar_mesh1_to_mesh2(self, mesh1_enod, mesh1_coord, \
-        mesh1_ed, mesh2_enod,mesh2_coord, mesh2_a):
-        # --- Interpolate scalar field mesh1_a from mesh1 to mesh2 ---
-
-        #
-        nelm1 = np.shape(mesh1_enod)[0]
-        nelm2 = np.shape(mesh2_enod)[0]
-        nnod1 = np.shape(mesh1_coord)[0]
-        nnod2 = np.shape(mesh2_coord)[0]
-
-        # Interpolate mesh1_ed from mesh1 to mesh2
-        for inod in range(nnod2):
-    
-         # Coordinates of point in new mesh
-          x = mesh2_coord[inod,0]
-          y = mesh2_coord[inod,1]
-        
-          # Find which element in the global mesh that the point (x,y) belong to
-          pwt = False
-          for ie in range(nelm1):
-              xecoords = mesh1_coord[mesh1_enod[ie,:],0]
-              yecoords = mesh1_coord[mesh1_enod[ie,:],1]
-    
-              # ! Divide element in two triangles and use point in triangle function
-        
-              # ! 4 --- 3      4 --- 3         3
-              # ! |     |      |    /       /  |
-              # ! |     |  ->  |(1)/       /(2)|
-              # ! |     |      |  /       /    |
-              # ! 1 --- 2      1         1 --- 2
-    
-              # First triangle
-              x1=xecoords[0]; x2=xecoords[2]; x3=xecoords[3]
-              y1=yecoords[0]; y2=yecoords[2]; y3=yecoords[3]
-              pwt = self.point_within_triangle(x,y,x1,x2,x3,y1,y2,y3)
-              if (pwt):
-                break 
-          
-              # Second triangle
-              x1=xecoords[0]; x2=xecoords[1]; x3=xecoords[2]
-              y1=yecoords[0]; y2=yecoords[1]; y3=yecoords[2]
-              pwt = self.point_within_triangle(x,y,x1,x2,x3,y1,y2,y3)
-              if (pwt):
-                break
-            
-          if (pwt==False):
-              print('Error in interpolating. No element found')
-              exit
-            
-          # Element in global mesh found. Global element number is ie and node coordinates are given in xecoords and yecoords 
-          # Now the task is, given (x,y), interpolate the node values of the element to (x,y)
-            
-          # Global element coordinates
-          x1 = xecoords[0]; x2 = xecoords[1]; x3 = xecoords[2]; x4 = xecoords[3];
-          y1 = yecoords[0]; y2 = yecoords[1]; y3 = yecoords[2]; y4 = yecoords[3];
-            
-          # Global node values
-          edvals = mesh1_ed[ie,:]
-            
-          # Natural coordinates (isoparametric coordinates) of (x,y). Assuming fixed parallel grid!
-          xsi = 2*(x-x1)/(x2-x1) - 1
-          eta = 2*(y-y1)/(y3-y1) - 1
-            
-          # Shape functions evaluated at (xsi,eta). Nvec = [N1,N2,N3,N4]
-          Nvec    = np.zeros(4)
-          Nvec[0] = (1-xsi)*(1-eta)/4
-          Nvec[1] = (1+xsi)*(1-eta)/4
-          Nvec[2] = (1+xsi)*(1+eta)/4
-          Nvec[3] = (1-xsi)*(1+eta)/4
-            
-          # Interpolated pressure at (x,y)
-          mesh2_a[inod] = np.dot(Nvec, edvals)
-            
-            
-    def point_within_triangle(self, x, y, x1, x2, x3, y1, y2, y3):
-        """
-        Function to determine if point (x, y) is within the triangle with vertices (x1, y1), (x2, y2), and (x3, y3).
-        :param x: x-coordinate of the point
-        :param y: y-coordinate of the point
-        :param x1, x2, x3: x-coordinates of the triangle vertices
-        :param y1, y2, y3: y-coordinates of the triangle vertices
-        :return: True if the point is within the triangle, False otherwise
-        """
-        tol = 1e-13
-    
-        # Barycentric coordinates of (x, y) in the triangle
-        detT = (x1 - x3) * (y2 - y3) - (x2 - x3) * (y1 - y3)
-        c1 = ((y2 - y3) * (x - x3) + (x3 - x2) * (y - y3)) / detT
-        c2 = ((y3 - y1) * (x - x3) + (x1 - x3) * (y - y3)) / detT
-        c3 = 1.0 - c1 - c2
-    
-        # Check if the point is within the triangle
-        condition_satisfied = (0.0 - tol <= c1 <= 1.0 + tol) and \
-                              (0.0 - tol <= c2 <= 1.0 + tol) and \
-                              (0.0 - tol <= c3 <= 1.0 + tol) and \
-                              (c1 + c2 + c3 <= 1.0)
-    
-        return condition_satisfied
         
     def extract_mesh_data(self,inpmatrix):
         # Convert mesh data from .inp file to float
@@ -958,7 +568,7 @@ class Mesh(object):
         self.generateMesh()
           
         # --- Save output data as json file ---
-        self.output_data.save('phase_mesh_' + str(self.input_data.version) + '.json')
+        self.output_data.save('triangle_mesh_' + str(self.input_data.version) + '.json')
         
         # # # --- Export location to Fortran ---
         # # self.exportLocationToFortran()

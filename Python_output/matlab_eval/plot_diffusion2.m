@@ -21,7 +21,7 @@ grain = struct(...
     'bcval_idx',[],...
     'nodel',[],...
     'nelm',[],...
-    'ndof',[],...
+    'nnod',[],...
     'a',[],...
     'r',[],...
     'ed',[],...
@@ -41,32 +41,32 @@ grainArr = repmat(grain, 1, ngrains);
 step_size = 1;
 for i_IMC = 1%1:step_size:IMC_steps
 
-%     % Load grain mesh
-%     for g=1:ngrains
-%         [grainArr(g).edof,grainArr(g).enod,grainArr(g).coord,...
-%          grainArr(g).dofs,grainArr(g).ex,grainArr(g).ey,...
-%          grainArr(g).bcnod,grainArr(g).bcval,grainArr(g).bcval_idx,...
-%          grainArr(g).nodel,grainArr(g).nelm,grainArr(g).ndof]...
-%          = import_grain_mesh(i_IMC,g);
-%     
+    % Load grain mesh
+    for g=2%1:ngrains
+        [grainArr(g).edof,grainArr(g).enod,grainArr(g).coord,...
+         grainArr(g).dofs,grainArr(g).ex,grainArr(g).ey,...
+         grainArr(g).bcnod,grainArr(g).bcval,...
+         grainArr(g).nodel,grainArr(g).nelm,grainArr(g).nnod]...
+         = import_grain_mesh(i_IMC,g);
+    
 %         % Load grain results
 %         [grainArr(g).a,grainArr(g).r,grainArr(g).ed,...
 %          grainArr(g).jint, grainArr(g).j_flux,grainArr(g).p,...
 %          grainArr(g).p_ed] = load_diffusion(i_IMC,g,grainArr(g).edof);
-%     end
-% 
-% 
-%     % Plot grain mesh with concentration
-%     f1 = figure(1);
-%     cla;
-%     for g=2%1:ngrains
-% %         plot_mesh(grainArr(g).ex,grainArr(g).ey)
+    end
+
+
+    % Plot grain mesh with concentration
+    f1 = figure(1);
+    cla;
+    for g=2%1:ngrains
+        plot_mesh(grainArr(g).ex,grainArr(g).ey,'k')
 %         plot_2D_conc(grainArr(g).ex,grainArr(g).ey,grainArr(g).ed,i_IMC)
 %         hold on
 %         plot_j(grainArr(g).ex,grainArr(g).ey,grainArr(g).j_flux)
-%         axis equal  
-%         box on
-%     end
+        axis equal  
+        box on
+    end
 
 % %     Plot grain mesh with hydrostatic pressure
 %     f2 = figure(2);
@@ -86,60 +86,57 @@ for i_IMC = 1%1:step_size:IMC_steps
 
 
 
+%     % Load level set
+%     [a,ed,line_ex,line_ey,line_seg,line_coord,line_coordN,ex,ey,coord,...
+%         tppoints] = load_level_set(i_IMC,edof);
+% 
+%     % Load triangle mesh
+%     [coordT,enodT,edofT,nelmT,ndofT,dofspernodeT,nodelT,exT,eyT] = ...
+%     import_triangle_mesh(i_IMC);
+% 
+%     % Load interpolated level set field
+%     [ls,ls_ed] = import_diffusion_glob(i_IMC,edofT,nodelT);
 
 
-
-    % Load level set
-    [a,ed,line_ex,line_ey,line_seg,line_coord,line_coordN,ex,ey,coord,...
-        tppoints] = load_level_set(i_IMC,edof);
-
-    % Load triangle mesh
-    [coordT,enodT,edofT,nelmT,ndofT,dofspernodeT,nodelT,exT,eyT] = ...
-    import_triangle_mesh(i_IMC);
-
-    % Load interpolated level set field
-    [ls,ls_ed] = import_diffusion_glob(i_IMC,edofT,nodelT);
-
-
-    figure(13)
-    g = 2;
-    plot_field2(ex,ey,ed(:,:,g),'k')
-    hold on
-    plot_field(exT,eyT,ls_ed(:,:,g),'k')    
-    g_cols = [2*(g-1) + 1,2*(g-1) + 2];
-    plot_interface(line_ex(1:line_seg(g),g_cols),...
-                   line_ey(1:line_seg(g),g_cols),'k',g)
-    axis equal
-    box on
-
-
-    % Extract nodes
-    elmsTG  = sum((ls_ed(:,:,g)<=0),2)==nodelT;
-    nelmTG  = sum(elmsTG)
-    enodTG  = enodT(elmsTG,:);   
-    nodsTG  = unique(enodTG);
-    coordTG = coordT(nodsTG,:);
-    nnodTG  = size(coordTG,1)
-%     exTG    = exT(elmsTG,:);
-%     eyTG    = eyT(elmsTG,:);
-    
-
-    % New enod
-    newGrainNods = (1:nnodTG)';
-    for k=1:nnodTG
-        mask = enodTG == nodsTG(k);
-        enodTG(mask) = newGrainNods(k);
-    end
-    edofTG = [(1:nelmTG)',enodTG];
-    dofsTG = (1:nnodTG)';
-
-    % Ex and Ey
-    [exTG,eyTG] = coordxtr(edofTG,coordTG,dofsTG,nodelT);
-
-    figure()
-    patch(exTG',eyTG','white')
-    axis equal
-    box on
+%     figure(13)
+%     g = 1;
+%     plot_field2(ex,ey,ed(:,:,g),'k')
+%     hold on
+%     plot_field(exT,eyT,ls_ed(:,:,g),'k')    
+%     g_cols = [2*(g-1) + 1,2*(g-1) + 2];
+%     plot_interface(line_ex(1:line_seg(g),g_cols),...
+%                    line_ey(1:line_seg(g),g_cols),'k',g)
+%     axis equal
+%     box on
+% 
+% 
+%     % Extract nodes
+%     elmsTG  = sum((ls_ed(:,:,g)<=0),2)==nodelT;
+%     nelmTG  = sum(elmsTG);
+%     enodTG  = enodT(elmsTG,:);   
+%     nodsTG  = unique(enodTG);
+%     coordTG = coordT(nodsTG,:);
+%     nnodTG  = size(coordTG,1);
+% %     exTG    = exT(elmsTG,:);
+% %     eyTG    = eyT(elmsTG,:);
+%     
+% 
+%     % New enod
+%     newGrainNods = (1:nnodTG)';
+%     for k=1:nnodTG
+%         mask = enodTG == nodsTG(k);
+%         enodTG(mask) = newGrainNods(k);
+%     end
+%     edofTG = [(1:nelmTG)',enodTG];
+%     dofsTG = (1:nnodTG)';
+% 
+%     % Ex and Ey
+%     [exTG,eyTG] = coordxtr(edofTG,coordTG,dofsTG,nodelT);
+% 
+%     figure()
+%     patch(exTG',eyTG','white')
+%     axis equal
+%     box on
 
 
 
@@ -300,14 +297,14 @@ end
 end
 
 
-function [edof,enod,coord,dofs,ex,ey,bcnod,bcval,bcval_idx,nodel, ...
-    nelm,ndof] = import_grain_mesh(i_IMC,g)
+function [edof,enod,coord,dofs,ex,ey,bcnod,bcval,nodel, ...
+    nelm,nnod] = import_grain_mesh(i_IMC,g)
 
 
 % Input data and mesh location
 s = what('../single_study/phase_meshes');
 input_mesh_location = s.path;
-filename=[input_mesh_location, '/phase_mesh_',num2str(i_IMC),'_',...
+filename=[input_mesh_location, '/phase_mesh_',num2str(i_IMC),'_g',...
           num2str(g),'.json'];
 
 % Extracting mesh from python created json file
@@ -317,23 +314,20 @@ str = char(raw');
 fclose(fid); 
 mesh_struct = jsondecode(str);
 clear fid raw str
-edof           = zeros(mesh_struct.nelm, mesh_struct.dofel+1);
+edof           = zeros(mesh_struct.nelm, mesh_struct.nodel+1);
 edof(:,1)      = 1:mesh_struct.nelm;
-edof(:,2:end)  = mesh_struct.edof;
+edof(:,2:end)  = mesh_struct.enod';
 enod           = mesh_struct.enod';
 bcnod          = mesh_struct.bcnod;
 bcval          = mesh_struct.bcval;
-bcval_idx      = mesh_struct.bcval_idx;
+% bcval_idx      = mesh_struct.bcval_idx;
 coord          = mesh_struct.coord'*1e-3;
 nodel          = mesh_struct.nodel;
 nelm           = mesh_struct.nelm;
-ndof           = mesh_struct.ndof;
-dofspernode    = mesh_struct.dofs_per_node;
+nnod           = mesh_struct.nnod;
 
 % Dofs (one dof per node)
-if (dofspernode==1)
-    dofs = (1:ndof)';
-end
+dofs = (1:nnod)';
 
 % Ex and Ey
 [ex,ey] = coordxtr(edof,coord,dofs,nodel);
@@ -347,7 +341,7 @@ function [coord,enod,edof,nelm,ndof,dofspernode,nodel,ex,ey] = ...
 % Input data and mesh location
 s = what('../single_study/phase_meshes');
 input_mesh_location = s.path;
-filename=[input_mesh_location, '/triangle_mesh_',num2str(i_IMC),'.json'];
+filename=[input_mesh_location, '/phase_mesh_',num2str(i_IMC),'.json'];
 
 % Import mesh_struct from json file
 fid = fopen(filename); 
@@ -381,7 +375,7 @@ function [ls,ls_ed] = import_diffusion_glob(i_IMC, edof, nodel)
 % Input data and mesh location
 s = what('../single_study/mat_files/');
 input_mesh_location = s.path;
-filename=[input_mesh_location, '/triangle_ls_',num2str(i_IMC),'.mat'];
+filename=[input_mesh_location, '/diffusion_',num2str(i_IMC),'.mat'];
 load(filename,'ls')
 
 ngrains = size(ls,2);

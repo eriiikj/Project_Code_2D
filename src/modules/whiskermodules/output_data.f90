@@ -539,27 +539,28 @@ contains
     write(*,'(A16,A)') 'Saving matfile: ', matfilename
 
     ! Write to file    
-    call matWrt2f(trim(matfilename), lssys%a              , 'a'            , 'w')
-    call matWrt2f(trim(matfilename), lssys%line_ex        , 'line_ex'      , 'u')
-    call matWrt2f(trim(matfilename), lssys%line_ey        , 'line_ey'      , 'u')
-    call matWrt2f(trim(matfilename), lssys%line_seg       , 'line_seg'     , 'u')
-    call matWrt2f(trim(matfilename), lssys%line_coord     , 'line_coord'   , 'u')
-    call matWrt2f(trim(matfilename), lssys%line_coordN    , 'line_coordN'  , 'u')
-    call matWrt2f(trim(matfilename), lssys%vp(1,:,:)      , 'vpx'          , 'u')
-    call matWrt2f(trim(matfilename), lssys%vp(2,:,:)      , 'vpy'          , 'u')
-    call matWrt2f(trim(matfilename), lssys%sep_lines      , 'sep_lines'    , 'u')
-    call matWrt2f(trim(matfilename), [lssys%time]         , 'time'         , 'u')
-    call matWrt2f(trim(matfilename), lssys%material       , 'material'     , 'u')
-    call matWrt2f(trim(matfilename), [lssys%IMC_area_init], 'IMC_area_init', 'u')
-    call matWrt2f(trim(matfilename), [lssys%IMC_area]     , 'IMC_area'     , 'u')
-    call matWrt2f(trim(matfilename), [lssys%time]         , 'time'         , 'u')
-    call matWrt2f(trim(matfilename), [lssys%time]         , 'time'         , 'u')
-    call matWrt2f(trim(matfilename), [mesh%elmsize_x]     , 'elsize_x'     , 'u')
-    call matWrt2f(trim(matfilename), [mesh%elmsize_y]     , 'elsize_y'     , 'u')    
-    call matWrt2f(trim(matfilename), mesh%newex           , 'newex'        , 'u')
-    call matWrt2f(trim(matfilename), mesh%newey           , 'newey'        , 'u')
-    call matWrt2f(trim(matfilename), mesh%newcoord        , 'newcoord'     , 'u')
-    call matWrt2f(trim(matfilename), mesh%enod            , 'enod'         , 'u')
+    call matWrt2f(trim(matfilename), lssys%a                                , 'a'            , 'w')
+    call matWrt2f(trim(matfilename), lssys%line_ex                          , 'line_ex'      , 'u')
+    call matWrt2f(trim(matfilename), lssys%line_ey                          , 'line_ey'      , 'u')
+    call matWrt2f(trim(matfilename), lssys%line_seg                         , 'line_seg'     , 'u')
+    call matWrt2f(trim(matfilename), lssys%line_coord                       , 'line_coord'   , 'u')
+    call matWrt2f(trim(matfilename), lssys%line_coordN                      , 'line_coordN'  , 'u')
+    call matWrt2f(trim(matfilename), lssys%vp(1,:,:)                        , 'vpx'          , 'u')
+    call matWrt2f(trim(matfilename), lssys%vp(2,:,:)                        , 'vpy'          , 'u')
+    call matWrt2f(trim(matfilename), lssys%sep_lines                        , 'sep_lines'    , 'u')
+    call matWrt2f(trim(matfilename), [lssys%time]                           , 'time'         , 'u')
+    call matWrt2f(trim(matfilename), lssys%material                         , 'material'     , 'u')
+    call matWrt2f(trim(matfilename), [lssys%IMC_area_init]                  , 'IMC_area_init', 'u')
+    call matWrt2f(trim(matfilename), [lssys%IMC_area]                       , 'IMC_area'     , 'u')
+    call matWrt2f(trim(matfilename), [lssys%time]                           , 'time'         , 'u')
+    call matWrt2f(trim(matfilename), [lssys%time]                           , 'time'         , 'u')
+    call matWrt2f(trim(matfilename), [mesh%elmsize_x]                       , 'elsize_x'     , 'u')
+    call matWrt2f(trim(matfilename), [mesh%elmsize_y]                       , 'elsize_y'     , 'u')    
+    call matWrt2f(trim(matfilename), mesh%newex                             , 'newex'        , 'u')
+    call matWrt2f(trim(matfilename), mesh%newey                             , 'newey'        , 'u')
+    call matWrt2f(trim(matfilename), mesh%newcoord                          , 'newcoord'     , 'u')
+    call matWrt2f(trim(matfilename), mesh%enod                              , 'enod'         , 'u')
+    call matWrt2f(trim(matfilename), lssys%tp_points([1:lssys%ntp_points],:), 'tppoints'     , 'u')
     
 
     return
@@ -641,11 +642,11 @@ contains
 
     ! Filename
     if (i_IMC.lt.10) then
-      write (matfilename, "(A10,I1,A4)") 'diffusion_', i_IMC, '.mat'
+      write (matfilename, "(A12,I1,A4)") 'triangle_ls_', i_IMC, '.mat'
     elseif (i_IMC.lt.100) then
-      write (matfilename, "(A10,I2,A4)") 'diffusion_', i_IMC, '.mat'
+      write (matfilename, "(A12,I2,A4)") 'triangle_ls_', i_IMC, '.mat'
     elseif (i_IMC.lt.1000) then
-      write (matfilename, "(A10,I3,A4)") 'diffusion_', i_IMC, '.mat'
+      write (matfilename, "(A12,I3,A4)") 'triangle_ls_', i_IMC, '.mat'
     endif
 
     write(*,'(A16,A)') 'Saving matfile: ', matfilename
