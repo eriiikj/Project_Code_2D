@@ -326,7 +326,7 @@ class Mesh(object):
         nline_coord = np.size(line_coord,0)
 
         bnods_logical = np.full(nnod_g,False)
-        for k in range(line_seg):
+        for k in range(np.shape(line_coord)[0]):
             P = line_coord[k,:]
             bnods_logical = np.logical_or(bnods_logical,np.linalg.norm(coord_g-P, axis=1)<1e-8)
 
@@ -356,7 +356,7 @@ class Mesh(object):
             bcnod = bcnods[i]
             
             # Point P
-            P = line_coord[bcnod,:]
+            P = coord_g[bcnod,:]
                     
             # See if point P is in other grain
             P_in_g = []

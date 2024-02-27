@@ -267,7 +267,7 @@ subroutine diffusion_grain(diffsys, i_IMC, global_mesh, grain_mesh, g, input_loc
     type(plot_system), intent(inout)           :: pq
 
 ! Subroutine variables
-    integer :: g_cols(2)
+    integer                                    :: g_cols(2)
 
 ! Locations
     character(len=255)                         :: main_location               ! Location of this Fortran program
@@ -281,6 +281,9 @@ subroutine diffusion_grain(diffsys, i_IMC, global_mesh, grain_mesh, g, input_loc
 
     write(*,*) 
     write(*,'(A40,I1,A4)') '--- Solving diffusion problem for grain ', g, ' ---'
+
+    
+    g_cols = [2*(g-1) + 1, 2*(g-1) + 2]
 
 ! Reset mesh quantities
     print *, 'Before mesh reset'
@@ -333,6 +336,8 @@ subroutine diffusion_grain(diffsys, i_IMC, global_mesh, grain_mesh, g, input_loc
 ! Obtain jint of grain
     print *, 'Before compute jint'
 ! call compute_jint2(grain_mesh, I_IMC)
+! call ComputeJint3(grain_mesh, lssys%line_ex([1:lssys%line_seg(g)],g_cols), lssys%line_ey([1:lssys%line_seg(g)],g_cols), &
+! lssys%line_seg(g))
     print *, 'After compute jint'
   
 ! Save diffusion results
@@ -343,6 +348,117 @@ subroutine diffusion_grain(diffsys, i_IMC, global_mesh, grain_mesh, g, input_loc
 
     return
 end subroutine diffusion_grain
+
+
+subroutine ComputeJint3(grain_mesh, line_ex, line_ey, nseg)
+! --- Routine for computing jint ---
+
+! Intent inout
+  type(grain_mesh_system),intent(inout) :: grain_mesh
+  
+! Intent in
+  real(dp), intent(in)  :: line_ex(:,:), line_ey(:,:)
+  integer, intent(in)   :: nseg
+
+! Subroutine variables
+  type(sparse)          :: M
+  integer, allocatable  :: lines(:), enod_m(:,:), bcvali(:)
+  real(dp), allocatable :: bcval_u(:), bcval_coords(:,:)
+  logical, allocatable  :: bool_seg(:)
+  integer               :: nbnods, nbcval, nnods_bcseg, nseg_bcval, i, j, k, iseg, ierr
+  real(dp)              :: bcval, x1, x2, y1, y2, Le, Me(2,2)
+  logical               :: P1inbccoords, P2inbccoords
+
+! Number of boundary nods
+  nbnods = size(grain_mesh%bcnod(:, 1))
+
+! Initialize jint
+  allocate(grain_mesh%jint(nbnods), stat=ierr)
+  grain_mesh%jint = 0d0
+
+! Loop through each bcval (phase interface)
+  call FindUniqueREAL(grain_mesh%bcval, bcval_u)
+  nbcval = size(bcval_u)
+
+! Loop through each bcval (phase interface).
+! 1) Find coordinates along the bcval interface
+! 2) Find the lines connecting the coordinates
+  allocate(bool_seg(nseg))
+  do i = 1, nbcval
+      bool_seg    = .false.
+      bcval       = bcval_u(i)
+      bcvali      = pack([(j, j=1,nbnods)], grain_mesh%bcval == bcval)
+      nnods_bcseg = size(bcvali)
+      allocate(bcval_coords(2,nnods_bcseg))
+      bcval_coords = grain_mesh%coord(:,grain_mesh%bcnod(bcvali,1))
+
+      do iseg = 1, nseg
+          x1 = line_ex(iseg, 1)
+          x2 = line_ex(iseg, 2)
+          y1 = line_ey(iseg, 1)
+          y2 = line_ey(iseg, 2)
+
+!  Check if segment endpoints are in coords
+          P1inbccoords = any((abs(bcval_coords(1,:) - x1) .lt. 1d-8) .and. (abs(bcval_coords(2,:) - y1) .lt. 1e-8))
+          P2inbccoords = any((abs(bcval_coords(1,:) - x2) .lt. 1d-8) .and. (abs(bcval_coords(2,:) - y2) .lt. 1e-8))
+
+          if (P1inbccoords .and. P1inbccoords) then
+              bool_seg(iseg) = .true.
+          end if
+      end do
+
+! Find lines with true values
+      lines = pack([(j, j=1, nseg)],bool_seg)
+      print *, 'as'
+
+      nseg_bcval = size(lines)
+
+! --- Compute mass matrix ---
+      allocate(enod_m(2,nseg_bcval),stat=ierr)
+      do iseg=1,nseg_bcval
+        enod_m(:,iseg) = (/iseg,iseg+1/)
+      enddo
+
+      print *, 'before allocating M'
+      call spaTopDef(M,enod_m,1)
+
+! Assemble mass matrix
+      M%a = 0d0
+      do k=1,nseg_bcval
+
+! iseg
+        iseg = lines(i)
+
+! Coordinates and length of element
+        x1 = line_ex(iseg, 1)
+        x2 = line_ex(iseg, 2)
+        y1 = line_ey(iseg, 1)
+        y2 = line_ey(iseg, 2)
+        Le = norm2([(x2-x1), (y2-y1)]) ! Length of line segment
+
+! Mass matrix
+        Me(1,:) = [2d0, 1d0]
+        Me(2,:) = [1d0, 2d0]
+        Me      = Le/6d0*Me
+        call assem(M,Me,enod_m(:,k),1)
+      enddo
+
+! Solve M*vnod = -r
+      grain_mesh%jint(bcvali) = -grain_mesh%r(grain_mesh%bcnod(bcvali,1))
+      call solveq(M, grain_mesh%jint(bcvali))
+
+  end do
+
+! Deallocate
+  deallocate(lines)
+  deallocate(coords)
+  deallocate(enod_m)
+  deallocate(bcval_u)
+  deallocate(bcvali)
+  deallocate(bool_seg)
+
+  return
+end subroutine ComputeJint3
 
 
 subroutine mesh_reset(grain_mesh)
@@ -1387,6 +1503,40 @@ SUBROUTINE FindUniqueIntegers(arr, uniqueArr)
   return
 
 END SUBROUTINE FindUniqueIntegers
+
+SUBROUTINE FindUniqueREAL(arr, uniqueArr)
+  real(dp), INTENT(IN)               :: arr(:)      ! Input integer array
+  real(dp), ALLOCATABLE, INTENT(OUT) :: uniqueArr(:)  ! Output array for unique integers
+  real(dp), ALLOCATABLE              :: uniqueArr2(:)  ! Output array for unique integers
+  INTEGER :: i, j, counter
+
+
+  ALLOCATE(uniqueArr2(size(arr)))
+  uniqueArr2 = 0
+
+! Initialize count to zero
+  uniqueArr2(1) = arr(1)
+  counter       = 1
+  
+! Check each element in the input array
+  DO i = 2, size(arr)
+! Check if the current element is unique
+    IF (all(abs(uniqueArr2(1:counter) - arr(i)) .gt. 1d-10)) THEN
+! Increment count and add the unique element to the output array
+      counter = counter + 1
+      uniqueArr2(counter) = arr(i)
+    END IF
+  END DO
+
+! Allocate the output array with the correct size
+  ALLOCATE(uniqueArr(counter))
+  uniqueArr = uniqueArr2(1:counter)
+  deallocate(uniqueArr2)
+
+  return
+
+END SUBROUTINE FindUniqueREAL
+
 
 
 end module diffusion

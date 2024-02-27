@@ -527,8 +527,10 @@ class Mesh(object):
             # Extract the coordinates for the current element
             elm_coords = coord[elm_nodes]
     
+            if (i==2037):
+                s = 9
             # Check if the nodes are in counter-clockwise order, if not, reverse the order
-            if self.is_ccw(*elm_coords):
+            if not self.is_ccw(*elm_coords):
                 enod[i] = np.flip(elm_nodes)
 
         return enod

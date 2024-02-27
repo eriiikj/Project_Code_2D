@@ -31,7 +31,7 @@ grain = struct(...
     'p_ed',[]);
 
 % Import level set mesh properties
-[ngrains,IMC_steps,enod,nodel,nelm,nnod,edof] = load_level_set_init();
+[ngrains,IMC_steps,~,~,~,~,edof] = load_level_set_init();
 
 
 % Create an array to store multiple grains
@@ -63,7 +63,7 @@ for i_IMC = 1%1:step_size:IMC_steps
     % Plot grain mesh with concentration
     f1 = figure(1);
     cla;
-    for g=2%1:ngrains
+    for g=1%1:ngrains
 %         plot_mesh(grainArr(g).ex,grainArr(g).ey,'k')
         plot_2D_conc(grainArr(g).ex,grainArr(g).ey,grainArr(g).ed,i_IMC)
         hold on
@@ -144,11 +144,6 @@ for i_IMC = 1%1:step_size:IMC_steps
 
 
 
-
-
-
-    
-
 end
 
 
@@ -163,40 +158,49 @@ nbnods  = length(grainArr(g).bcnod(:,1));
 jint2   = zeros(nbnods,1);
 bcvals  = grainArr(g).bcval;
 bcnods  = grainArr(g).bcnod(:,1);
+nbcnods = length(bcnods);
 bcval_u = unique(bcvals);
 % Loop through each bcval (phase interface). 
 % 1) Find coordinates along the bcval interface
 % 2) Find the lines connecting the coordinates
+bool_seg = false(nseg, 1);
 for j = 1:length(bcval_u)
-    bcval    = bcval_u(j);
-    bcvals_b = bcvals == bcval;
-    nnods_bcseg = sum(bcvals_b);
-    coords   = grainArr(g).coord(bcvals_b, :);
-    xcoords  = coords(:, 1);
-    ycoords  = coords(:, 2);
-    bool_s = false(nseg, 1);
+    bool_seg(:)  = false;
+    bcval        = bcval_u(j);
+    bcvals_b     = (bcvals == bcval);
+    nnods_bcseg  = sum(bcvals_b);
+    bcval_coords = grainArr(g).coord(bcnods(bcvals_b), :);
+    enodL        = zeros(1000,2);
+    cc = 0;
     for iseg = 1:nseg
         x1 = line_ex(iseg, 1); x2 = line_ex(iseg, 2);
         y1 = line_ey(iseg, 1); y2 = line_ey(iseg, 2);
         
-        P1incoords = any(abs(xcoords - x1) < 1e-8) &...
-                     any(abs(ycoords - y1) < 1e-8);
-        P2incoords = any(abs(xcoords - x2) < 1e-8) &...
-                     any(abs(ycoords - y2) < 1e-8);
-        
+        P1incoords = any((abs(bcval_coords(:,1) - x1) < 1e-8) &...
+                          abs(bcval_coords(:,2) - y1) < 1e-8);
+        P2incoords = any((abs(bcval_coords(:,1) - x2) < 1e-8) &...
+                          abs(bcval_coords(:,2) - y2) < 1e-8);
         if (P1incoords && P2incoords)
-            bool_s(iseg) = true;
+            bool_seg(iseg) = true;
+            nod1 = find(abs(grainArr(g).coord(:,1)-x1)<1e-8 & abs(grainArr(g).coord(:,2)-y1)<1e-8);
+            nod2 = find(abs(grainArr(g).coord(:,1)-x2)<1e-8 & abs(grainArr(g).coord(:,2)-y2)<1e-8);
+            cc =  cc + 1;
+            enodL(cc,:) = [nod1 nod2];
+            
         end
     end 
-    lines = find(bool_s);
-    nseg_bcval = length(lines);
-
-    % Compute mass matrix
-    enod_m = zeros(2,nseg_bcval);
-    for iseg=1:nseg_bcval
-      enod_m(:,iseg) = [iseg,iseg+1];
+    enodL      = enodL(1:cc,:);
+    % New enod
+    oldNods = unique(enodL(:));
+    newNods = (1:length(oldNods))';
+    for k=1:length(oldNods)
+        mask = enodL == oldNods(k);
+        enodL(mask) = newNods(k);
     end
-    M = zeros(nnods_bcseg,nnods_bcseg);
+    enod_m     = enodL';
+    lines      = find(bool_seg);
+    nseg_bcval = length(lines);
+    M = zeros(length(oldNods),length(oldNods));
     for k=1:nseg_bcval
         iseg = lines(k);
         x1 = line_ex(iseg, 1); x2 = line_ex(iseg, 2);

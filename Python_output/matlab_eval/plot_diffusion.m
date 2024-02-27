@@ -105,7 +105,7 @@ for i_IMC = 1%1:step_size:IMC_steps
     nods = a(:)
 
     figure(13)
-    g = 4;
+    g = 2;
 %     plot_field2(ex,ey,ed(:,:,g),'k')
     hold on
     plot_field(exT,eyT,ls_ed(:,:,g),'k')    
@@ -127,22 +127,22 @@ for i_IMC = 1%1:step_size:IMC_steps
 %     eyTG    = eyT(elmsTG,:);
     
 
-    % New enod
-    newGrainNods = (1:nnodTG)';
-    for k=1:nnodTG
-        mask = enodTG == nodsTG(k);
-        enodTG(mask) = newGrainNods(k);
-    end
-    edofTG = [(1:nelmTG)',enodTG];
-    dofsTG = (1:nnodTG)';
-
-    % Ex and Ey
-    [exTG,eyTG] = coordxtr(edofTG,coordTG,dofsTG,nodelT);
-
-    figure()
-    patch(exTG',eyTG','white')
-    axis equal
-    box on
+%     % New enod
+%     newGrainNods = (1:nnodTG)';
+%     for k=1:nnodTG
+%         mask = enodTG == nodsTG(k);
+%         enodTG(mask) = newGrainNods(k);
+%     end
+%     edofTG = [(1:nelmTG)',enodTG];
+%     dofsTG = (1:nnodTG)';
+% 
+%     % Ex and Ey
+%     [exTG,eyTG] = coordxtr(edofTG,coordTG,dofsTG,nodelT);
+% 
+%     figure()
+%     patch(exTG',eyTG','white')
+%     axis equal
+%     box on
 
 end
 
