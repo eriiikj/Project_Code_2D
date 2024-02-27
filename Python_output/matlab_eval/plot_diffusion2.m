@@ -42,7 +42,7 @@ step_size = 1;
 for i_IMC = 1%1:step_size:IMC_steps
 
     % Load grain mesh
-    for g=2%1:ngrains
+    for g=1:ngrains
         [grainArr(g).edof,grainArr(g).enod,grainArr(g).coord,...
          grainArr(g).dofs,grainArr(g).ex,grainArr(g).ey,...
          grainArr(g).bcnod,grainArr(g).bcval,...
@@ -59,11 +59,11 @@ for i_IMC = 1%1:step_size:IMC_steps
     % Plot grain mesh with concentration
     f1 = figure(1);
     cla;
-    for g=2%1:ngrains
+    for g=4%1:ngrains
 %         plot_mesh(grainArr(g).ex,grainArr(g).ey,'k')
         plot_2D_conc(grainArr(g).ex,grainArr(g).ey,grainArr(g).ed,i_IMC)
-%         hold on
-%         plot_j(grainArr(g).ex,grainArr(g).ey,grainArr(g).j_flux)
+        hold on
+        plot_j(grainArr(g).ex,grainArr(g).ey,grainArr(g).j_flux)
         axis equal  
         box on
     end

@@ -208,11 +208,11 @@ subroutine generate_global_diffusion_mesh(input_location, diffsys, mesh, lssys, 
     where(abs(diffsys%ls(:,g)).lt.1d-8) diffsys%ls(:,g) = 0d0
 
 ! Post-processing sign of reinitialized mesh as this is not always true from the last state
-    print *, 'changing signs...'
     ch = .true.
     do while (ch)
+      print *, 'changing signs grain: ', g
       ch = .false.  
-      nodidx2 = pack(nodidx,diffsys%ls(:,g).lt.0d0)    
+      nodidx2 = pack(nodidx,diffsys%ls(:,g).lt.8d-6)    
       do i=1,size(nodidx2)
         inod = nodidx2(i)
 ! Find elements containing node
@@ -280,7 +280,7 @@ subroutine diffusion_grain(diffsys, i_IMC, global_mesh, grain_mesh, g, input_loc
     
 
     write(*,*) 
-    write(*,'(A30,I1,A4)') '--- Generating mesh for grain ', g, ' ---'
+    write(*,'(A30,I1,A4)') '--- Solving diffusion problem for grain ', g, ' ---'
 
 ! Reset mesh quantities
     print *, 'Before mesh reset'
@@ -324,7 +324,7 @@ subroutine diffusion_grain(diffsys, i_IMC, global_mesh, grain_mesh, g, input_loc
 ! Solve diffusion equation
     print *, 'Before solve diffusion problem'
     call clock_time(t1, omp_run)
-    call solve_diffusion_problem(grain_mesh, global_mesh, lssys%a(:,g), lssys%material(g))
+    call solve_diffusion_problem(grain_mesh)
     call clock_time(t2, omp_run)
     diffsys%solve_time = diffsys%solve_time + (t2-t1)
     print *, 'After solve diffusion problem'
@@ -346,32 +346,33 @@ subroutine diffusion_grain(diffsys, i_IMC, global_mesh, grain_mesh, g, input_loc
 end subroutine diffusion_grain
 
 
-subroutine mesh_reset(mesh)
+subroutine mesh_reset(grain_mesh)
   implicit none
 
 ! Intent inout
-  type(grain_mesh_system), intent(inout) :: mesh 
+  type(grain_mesh_system), intent(inout) :: grain_mesh 
 
 
 ! Deallocate variables
-  if (allocated(mesh%coord)) then
-    deallocate(mesh%coord)
-    deallocate(mesh%enod)
-    deallocate(mesh%a)
-    deallocate(mesh%r)
-    deallocate(mesh%bcnod)
+  if (allocated(grain_mesh%coord)) then
+    deallocate(grain_mesh%coord)
+    deallocate(grain_mesh%enod)
+    deallocate(grain_mesh%a)
+    deallocate(grain_mesh%r)
+    deallocate(grain_mesh%bcnod)
+    deallocate(grain_mesh%j_flux)
   endif
 
-  if (allocated(mesh%bcval)) then
-    deallocate(mesh%bcval)
+  if (allocated(grain_mesh%bcval)) then
+    deallocate(grain_mesh%bcval)
   endif
 
-  if (allocated(mesh%bcval_idx)) then
-    deallocate(mesh%bcval_idx)
+  if (allocated(grain_mesh%bcval_idx)) then
+    deallocate(grain_mesh%bcval_idx)
   endif
 
-  if (allocated(mesh%jint)) then
-    deallocate(mesh%jint)
+  if (allocated(grain_mesh%jint)) then
+    deallocate(grain_mesh%jint)
   endif
 
 
@@ -432,16 +433,16 @@ subroutine init_grain_mesh_system(mesh, lssys, diffsys, g)
 end subroutine init_grain_mesh_system
 
 
-subroutine solve_diffusion_problem(grain_mesh, global_mesh, lssys_ag, material)
+subroutine solve_diffusion_problem(grain_mesh)
   implicit none
 
 ! Intent inout
   type(grain_mesh_system), intent(inout) :: grain_mesh
 
-! Intent in
-  type(mesh_system), intent(in)          :: global_mesh
-  real(dp), intent(in)                   :: lssys_ag(:)
-  integer, intent(in)                    :: material
+! ! Intent in
+! type(mesh_system), intent(in)          :: global_mesh
+! real(dp), intent(in)                   :: lssys_ag(:)
+! integer, intent(in)                    :: material
 
 ! Subroutine variables
   real(dp)                               :: M(2,2)
@@ -450,9 +451,9 @@ subroutine solve_diffusion_problem(grain_mesh, global_mesh, lssys_ag, material)
   integer                                :: ie, ierr
   real(dp), allocatable                  :: Ksave(:)
 
-  real(dp)                               :: mean_distance, Mt(2,2), Mgb(2,2), alpha=9d3, mean_x, mean_y, model_edge_x_distance
+  real(dp)                               :: Mt(2,2), Mgb(2,2)!, mean_distance, alpha=9d3, mean_x, mean_y, model_edge_x_distance
   real(dp)                               :: Mgb_fac = 1d0
-  integer :: minIdx(1)  
+! integer :: minIdx(1)
 
 ! Mobility [mol^2/(mm*s*J)]
   M(1,:) =  (/grain_mesh%M,0d0/)
@@ -510,27 +511,27 @@ subroutine solve_diffusion_problem(grain_mesh, global_mesh, lssys_ag, material)
 ! Compute element values
   call extract(grain_mesh%ed,grain_mesh%a,grain_mesh%enod,grain_mesh%dofnod)
 
-! ! Compute flux J and jmean in each element
-! do ie=1,grain_mesh%nelm
+! Compute flux J and jmean in each element
+  do ie=1,grain_mesh%nelm
 
-!   ! Change diffusion coefficient according to grain boundary diffusion
-!   ! Find point in global mesh closest to (mean_x,mean_y)
-!   ! Mean x and y of element
-!   ! mean_x = sum(grain_mesh%coord(1,grain_mesh%enod(:,ie)))/size(grain_mesh%enod(:,ie))
-!   ! mean_y = sum(grain_mesh%coord(2,grain_mesh%enod(:,ie)))/size(grain_mesh%enod(:,ie))
-!   ! minIdx = minloc((global_mesh%coord(1,:) - mean_x)**2 + (global_mesh%coord(2,:) - mean_y)**2)
-!   ! mean_distance         = abs(lssys_ag(minIdx(1)))
-!   ! model_edge_x_distance = minval([abs(global_mesh%model_width-mean_x), abs(0d0 - mean_x)])
-!   ! mean_distance         = minval([mean_distance,model_edge_x_distance])
-!   ! Mt                    = M + (Mgb - M)*exp(-alpha*model_edge_x_distance)
-!   ! if (material.eq.3) then
-!   !   mean_x                = sum(grain_mesh%coord(1,grain_mesh%enod(:,ie)))/size(grain_mesh%enod(:,ie))
-!   !   model_edge_x_distance = minval([abs(global_mesh%model_width-mean_x), abs(0d0 - mean_x)])
-!   !   Mt                    = M + (Mgb - M)*exp(-alpha*model_edge_x_distance)
-!   ! endif
+! Change diffusion coefficient according to grain boundary diffusion
+! Find point in global mesh closest to (mean_x,mean_y)
+! Mean x and y of element
+! mean_x = sum(grain_mesh%coord(1,grain_mesh%enod(:,ie)))/size(grain_mesh%enod(:,ie))
+! mean_y = sum(grain_mesh%coord(2,grain_mesh%enod(:,ie)))/size(grain_mesh%enod(:,ie))
+! minIdx = minloc((global_mesh%coord(1,:) - mean_x)**2 + (global_mesh%coord(2,:) - mean_y)**2)
+! mean_distance         = abs(lssys_ag(minIdx(1)))
+! model_edge_x_distance = minval([abs(global_mesh%model_width-mean_x), abs(0d0 - mean_x)])
+! mean_distance         = minval([mean_distance,model_edge_x_distance])
+! Mt                    = M + (Mgb - M)*exp(-alpha*model_edge_x_distance)
+! if (material.eq.3) then
+!   mean_x                = sum(grain_mesh%coord(1,grain_mesh%enod(:,ie)))/size(grain_mesh%enod(:,ie))
+!   model_edge_x_distance = minval([abs(global_mesh%model_width-mean_x), abs(0d0 - mean_x)])
+!   Mt                    = M + (Mgb - M)*exp(-alpha*model_edge_x_distance)
+! endif
 
-!   call diffusion2D3j(grain_mesh%j_flux(:,ie),grain_mesh%coord(:,grain_mesh%enod(:,ie)),grain_mesh%ed(:,ie),Mt)
-! enddo
+    call diffusion2D3j(grain_mesh%j_flux(:,ie),grain_mesh%coord(:,grain_mesh%enod(:,ie)),grain_mesh%ed(:,ie),Mt)
+  enddo
 
 
 ! Deallocate

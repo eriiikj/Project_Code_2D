@@ -525,7 +525,7 @@ class Mesh(object):
             elm_nodes = enod[i]
     
             # Extract the coordinates for the current element
-            elm_coords = coord[elm_nodes-1]
+            elm_coords = coord[elm_nodes]
     
             # Check if the nodes are in counter-clockwise order, if not, reverse the order
             if self.is_ccw(*elm_coords):
@@ -538,10 +538,8 @@ class Mesh(object):
         """
         Check if the given three points (nodes) are in counter-clockwise order.
         """
-        return (p2[1] - p1[1]) * (p3[0] - p2[0]) > (p2[0] - p1[0]) * (p3[1] - p2[1])
+        return (p2[0]-p1[0])*(p3[1]-p2[1])-(p2[1]-p1[1])*(p3[0]-p2[0])>0
 
-        
-        
     
     def generateSingleMesh(self):
         """Generate a single mesh"""

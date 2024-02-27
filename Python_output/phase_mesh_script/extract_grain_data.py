@@ -434,88 +434,8 @@ class Mesh(object):
         self.output_data.nodel          = nodel_g
         self.output_data.dofspernode    = 1
         
-        
-        
-    def extract_mesh_data(self,inpmatrix):
-        # Convert mesh data from .inp file to float
-        
-        # Use numpy.char.split to split each string into a list of substrings
-        split_arrays = np.char.split(inpmatrix, sep=', ')
-        
-        # Use numpy.vstack to stack the resulting lists into a 2D array
-        float_array = np.vstack([np.array(arr, dtype=float) for arr in split_arrays])
-        
-        return float_array    
     
-    
-    def get_boundary_nodes(self,coord,enod,ndof,nelm,line_ex,line_ey):
-        """Finding boundary nodes along interphase"""
-        
-        # Nseg
-        nseg = np.size(line_ex,0)
-        
-        # Node coordinates along interphase
-        line_coord = np.zeros([nseg+1,2])
-        line_coord[1:-1]
-        line_coord[:-1,0] = line_ex[:,0]
-        line_coord[-1,0]  = line_ex[-1,1]
-        line_coord[:-1,1] = line_ey[:,0]
-        line_coord[-1,1]  = line_ey[-1,1]
-        
-        # Extract boundary nodes
-        boundary_nodes = np.zeros(np.size(line_ex,0)+1,dtype=int)
-        k = 0
-        for i in range(ndof):
-            # For each coord, compute distance to all line_coords.
-            # If distance smaller than tol, add node to upper b nodes
-            d = np.sqrt(np.sum((coord[i,:]-line_coord)**2,1));
-            tol = 1e-12
-            dsum = np.sum(d<tol)
-            if (dsum==1):
-                boundary_nodes[k] = i+1
-                k = k+1
-            elif(dsum>1):
-                sys.exit("Error in finding interphase nodes")
-        
 
-        # Sort boundary nodes
-        cc = coord[boundary_nodes-1,0]
-        boundary_nodes = boundary_nodes[np.argsort(cc)]
-        
-        # Return boundary nodes
-        return boundary_nodes
-        
-    
-    def reorder_enod_triangle(self, coord, enod):
-        """Routine for reordering enod in a plane triangle s.t. the node
-        numbering is counter-clockwise"""
-        
-        nelm = np.size(enod,0)
-        
-        
-        for i in range(nelm):
-            # Extract the node indices for the current element
-            elm_nodes = enod[i]
-    
-            # Extract the coordinates for the current element
-            elm_coords = coord[elm_nodes-1]
-    
-            # Check if the nodes are in counter-clockwise order, if not, reverse the order
-            if self.is_ccw(*elm_coords):
-                enod[i] = np.flip(elm_nodes)
-
-        return enod
-        
-
-    def is_ccw(self,p1, p2, p3):
-        """
-        Check if the given three points (nodes) are in counter-clockwise order.
-        """
-        return (p2[1] - p1[1]) * (p3[0] - p2[0]) > (p2[0] - p1[0]) * (p3[1] - p2[1])
-
-        
-        
-    
     def generateSingleMesh(self):
         """Generate a single mesh"""
         
@@ -539,7 +459,7 @@ class Mesh(object):
         
         # Generate mesh
         for g in range(self.input_data.ngrains):
-            
+
             # Reset output data
             self.output_data.reset()
             
