@@ -280,7 +280,7 @@ subroutine diffusion_grain(diffsys, i_IMC, global_mesh, grain_mesh, g, input_loc
     
 
     write(*,*) 
-    write(*,'(A30,I1,A4)') '--- Solving diffusion problem for grain ', g, ' ---'
+    write(*,'(A40,I1,A4)') '--- Solving diffusion problem for grain ', g, ' ---'
 
 ! Reset mesh quantities
     print *, 'Before mesh reset'
@@ -331,10 +331,9 @@ subroutine diffusion_grain(diffsys, i_IMC, global_mesh, grain_mesh, g, input_loc
 
 
 ! Obtain jint of grain
-! g_cols = [2*(g-1) + 1, 2*(g-1) + 2]
-! print *, 'Before compute jint'
+    print *, 'Before compute jint'
 ! call compute_jint2(grain_mesh, I_IMC)
-! print *, 'After compute jint'
+    print *, 'After compute jint'
   
 ! Save diffusion results
     call write_diffusion_iter_to_matlab(grain_mesh%a, grain_mesh%r,grain_mesh%ed, grain_mesh%jint, grain_mesh%j_flux, &
@@ -446,7 +445,7 @@ subroutine solve_diffusion_problem(grain_mesh)
 
 ! Subroutine variables
   real(dp)                               :: M(2,2)
-  real(dp)                               :: ke3(3,3), scale_factor=1d30
+  real(dp)                               :: ke3(3,3), scale_factor=1d22
   type(sparse)                           :: K
   integer                                :: ie, ierr
   real(dp), allocatable                  :: Ksave(:)
@@ -460,9 +459,7 @@ subroutine solve_diffusion_problem(grain_mesh)
   M(2,:) =  (/0d0,grain_mesh%M/)
 
 ! Scale M such that equation system is not below number precision
-  M   = M*scale_factor  
-  Mgb = Mgb_fac*M
-  Mt  = M
+  Mt  = M*scale_factor
 
 ! Stiffness K
   call spaTopDef(K,grain_mesh%enod,grain_mesh%dofnod)
@@ -495,17 +492,15 @@ subroutine solve_diffusion_problem(grain_mesh)
 
 ! Solve Kc = f, OBS this alters K
   grain_mesh%a = 0d0 ! fb
-  call solveq(K, grain_mesh%a, grain_mesh%bcnod, grain_mesh%bcval*scale_factor, grain_mesh%dofnod)
+  call solveq(K, grain_mesh%a, grain_mesh%bcnod, grain_mesh%bcval, grain_mesh%dofnod)
 
 ! Residual r = Kc-f = Kc (f=0)
   K%a = Ksave
   grain_mesh%r = matmul(K, grain_mesh%a)
 
 ! Scale back values and reset M
-  grain_mesh%a = grain_mesh%a/scale_factor
-  grain_mesh%r = grain_mesh%r/scale_factor**2
-  M   = M/scale_factor  
-  Mgb = Mgb_fac*M
+  grain_mesh%a = grain_mesh%a
+  grain_mesh%r = grain_mesh%r/scale_factor
   Mt  = M
 
 ! Compute element values

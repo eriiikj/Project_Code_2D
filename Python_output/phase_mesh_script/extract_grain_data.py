@@ -136,6 +136,8 @@ class InputData(object):
         self.line_ex_all = self.line_ex_all.round(decimals=6)
         self.line_ey_all = self.line_ey_all.round(decimals=6)
         
+        self.tppoints = self.tppoints.round(decimals=6)
+        
                 
     def get_line_conn(self, line_coord, line_ex, line_ey):
         
@@ -293,6 +295,7 @@ class Mesh(object):
         coord        = self.input_data.coord
         nodel        = self.input_data.nodel
         ls           = self.input_data.ls
+        
  
         # Extract partitioned mesh for each grain
         ls_ed      = ls[enod,g]
@@ -334,7 +337,7 @@ class Mesh(object):
         bcval  = np.zeros_like(bcnods,dtype=float)
         
         # Equilibrium chemical potentials
-        eq_comp,mu_imc_imc = self.getChemicalPotentials()
+        eq_comp,mu_imc_imc,mu_sn_sn = self.getChemicalPotentials()
         
         grain_material = self.input_data.material[g] - 1
         
@@ -398,26 +401,22 @@ class Mesh(object):
         bcnod = bcnod[mask]
         
         
-        # # Create a boolean mask and remove sn_sn values from bc
-        # # mask  = np.abs(bcval - self.input_data.imc_imc)>1e-12
-        # mask  = np.abs(bcval - mu_sn_sn)>1e-12
-        # bcval = bcval[mask]
-        # bcnod = bcnod[mask]
+        # Create a boolean mask and remove sn_sn values from bc
+        # mask  = np.abs(bcval - self.input_data.imc_imc)>1e-12
+        mask  = np.abs(bcval - mu_sn_sn)>1e-12
+        bcval = bcval[mask]
+        bcnod = bcnod[mask]        
         
-        
-        # # Remove tp points from bc
-        # tp_points_x = np.array(tp_points_x)
-        # tp_points_y = np.array(tp_points_y)
-        # ntp = np.size(tp_points_x)
-        # mask = np.full(np.size(bcnod[:,0]), True, dtype=bool)
-        # for (xtp,ytp) in zip(tp_points_x,tp_points_y):
-        #     grain_nod = np.where(np.logical_and(abs(coord[bcnod[:,0]-1,0]-xtp) \
-        #               <1e-13,abs(coord[bcnod[:,0]-1,1]-ytp)<1e-13))[0][0]
-        #     mask[grain_nod] = False 
-  
-        # # Update bcnod and bcval
-        # bcval = bcval[mask]
-        # bcnod = bcnod[mask]
+        # Remove tp points from bc
+        mask = np.full(np.size(bcnod[:,0]), True, dtype=bool)
+        for xtp, ytp in tppoints:        
+            tp_loc = np.logical_and(np.abs(coord_g[bcnod[:,0]-1,0]-xtp)<1e-7, \
+                                      np.abs(coord_g[bcnod[:,0]-1,1]-ytp)<1e-7)
+            mask = np.logical_and(mask, tp_loc==False)    
+
+        # Update bcnod and bcval
+        bcval = bcval[mask]
+        bcnod = bcnod[mask]
         
         bcval_idx = bcval.copy()
         bcnod_g   = bcnod
@@ -459,7 +458,6 @@ class Mesh(object):
         
         # Generate mesh
         for g in range(self.input_data.ngrains):
-
             # Reset output data
             self.output_data.reset()
             
@@ -549,5 +547,5 @@ class Mesh(object):
                             [mu_imc_cu, mu_imc_imc, mu_imc_sn],\
                             [mu_sn_cu , mu_sn_imc , mu_sn_sn]])
             
-        return eq_comp, mu_imc_imc
+        return eq_comp, mu_imc_imc, mu_sn_sn
         

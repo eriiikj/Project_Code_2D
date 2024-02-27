@@ -144,13 +144,6 @@ for i_IMC = 1%1:step_size:IMC_steps
     axis equal
     box on
 
-
-
-
-
-
-    
-
 end
 
 % Save figure
