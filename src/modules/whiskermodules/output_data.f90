@@ -592,14 +592,14 @@ contains
   end subroutine write_level_set_unsorted_lines_iter_to_matlab
 
 
-  subroutine write_diffusion_iter_to_matlab(a, r, ed, jint, j_flux, p, i_IMC, input_location, g)
+  subroutine write_diffusion_iter_to_matlab(a, r, ed, jint, j_flux, i_IMC, input_location, g)
     ! Routine for writing level set to matlab
     implicit none
 
     ! Intent in
     character(len=:), allocatable, intent(in) :: input_location
     integer, intent(in)                       :: i_IMC, g
-    real(dp), intent(in)                      :: a(:), r(:), ed(:,:), jint(:), j_flux(:,:), p(:)
+    real(dp), intent(in)                      :: a(:), r(:), ed(:,:), jint(:), j_flux(:,:)
     character(len=25)                         :: matfilename
 
     call chdir(input_location)
@@ -613,16 +613,15 @@ contains
     elseif (i_IMC.lt.1000) then
       write (matfilename, "(A10,I3,A1,I1,A4)") 'diffusion_', i_IMC, '_', g, '.mat'
     endif
-
-    write(*,'(A16,A)') 'Saving matfile: ', matfilename
-
+    
     ! Write to file
     call matWrt2f(trim(matfilename), a     , 'a'     , 'w')
     call matWrt2f(trim(matfilename), r     , 'r'     , 'u')
     call matWrt2f(trim(matfilename), ed    , 'ed'    , 'u')
     call matWrt2f(trim(matfilename), jint  , 'jint'  , 'u')
     call matWrt2f(trim(matfilename), j_flux, 'j_flux', 'u')
-    call matWrt2f(trim(matfilename), p     , 'p'     , 'u')    
+
+    write(*,'(A16,A)') 'Saving matfile: ', matfilename
 
     return
   end subroutine write_diffusion_iter_to_matlab

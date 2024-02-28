@@ -21,9 +21,6 @@ import scipy.io
 
 import subprocess
 
-import gmsh
-import triangle
-
 
 class InputData(object):
     """Class for defining input data to our model."""
@@ -455,11 +452,7 @@ class Mesh(object):
         # --- Save location ---
         self.input_data.location = os.getcwd()
 
-        # --- Create mesh ---
-        gmsh.initialize()
-        gmsh.finalize()
-        
-        # Generate mesh
+        # Extract mesh
         for g in range(self.input_data.ngrains):
             # Reset output data
             self.output_data.reset()

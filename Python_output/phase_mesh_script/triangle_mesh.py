@@ -23,7 +23,7 @@ import pyvtk as vtk
 
 import subprocess
 
-import gmsh
+# import gmsh
 import triangle
 
 # Calfem
@@ -55,7 +55,6 @@ class InputData(object):
         self.line_seg_all       = 0
         self.sep_lines          = 0
         self.nsep_lines         = 0
-        self.ccsep_log          = 0
         self.ngrains            = 0
         self.P1                 = 0
         self.P2                 = 0
@@ -102,16 +101,16 @@ class InputData(object):
         N             = np.shape(vertices)[0]
         
         # Extract xyz data
-        xyz = self.xyz_from_coord(vertices)
+        # xyz = self.xyz_from_coord(vertices)
             
             
-        # Add triangles to gmsh
-        surf = gmsh.model.addDiscreteEntity(2)
-        gmsh.model.mesh.addNodes(2, surf, range(1, N + 1), xyz)
-        gmsh.model.mesh.addElementsByType(surf, 2, [], tris)
+        # # Add triangles to gmsh
+        # surf = gmsh.model.addDiscreteEntity(2)
+        # gmsh.model.mesh.addNodes(2, surf, range(1, N + 1), xyz)
+        # gmsh.model.mesh.addElementsByType(surf, 2, [], tris)
         
-        # Create the relevant Gmsh data structures from gmsh model
-        gmsh.model.geo.synchronize()
+        # # Create the relevant Gmsh data structures from gmsh model
+        # gmsh.model.geo.synchronize()
         
         return triangulation
     
@@ -418,7 +417,7 @@ class Mesh(object):
         # --- gmsh mesh generation ---
         
         # Initialize gmsh
-        gmsh.initialize()
+        # gmsh.initialize()
    
         # Create gmsh geometry
         triangulation = self.input_data.geometry()
@@ -427,14 +426,14 @@ class Mesh(object):
         print('Generating mesh in folder: ', os.getcwd())
         
         # Generate mesh
-        gmsh.model.mesh.generate(2)
+        # gmsh.model.mesh.generate(2)
         
         # Graphical illustration of mesh
         # if 'close' not in sys.argv:
         #     gmsh.fltk.run()
         
         # Finalize Gmsh
-        gmsh.finalize()
+        # gmsh.finalize()
   
         # Extract coord and enod
         coord = triangulation['vertices']
@@ -561,8 +560,8 @@ class Mesh(object):
         self.input_data.location = os.getcwd()
 
         # --- Create mesh ---
-        gmsh.initialize()
-        gmsh.finalize()
+        # gmsh.initialize()
+        # gmsh.finalize()
         
         # Generate mesh
         self.generateMesh()

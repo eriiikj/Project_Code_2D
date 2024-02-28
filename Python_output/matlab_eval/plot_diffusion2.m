@@ -53,21 +53,21 @@ for i_IMC = 2%1:step_size:IMC_steps
          grainArr(g).nodel,grainArr(g).nelm,grainArr(g).nnod]...
          = import_grain_mesh(i_IMC,g);
     
-%         % Load grain results
-%         [grainArr(g).a,grainArr(g).r,grainArr(g).ed,...
-%          grainArr(g).jint, grainArr(g).j_flux,grainArr(g).p,...
-%          grainArr(g).p_ed] = load_diffusion(i_IMC,g,grainArr(g).edof);
+        % Load grain results
+        [grainArr(g).a,grainArr(g).r,grainArr(g).ed,...
+         grainArr(g).jint, grainArr(g).j_flux] =...
+         load_diffusion(i_IMC,g,grainArr(g).edof);
     end
 
 
     % Plot grain mesh with concentration
     f1 = figure(1);
     cla;
-    for g=5%1:ngrains
-        plot_mesh(grainArr(g).ex,grainArr(g).ey,'k')
-%         plot_2D_conc(grainArr(g).ex,grainArr(g).ey,grainArr(g).ed,i_IMC)
-%         hold on
-%         plot_j(grainArr(g).ex,grainArr(g).ey,grainArr(g).j_flux)
+    for g=3%1:ngrains
+%         plot_mesh(grainArr(g).ex,grainArr(g).ey,'k')
+        plot_2D_conc(grainArr(g).ex,grainArr(g).ey,grainArr(g).ed,i_IMC)
+        hold on
+        plot_j(grainArr(g).ex,grainArr(g).ey,grainArr(g).j_flux)
         axis equal  
         box on
     end
@@ -334,7 +334,7 @@ end
 
 end
 
-function [a,r,ed,jint,j_flux,p,p_ed] = load_diffusion(i_IMC,g,edof)
+function [a,r,ed,jint,j_flux] = load_diffusion(i_IMC,g,edof)
 
 % Input data and mesh location
 s = what('../single_study/mat_files');
@@ -349,16 +349,10 @@ load(filename,'r')
 load(filename,'ed')
 load(filename,'jint')
 load(filename,'j_flux')
-load(filename,'p')
 
 % Reshape arrays
 ed     = ed';
 j_flux = j_flux';
-if (length(p)>1)
-    p_ed = extract(edof,p);
-else
-    p_ed = 0;
-end
 
 end
 

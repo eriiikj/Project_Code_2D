@@ -60,6 +60,7 @@ module diffusion
 contains
 
 
+
 subroutine init_diffusion_system(diffsys, ngrains)
 ! Subroutine for initiating diffusion system
   implicit none
@@ -78,6 +79,7 @@ subroutine init_diffusion_system(diffsys, ngrains)
 
   return
 end subroutine init_diffusion_system
+
 
 
 subroutine solve_diffusion_problem_global(diffsys,i_IMC,lssys,mesh,pq,input_location,omp_run)
@@ -101,9 +103,9 @@ subroutine solve_diffusion_problem_global(diffsys,i_IMC,lssys,mesh,pq,input_loca
   call generate_global_diffusion_mesh(input_location, diffsys, mesh, lssys, i_IMC)
 
 ! Solve diffusion problem for all grains seperately
-  do g=1,lssys%ngrains    
-    call diffusion_grain(diffsys,i_IMC, mesh, diffsys%grain_meshes(g), g, input_location, lssys, omp_run, pq)
-  enddo 
+  do g=1,lssys%ngrains
+    call diffusion_grain(diffsys,i_IMC, diffsys%grain_meshes(g), g, input_location, lssys, omp_run)
+  enddo
 
 ! ! Compute IMC area
 ! call compute_IMC_area(lssys,diffsys)
@@ -113,6 +115,7 @@ subroutine solve_diffusion_problem_global(diffsys,i_IMC,lssys,mesh,pq,input_loca
 
   return
 end subroutine solve_diffusion_problem_global
+
 
 
 
@@ -141,6 +144,7 @@ subroutine generate_global_diffusion_mesh(input_location, diffsys, mesh, lssys, 
   diffusion_mesh_location        = '/home/er7128ja/Nextcloud/Projekt/Project_Code_2D/Python_output/single_study/phase_meshes'
 
 ! Generete mesh by running python script
+  print *, 'Creating triangle mesh...'
   call chdir(diffusion_mesh_script_location)
   write(command_line,'(A28)'), 'python triangle_mesh_Main.py'
   call execute_command_line(trim(command_line))
@@ -250,8 +254,7 @@ end subroutine generate_global_diffusion_mesh
 
 
 
-
-subroutine diffusion_grain(diffsys, i_IMC, global_mesh, grain_mesh, g, input_location, lssys, omp_run, pq)
+subroutine diffusion_grain(diffsys, i_IMC, grain_mesh, g, input_location, lssys, omp_run)
 ! --- Routine for solving diffusion equation in grain ---
     implicit none
     
@@ -260,12 +263,10 @@ subroutine diffusion_grain(diffsys, i_IMC, global_mesh, grain_mesh, g, input_loc
     type(grain_mesh_system),intent(inout)      :: grain_mesh    
     
 ! Intent in
-    type(mesh_system), intent(in)              :: global_mesh
     type(ls_system), intent(in)                :: lssys 
     integer, intent(in)                        :: i_IMC, g
     character(len=:), allocatable, intent(in)  :: input_location
     logical, intent(in)                        :: omp_run
-    type(plot_system), intent(inout)           :: pq
 
 ! Subroutine variables
     integer                                    :: g_cols(2)
@@ -279,7 +280,6 @@ subroutine diffusion_grain(diffsys, i_IMC, global_mesh, grain_mesh, g, input_loc
 ! Times
     real(dp)                                   :: t1, t2, tmp(2) = 1d0
     
-
     write(*,*) 
     write(*,'(A40,I1,A4)') '--- Solving diffusion problem for grain ', g, ' ---'
 
@@ -333,26 +333,24 @@ subroutine diffusion_grain(diffsys, i_IMC, global_mesh, grain_mesh, g, input_loc
     diffsys%solve_time = diffsys%solve_time + (t2-t1)
     print *, 'After solve diffusion problem'
 
-
 ! Obtain jint of grain
-    if (i_IMC.eq.1) then
-      print *, 'Before compute jint'
-      call ComputeJint3(grain_mesh, lssys%line_ex([1:lssys%line_seg(g)],g_cols), lssys%line_ey([1:lssys%line_seg(g)],g_cols), &
-      lssys%line_seg(g))
-      print *, 'After compute jint'
-    else
-      allocate(grain_mesh%jint(2))
-      grain_mesh%jint = 0d0
-    endif
-  
+    print *, 'Before compute jint'
+    call ComputeJint3(grain_mesh, lssys%line_ex([1:lssys%line_seg(g)],g_cols), lssys%line_ey([1:lssys%line_seg(g)],g_cols), &
+    lssys%line_seg(g))
+    print *, 'After compute jint'
+
 ! Save diffusion results
     call write_diffusion_iter_to_matlab(grain_mesh%a, grain_mesh%r,grain_mesh%ed, grain_mesh%jint, grain_mesh%j_flux, &
-    grain_mesh%p, i_IMC, input_location, g)
+    i_IMC, input_location, g)
 
     print *, 'Leaving diffusion_grain'
 
     return
 end subroutine diffusion_grain
+
+
+
+
 
 
 subroutine ComputeJint3(grain_mesh, line_ex, line_ey, nseg)
@@ -372,7 +370,6 @@ subroutine ComputeJint3(grain_mesh, line_ex, line_ey, nseg)
   logical, allocatable  :: bool_seg(:)
   integer               :: nbnods, nbcval, nnods_bcseg, nseg_bcval, i, j, k, iseg, ierr, nod1(1), nod2(1), cc
   real(dp)              :: bcval, x1, x2, y1, y2, Le, Me(2,2)
-  logical               :: P1inbccoords, P2inbccoords
 
 ! Number of boundary nods
   nbnods = size(grain_mesh%bcnod(:, 1))
@@ -494,6 +491,7 @@ subroutine mesh_reset(grain_mesh)
     deallocate(grain_mesh%r)
     deallocate(grain_mesh%bcnod)
     deallocate(grain_mesh%j_flux)
+    deallocate(grain_mesh%ed)
   endif
 
   if (allocated(grain_mesh%bcval)) then
@@ -526,6 +524,8 @@ subroutine mesh_reset(grain_mesh)
 end subroutine mesh_reset
 
 
+
+
 subroutine init_grain_mesh_system(mesh, lssys, diffsys, g)
   implicit none
 
@@ -538,7 +538,7 @@ subroutine init_grain_mesh_system(mesh, lssys, diffsys, g)
   integer, intent(in)                    :: g
 
 ! Subroutine variables
-  integer :: ierr  
+  integer                                :: ierr  
 
 ! Number of dofs in each nod and nodel
   mesh%nelm   = size(mesh%enod,2)
@@ -550,7 +550,7 @@ subroutine init_grain_mesh_system(mesh, lssys, diffsys, g)
   allocate(mesh%a(mesh%nnod),stat=ierr)
   allocate(mesh%r(mesh%nnod),stat=ierr)
   allocate(mesh%ed(mesh%nodel,mesh%nelm), stat=ierr)
-  allocate(mesh%j_flux(2,mesh%nelm),stat=ierr)  
+  allocate(mesh%j_flux(2,mesh%nelm),stat=ierr)
 
 ! Bulk diffusion mobility
   mesh%M = diffsys%D_diff_material(lssys%material(g))  / &
@@ -564,6 +564,8 @@ subroutine init_grain_mesh_system(mesh, lssys, diffsys, g)
   
   return
 end subroutine init_grain_mesh_system
+
+
 
 
 subroutine solve_diffusion_problem(grain_mesh)
@@ -662,11 +664,10 @@ subroutine solve_diffusion_problem(grain_mesh)
     call diffusion2D3j(grain_mesh%j_flux(:,ie),grain_mesh%coord(:,grain_mesh%enod(:,ie)),grain_mesh%ed(:,ie),Mt)
   enddo
 
-
 ! Deallocate
   call sparemove(K)
   deallocate(Ksave)
-  
+
 
   return
 end subroutine solve_diffusion_problem
