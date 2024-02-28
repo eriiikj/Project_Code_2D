@@ -39,8 +39,7 @@ grainArr = repmat(grain, 1, ngrains);
 
 %% Diffusion equation
 step_size = 1;
-for i_IMC = 2%1:step_size:IMC_steps
-
+for i_IMC = 1%1:step_size:IMC_steps
 
     % Load level set
     [a,ed,line_ex,line_ey,line_seg,line_coord,line_coordN,ex,ey,coord,...
@@ -53,9 +52,8 @@ for i_IMC = 2%1:step_size:IMC_steps
     % Load interpolated level set field
     [ls,ls_ed] = import_diffusion_glob(i_IMC,edofT,nodelT);
 
-    figure(13)
-    g = 5;
-%     plot_field2(ex,ey,ed(:,:,g),'k')
+    figure()
+    g = 2;
     hold on
     plot_field(exT,eyT,ls_ed(:,:,g),'k')    
     g_cols = [2*(g-1) + 1,2*(g-1) + 2];
@@ -65,33 +63,16 @@ for i_IMC = 2%1:step_size:IMC_steps
     box on
 
 
-    % Extract nodes
-    elmsTG  = sum((ls_ed(:,:,g)<=0),2)==nodelT;
-    nelmTG  = sum(elmsTG)
-    enodTG  = enodT(elmsTG,:);   
-    nodsTG  = unique(enodTG);
-    coordTG = coordT(nodsTG,:);
-    nnodTG  = size(coordTG,1)
-    
-
-    % New enod
-    newGrainNods = (1:nnodTG)';
-    for k=1:nnodTG
-        mask = enodTG == nodsTG(k);
-        enodTG(mask) = newGrainNods(k);
-    end
-    edofTG = [(1:nelmTG)',enodTG];
-    dofsTG = (1:nnodTG)';
-
-    % Ex and Ey
-    [exTG,eyTG] = coordxtr(edofTG,coordTG,dofsTG,nodelT);
-
-    figure()
-    patch(exTG',eyTG','white')
-    axis equal
-    box on
-
 end
+
+
+
+
+
+% Partitioning
+
+
+
 
 
 

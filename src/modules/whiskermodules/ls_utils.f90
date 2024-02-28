@@ -941,10 +941,9 @@ subroutine compute_common_vp_spatial(lssys, mesh, diffsys)
            if (all(abs(diffsys%grain_meshes(g)%bcnod(:,1) - grain_nod).gt.0)) then
                ! Closest interface node does not exist in bcnod
 
-               lssys%jnod(inod,g) = 0d0
-               ! lssys%bcval(inod,g) = 0.0111d0
+               lssys%jnod(inod,g) = 0d0               
 
-               ! Closest interface node exist in bcnod     
+               ! Closest interface node exist in bcnod
                ! Find local position of nod in bcnod
                minIdx = minloc(abs(diffsys%grain_meshes(g)%bcnod(:,1) - grain_nod))                
                lssys%bcval(inod,g) = diffsys%grain_meshes(g)%bcval(minIdx(1))

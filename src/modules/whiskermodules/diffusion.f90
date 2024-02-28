@@ -334,11 +334,15 @@ subroutine diffusion_grain(diffsys, i_IMC, global_mesh, grain_mesh, g, input_loc
 
 
     ! Obtain jint of grain
-    print *, 'Before compute jint'
-    ! call compute_jint2(grain_mesh, I_IMC)
-    call ComputeJint3(grain_mesh, lssys%line_ex([1:lssys%line_seg(g)],g_cols), lssys%line_ey([1:lssys%line_seg(g)],g_cols), &
-    lssys%line_seg(g))
-    print *, 'After compute jint'
+    if (i_IMC.eq.1) then
+      print *, 'Before compute jint'
+      call ComputeJint3(grain_mesh, lssys%line_ex([1:lssys%line_seg(g)],g_cols), lssys%line_ey([1:lssys%line_seg(g)],g_cols), &
+      lssys%line_seg(g))
+      print *, 'After compute jint'
+    else
+      allocate(grain_mesh%jint(2))
+      grain_mesh%jint = 0d0
+    endif
   
     ! Save diffusion results    
     call write_diffusion_iter_to_matlab(grain_mesh%a, grain_mesh%r,grain_mesh%ed, grain_mesh%jint, grain_mesh%j_flux, &
@@ -360,7 +364,7 @@ subroutine ComputeJint3(grain_mesh, line_ex, line_ey, nseg)
   real(dp), intent(in)  :: line_ex(:,:), line_ey(:,:)
   integer, intent(in)   :: nseg
 
-  ! Subroutine variables  
+  ! Subroutine variables
   type(sparse)          :: M
   integer, allocatable  :: lines(:), enod_m(:,:), enod_l(:,:), bcvali(:), oldNods(:)
   real(dp), allocatable :: bcval_u(:), bcval_coords(:,:), bb(:)
@@ -382,7 +386,7 @@ subroutine ComputeJint3(grain_mesh, line_ex, line_ey, nseg)
 
   ! Loop through each bcval (phase interface).
   ! 1) Find coordinates along the bcval interface
-  ! 2) Find the lines connecting the coordinates  
+  ! 2) Find the lines connecting the coordinates
   allocate(bool_seg(nseg))
   do i = 1, nbcval
       bool_seg    = .false.
@@ -401,14 +405,12 @@ subroutine ComputeJint3(grain_mesh, line_ex, line_ey, nseg)
           y2 = line_ey(iseg, 2)
 
           !  Check if segment endpoints are in coords
-          P1inbccoords = any((abs(bcval_coords(1,:) - x1) .lt. 1d-8) .and. (abs(bcval_coords(2,:) - y1) .lt. 1d-8))
-          P2inbccoords = any((abs(bcval_coords(1,:) - x2) .lt. 1d-8) .and. (abs(bcval_coords(2,:) - y2) .lt. 1d-8))
+          nod1 = pack(bcvali, (abs(bcval_coords(1,:) - x1) .lt. 1d-8) .and. (abs(bcval_coords(2,:) - y1) .lt. 1d-8))
+          nod2 = pack(bcvali, (abs(bcval_coords(1,:) - x2) .lt. 1d-8) .and. (abs(bcval_coords(2,:) - y2) .lt. 1d-8))
 
-          if (P1inbccoords .and. P2inbccoords) then
-              bool_seg(iseg) = .true.
-              nod1 = pack(bcvali, (abs(bcval_coords(1,:) - x1) .lt. 1d-8) .and. (abs(bcval_coords(2,:) - y1) .lt. 1d-8))
+          if (nod1(1).ne.0 .and. nod2(1).ne.0) then
+              bool_seg(iseg) = .true.              
               nod1 = grain_mesh%bcnod(nod1(1),1)
-              nod2 = pack(bcvali, (abs(bcval_coords(1,:) - x2) .lt. 1d-8) .and. (abs(bcval_coords(2,:) - y2) .lt. 1d-8))
               nod2 = grain_mesh%bcnod(nod2(1),1)
               cc   = cc + 1
               enod_l(:,cc) = [nod1(1), nod2(1)]

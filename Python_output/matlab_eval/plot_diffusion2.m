@@ -39,7 +39,7 @@ grainArr = repmat(grain, 1, ngrains);
 
 %% Diffusion equation
 step_size = 1;
-for i_IMC = 1%1:step_size:IMC_steps
+for i_IMC = 2%1:step_size:IMC_steps
 
     % Load level set
     [a,ed,line_ex,line_ey,line_seg,line_coord,line_coordN,ex,ey,coord,...
@@ -53,107 +53,37 @@ for i_IMC = 1%1:step_size:IMC_steps
          grainArr(g).nodel,grainArr(g).nelm,grainArr(g).nnod]...
          = import_grain_mesh(i_IMC,g);
     
-        % Load grain results
-        [grainArr(g).a,grainArr(g).r,grainArr(g).ed,...
-         grainArr(g).jint, grainArr(g).j_flux,grainArr(g).p,...
-         grainArr(g).p_ed] = load_diffusion(i_IMC,g,grainArr(g).edof);
+%         % Load grain results
+%         [grainArr(g).a,grainArr(g).r,grainArr(g).ed,...
+%          grainArr(g).jint, grainArr(g).j_flux,grainArr(g).p,...
+%          grainArr(g).p_ed] = load_diffusion(i_IMC,g,grainArr(g).edof);
     end
 
 
     % Plot grain mesh with concentration
     f1 = figure(1);
     cla;
-    for g=2%1:ngrains
-%         plot_mesh(grainArr(g).ex,grainArr(g).ey,'k')
-        plot_2D_conc(grainArr(g).ex,grainArr(g).ey,grainArr(g).ed,i_IMC)
-        hold on
-        plot_j(grainArr(g).ex,grainArr(g).ey,grainArr(g).j_flux)
+    for g=5%1:ngrains
+        plot_mesh(grainArr(g).ex,grainArr(g).ey,'k')
+%         plot_2D_conc(grainArr(g).ex,grainArr(g).ey,grainArr(g).ed,i_IMC)
+%         hold on
+%         plot_j(grainArr(g).ex,grainArr(g).ey,grainArr(g).j_flux)
         axis equal  
         box on
     end
 
-% %     Plot grain mesh with hydrostatic pressure
-%     f2 = figure(2);
-%     cla;
-%     for g=1:ngrains
-%         plot_mesh(grainArr(g).ex,grainArr(g).ey)
-%         plot_2D_pressure(grainArr(g).ex,grainArr(g).ey,...
-%         grainArr(g).p_ed,i_IMC)
-%         hold on
-%         axis equal 
-%         box on
-%         clim([-10 10])
-%     end
-
-
-
-
-
-
-%     % Load level set
-%     [a,ed,line_ex,line_ey,line_seg,line_coord,line_coordN,ex,ey,coord,...
-%         tppoints] = load_level_set(i_IMC,edof);
-% 
-%     % Load triangle mesh
-%     [coordT,enodT,edofT,nelmT,ndofT,dofspernodeT,nodelT,exT,eyT] = ...
-%     import_triangle_mesh(i_IMC);
-% 
-%     % Load interpolated level set field
-%     [ls,ls_ed] = import_diffusion_glob(i_IMC,edofT,nodelT);
-
-
-%     figure(13)
-%     g = 1;
-%     plot_field2(ex,ey,ed(:,:,g),'k')
-%     hold on
-%     plot_field(exT,eyT,ls_ed(:,:,g),'k')    
-%     g_cols = [2*(g-1) + 1,2*(g-1) + 2];
-%     plot_interface(line_ex(1:line_seg(g),g_cols),...
-%                    line_ey(1:line_seg(g),g_cols),'k',g)
-%     axis equal
-%     box on
-% 
-% 
-%     % Extract nodes
-%     elmsTG  = sum((ls_ed(:,:,g)<=0),2)==nodelT;
-%     nelmTG  = sum(elmsTG);
-%     enodTG  = enodT(elmsTG,:);   
-%     nodsTG  = unique(enodTG);
-%     coordTG = coordT(nodsTG,:);
-%     nnodTG  = size(coordTG,1);
-% %     exTG    = exT(elmsTG,:);
-% %     eyTG    = eyT(elmsTG,:);
-%     
-% 
-%     % New enod
-%     newGrainNods = (1:nnodTG)';
-%     for k=1:nnodTG
-%         mask = enodTG == nodsTG(k);
-%         enodTG(mask) = newGrainNods(k);
-%     end
-%     edofTG = [(1:nelmTG)',enodTG];
-%     dofsTG = (1:nnodTG)';
-% 
-%     % Ex and Ey
-%     [exTG,eyTG] = coordxtr(edofTG,coordTG,dofsTG,nodelT);
-% 
-%     figure()
-%     patch(exTG',eyTG','white')
-%     axis equal
-%     box on
 
 
 
 end
 
 
+
+% --- Compute jint2 ---
 g_cols  = [2*(g-1) + 1,2*(g-1) + 2];
 nseg = line_seg(g);
 line_ex = line_ex(1:nseg,g_cols);
 line_ey = line_ey(1:nseg,g_cols);
-
-
-% --- Compute jint2 ---
 nbnods  = length(grainArr(g).bcnod(:,1));
 jint2   = zeros(nbnods,1);
 bcvals  = grainArr(g).bcval;
@@ -223,13 +153,6 @@ for j = 1:length(bcval_u)
     b = -grainArr(g).r(grainArr(g).bcnod(bcvali,1));
     jint2(bcvali) = M\b;
 end
-
-
-
-
-
-
-
 
 
 
