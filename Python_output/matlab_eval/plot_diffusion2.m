@@ -63,7 +63,7 @@ for i_IMC = 1%1:step_size:IMC_steps
     % Plot grain mesh with concentration
     f1 = figure(1);
     cla;
-    for g=1%1:ngrains
+    for g=2%1:ngrains
 %         plot_mesh(grainArr(g).ex,grainArr(g).ey,'k')
         plot_2D_conc(grainArr(g).ex,grainArr(g).ey,grainArr(g).ed,i_IMC)
         hold on
@@ -160,16 +160,16 @@ bcvals  = grainArr(g).bcval;
 bcnods  = grainArr(g).bcnod(:,1);
 nbcnods = length(bcnods);
 bcval_u = unique(bcvals);
-% Loop through each bcval (phase interface). 
+% Loop through each unique bcval (phase interface). 
 % 1) Find coordinates along the bcval interface
 % 2) Find the lines connecting the coordinates
 bool_seg = false(nseg, 1);
 for j = 1:length(bcval_u)
     bool_seg(:)  = false;
     bcval        = bcval_u(j);
-    bcvals_b     = (bcvals == bcval);
-    nnods_bcseg  = sum(bcvals_b);
-    bcval_coords = grainArr(g).coord(bcnods(bcvals_b), :);
+    bcvali       = find(bcvals == bcval);
+    nnods_bcseg  = length(bcvali);
+    bcval_coords = grainArr(g).coord(bcnods(bcvali), :);
     enodL        = zeros(1000,2);
     cc = 0;
     for iseg = 1:nseg
@@ -182,25 +182,30 @@ for j = 1:length(bcval_u)
                           abs(bcval_coords(:,2) - y2) < 1e-8);
         if (P1incoords && P2incoords)
             bool_seg(iseg) = true;
-            nod1 = find(abs(grainArr(g).coord(:,1)-x1)<1e-8 & abs(grainArr(g).coord(:,2)-y1)<1e-8);
-            nod2 = find(abs(grainArr(g).coord(:,1)-x2)<1e-8 & abs(grainArr(g).coord(:,2)-y2)<1e-8);
+            nod1 = (abs(bcval_coords(:,1) - x1) < 1e-8) & ...
+                          (abs(bcval_coords(:,2) - y1) < 1e-8);
+            nod1 = bcnods(bcvali(nod1));
+            nod2 = (abs(bcval_coords(:,1) - x2) < 1e-8) & ...
+                          (abs(bcval_coords(:,2) - y2) < 1e-8);
+            nod2 = bcnods(bcvali(nod2));
             cc =  cc + 1;
             enodL(cc,:) = [nod1 nod2];
             
         end
     end 
-    enodL      = enodL(1:cc,:);
+    enodL  = enodL(1:cc,:);
+    enod_m = enodL;
     % New enod
-    oldNods = unique(enodL(:));
+    oldNods = unique(enod_m(:));
     newNods = (1:length(oldNods))';
     for k=1:length(oldNods)
         mask = enodL == oldNods(k);
-        enodL(mask) = newNods(k);
+        enod_m(mask) = newNods(k);
     end
-    enod_m     = enodL';
+    enod_m     = enod_m';
     lines      = find(bool_seg);
     nseg_bcval = length(lines);
-    M = zeros(length(oldNods),length(oldNods));
+    M = zeros(nnods_bcseg,nnods_bcseg);
     for k=1:nseg_bcval
         iseg = lines(k);
         x1 = line_ex(iseg, 1); x2 = line_ex(iseg, 2);
@@ -215,66 +220,26 @@ for j = 1:length(bcval_u)
     end
 
     % Solve M*vnod = -r
-    b = -grainArr(g).r(bcnods(bcvals_b));
-    jint2(bcvals_b) = M\b;
+    b = -grainArr(g).r(grainArr(g).bcnod(bcvali,1));
+    jint2(bcvali) = M\b;
 end
 
-% while (counter<nbnods)
-%     iseg_start  = counter;
-%     bcval_c     = grainArr(g).bcval(counter);
-%     nnods_bcseg = 0;
-%     stop        = 0;
-%     while (stop==0 && (counter + nnods_bcseg<=nbnods))        
-%         bcval_cc    = grainArr(g).bcval_idx(counter + nnods_bcseg);
-%         if (abs(bcval_cc-bcval_c)<1e-15) 
-%             nnods_bcseg = nnods_bcseg + 1;
-%         else
-%             stop = 1;
-%         end
-%     end
-%     iseg_end    = iseg_start + nnods_bcseg - 1;
-%     nseg_sep    = nnods_bcseg - 1;
-%     if (nnods_bcseg>1)
-%    
-%         % Compute mass matrix
-%         enod_m = zeros(2,nseg_sep);
-%         for ie=1:nseg_sep
-%           enod_m(:,ie) = [ie,ie+1];
-%         end
-%         M = zeros(nnods_bcseg,nnods_bcseg);
-%         
-%         % Assemble mass matrix
-%         for ie=1:nseg_sep
-%         
-%           % Nods
-%           n1 = grainArr(g).bcnod(counter+ie-1,1);
-%           n2 = grainArr(g).bcnod(counter+ie,1); 
-%         
-%           % Coordinates and length of element
-%           x1 = grainArr(g).coord(n1,1);
-%           y1 = grainArr(g).coord(n1,2);
-%           x2 = grainArr(g).coord(n2,1);
-%           y2 = grainArr(g).coord(n2,2);
-%           Le = norm([(x2-x1), (y2-y1)]);
-%         
-%           % Mass matrix
-%           Me      = zeros(2,2);
-%           Me(1,:) = [2, 1];
-%           Me(2,:) = [1, 2];
-%           Me      = Le/6d0*Me;
-%           M(enod_m(:,ie),enod_m(:,ie)) = M(enod_m(:,ie),enod_m(:,ie)) + Me;
-%         end    
-%     
-%         % Solve M*vnod = -r
-%         b = -grainArr(g).r(grainArr(g).bcnod(iseg_start:iseg_end,1));
-%         jint2(iseg_start:iseg_end) = M\b;
-% 
-%     end
-% 
-%     %  Update counter
-%     counter = counter + nnods_bcseg;
-% 
-% end
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 
 
 

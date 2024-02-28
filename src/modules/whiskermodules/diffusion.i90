@@ -240,6 +240,7 @@ subroutine generate_global_diffusion_mesh(input_location, diffsys, mesh, lssys, 
   call write_diffusion_glob_iter_to_matlab(input_location, i_IMC, diffsys%ls)
 
 ! Generete partitioned grain meshes by running python script
+  print *, 'Extracting grain mesh data...'
   call chdir(diffusion_mesh_script_location)
   write(command_line,'(A33)'), 'python extract_grain_data_Main.py'
   call execute_command_line(trim(command_line))
@@ -336,8 +337,8 @@ subroutine diffusion_grain(diffsys, i_IMC, global_mesh, grain_mesh, g, input_loc
 ! Obtain jint of grain
     print *, 'Before compute jint'
 ! call compute_jint2(grain_mesh, I_IMC)
-! call ComputeJint3(grain_mesh, lssys%line_ex([1:lssys%line_seg(g)],g_cols), lssys%line_ey([1:lssys%line_seg(g)],g_cols), &
-! lssys%line_seg(g))
+    call ComputeJint3(grain_mesh, lssys%line_ex([1:lssys%line_seg(g)],g_cols), lssys%line_ey([1:lssys%line_seg(g)],g_cols), &
+    lssys%line_seg(g))
     print *, 'After compute jint'
   
 ! Save diffusion results
@@ -362,10 +363,10 @@ subroutine ComputeJint3(grain_mesh, line_ex, line_ey, nseg)
 
 ! Subroutine variables
   type(sparse)          :: M
-  integer, allocatable  :: lines(:), enod_m(:,:), bcvali(:)
-  real(dp), allocatable :: bcval_u(:), bcval_coords(:,:)
+  integer, allocatable  :: lines(:), enod_m(:,:), enod_l(:,:), bcvali(:), oldNods(:)
+  real(dp), allocatable :: bcval_u(:), bcval_coords(:,:), bb(:)
   logical, allocatable  :: bool_seg(:)
-  integer               :: nbnods, nbcval, nnods_bcseg, nseg_bcval, i, j, k, iseg, ierr
+  integer               :: nbnods, nbcval, nnods_bcseg, nseg_bcval, i, j, k, iseg, ierr, nod1(1), nod2(1), cc
   real(dp)              :: bcval, x1, x2, y1, y2, Le, Me(2,2)
   logical               :: P1inbccoords, P2inbccoords
 
@@ -391,7 +392,9 @@ subroutine ComputeJint3(grain_mesh, line_ex, line_ey, nseg)
       nnods_bcseg = size(bcvali)
       allocate(bcval_coords(2,nnods_bcseg))
       bcval_coords = grain_mesh%coord(:,grain_mesh%bcnod(bcvali,1))
-
+      allocate(enod_l(2,nnods_bcseg*4),stat=ierr)
+      enod_l = 0
+      cc = 0
       do iseg = 1, nseg
           x1 = line_ex(iseg, 1)
           x2 = line_ex(iseg, 2)
@@ -399,35 +402,43 @@ subroutine ComputeJint3(grain_mesh, line_ex, line_ey, nseg)
           y2 = line_ey(iseg, 2)
 
 !  Check if segment endpoints are in coords
-          P1inbccoords = any((abs(bcval_coords(1,:) - x1) .lt. 1d-8) .and. (abs(bcval_coords(2,:) - y1) .lt. 1e-8))
-          P2inbccoords = any((abs(bcval_coords(1,:) - x2) .lt. 1d-8) .and. (abs(bcval_coords(2,:) - y2) .lt. 1e-8))
+          P1inbccoords = any((abs(bcval_coords(1,:) - x1) .lt. 1d-8) .and. (abs(bcval_coords(2,:) - y1) .lt. 1d-8))
+          P2inbccoords = any((abs(bcval_coords(1,:) - x2) .lt. 1d-8) .and. (abs(bcval_coords(2,:) - y2) .lt. 1d-8))
 
-          if (P1inbccoords .and. P1inbccoords) then
+          if (P1inbccoords .and. P2inbccoords) then
               bool_seg(iseg) = .true.
+              nod1 = pack(bcvali, (abs(bcval_coords(1,:) - x1) .lt. 1d-8) .and. (abs(bcval_coords(2,:) - y1) .lt. 1d-8))
+              nod1 = grain_mesh%bcnod(nod1(1),1)
+              nod2 = pack(bcvali, (abs(bcval_coords(1,:) - x2) .lt. 1d-8) .and. (abs(bcval_coords(2,:) - y2) .lt. 1d-8))
+              nod2 = grain_mesh%bcnod(nod2(1),1)
+              cc   = cc + 1
+              enod_l(:,cc) = [nod1(1), nod2(1)]
           end if
       end do
 
-! Find lines with true values
-      lines = pack([(j, j=1, nseg)],bool_seg)
-      print *, 'as'
+! Extract enod_m
+      allocate(enod_m(2,cc),stat=ierr)
+      enod_m = enod_l(:,1:cc)
 
+! Rewrite enod_m from unique values to 1:nnod
+      call FindUniqueIntegers(reshape(enod_m,[cc*2]), oldNods)
+      call bubble_sort_1D_integer(oldNods)
+      do k=1,size(oldNods)
+        where (enod_l .eq. oldNods(k)) enod_m = k
+      enddo
+
+! Find lines with true values
+      lines      = pack([(j, j=1, nseg)],bool_seg)
       nseg_bcval = size(lines)
 
 ! --- Compute mass matrix ---
-      allocate(enod_m(2,nseg_bcval),stat=ierr)
-      do iseg=1,nseg_bcval
-        enod_m(:,iseg) = (/iseg,iseg+1/)
-      enddo
-
       print *, 'before allocating M'
-      call spaTopDef(M,enod_m,1)
-
-! Assemble mass matrix
+      call spaTopDef(M,enod_m,1)   
       M%a = 0d0
       do k=1,nseg_bcval
 
 ! iseg
-        iseg = lines(i)
+        iseg = lines(k)
 
 ! Coordinates and length of element
         x1 = line_ex(iseg, 1)
@@ -444,18 +455,23 @@ subroutine ComputeJint3(grain_mesh, line_ex, line_ey, nseg)
       enddo
 
 ! Solve M*vnod = -r
-      grain_mesh%jint(bcvali) = -grain_mesh%r(grain_mesh%bcnod(bcvali,1))
-      call solveq(M, grain_mesh%jint(bcvali))
+      allocate(bb(size(bcvali)))      
+      bb = -grain_mesh%r(grain_mesh%bcnod(bcvali,1))
+      call solveq(M, bb)
+      grain_mesh%jint(bcvali) = bb
 
+! Deallocate
+      deallocate(bb)
+      deallocate(lines)
+      deallocate(bcval_coords)
+      deallocate(enod_l)
+      deallocate(enod_m)
+      deallocate(bcvali)
   end do
 
 ! Deallocate
-  deallocate(lines)
-  deallocate(coords)
-  deallocate(enod_m)
-  deallocate(bcval_u)
-  deallocate(bcvali)
   deallocate(bool_seg)
+  deallocate(bcval_u)
 
   return
 end subroutine ComputeJint3

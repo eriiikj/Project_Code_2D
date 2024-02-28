@@ -44,6 +44,7 @@ class InputData(object):
         self.a                  = 0
         self.line_ex            = 0
         self.line_ey            = 0
+        self.line_conn          = 0
         self.line_ex_all        = 0
         self.line_ey_all        = 0
         self.nseg               = 0
@@ -324,6 +325,8 @@ class Mesh(object):
         line_ey     = line_ey_all[:line_seg,g_cols]
         line_coord  = self.input_data.lines_to_coord(line_ex, line_ey)
         nline_coord = np.size(line_coord,0)
+        
+        
 
         bnods_logical = np.full(nnod_g,False)
         for k in range(np.shape(line_coord)[0]):
