@@ -298,7 +298,7 @@ subroutine diffusion_grain(diffsys, i_IMC, grain_mesh, g, input_location, lssys,
     phase_mesh_location        = '/home/er7128ja/Nextcloud/Projekt/Project_Code_2D/Python_output/single_study/phase_meshes'
 
 
-! ! Generete mesh by running python script
+! Generete mesh by running python script
 ! call chdir(phase_mesh_script_location)
 ! call clock_time(t1, omp_run)
 ! write(command_line,'(A37,I1)'), 'python grain_mesh_triangular_Main.py ', g

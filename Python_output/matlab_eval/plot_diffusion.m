@@ -39,7 +39,7 @@ grainArr = repmat(grain, 1, ngrains);
 
 %% Diffusion equation
 step_size = 1;
-for i_IMC = 2%1:step_size:IMC_steps
+for i_IMC = 1%1:step_size:IMC_steps
 
 
     % Load level set
@@ -54,7 +54,7 @@ for i_IMC = 2%1:step_size:IMC_steps
     [ls,ls_ed] = import_diffusion_glob(i_IMC,edofT,nodelT);
 
     figure(13)
-    g = 5;
+    g = 2;
 %     plot_field2(ex,ey,ed(:,:,g),'k')
     hold on
     plot_field(exT,eyT,ls_ed(:,:,g),'k')    

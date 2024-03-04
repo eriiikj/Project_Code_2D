@@ -249,10 +249,10 @@ class InputData(object):
         self.line_ey_all = self.line_ey_all.round(decimals=6)
             
         # Domain corners
-        self.P1   = self.coord[self.P1nod]
-        self.P2   = self.coord[self.P2nod]
-        self.P3   = self.coord[self.P3nod]
-        self.P4   = self.coord[self.P4nod]
+        self.P1 = self.coord[self.P1nod]
+        self.P2 = self.coord[self.P2nod]
+        self.P3 = self.coord[self.P3nod]
+        self.P4 = self.coord[self.P4nod]
             
         
         
@@ -281,7 +281,8 @@ class InputData(object):
         
         
         
-        # --- Extract line connectivity matrix line_conn ---
+        # --- Extract line connectivity matrix line_conn connecting the 
+        #     line_coords---
         line_conn = np.empty((0, 2), dtype=int)
         for grain in range(self.ngrains):
             
