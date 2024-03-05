@@ -91,11 +91,36 @@ for i_IMC = 1%1:step_size:IMC_steps
     axis equal
     box on
 
+    [indNodBd, indElemBd, indLocalEdgBd, edges] = boundaryNodes(coordTG, enodTG)
+
+    hold on
+    for i=1:length(indElemBd)
+        fill(coordTG(enodTG(indElemBd(i),:),1),coordTG(enodTG(indElemBd(i),:),2),'y')
+    end
+    plot(coordTG(indNodBd,1), coordTG(indNodBd,2),'rs');
+
+    figure()
+    ndim = 3;
+    for i=1:size(indElemBd,1)
+        k1 = indLocalEdgBd(i);
+        k2 = mod(k1, ndim) + 1;
+        v1 = coordTG(enodTG(indElemBd(i),k1),:);
+        v2 = coordTG(enodTG(indElemBd(i),k2),:);
+        X  = [v1(1); v2(1)];
+        Y  = [v1(2); v2(2)];
+        plot(X,Y,'k')
+        hold on;
+    end
+    axis equal
 end
 
 
 
+
+
+
 %% Load functions
+
 
 function [ngrains,IMC_steps,enod,nodel,nelm,nnod,edof_1D] = ...
     load_level_set_init()
@@ -415,4 +440,69 @@ plot(line_ex(end,:)*mm_to_um,line_ey(end,:)*mm_to_um,'Color',...
 color,'LineWidth',3,'Marker','o','Markersize',4,...
 'DisplayName',['GB ' num2str(g)])
 
+end
+
+function [indNodBd, indElemBd, indLocalEdgBd, edges] = boundaryNodes(nodes, elem)
+% output:
+% indNodBd  -->  list of all nodes on the boundary
+% indElemBd -->  list of indices of the Elements on the boundary
+% indLocalEdgBd  -->  list of indices of the local element edges on the boundary
+% edges     -->  list of all edges defined in the total mesh
+%
+    numNod  = size(nodes,1);
+    [numElem, ndim] = size(elem);
+    if (ndim == 3) %triangle edges
+        edges = unique(sort([elem(:,[1,2]);elem(:,[2,3]);elem(:,[3,1])],2),'rows');
+    elseif (ndim == 4) %quadrilateral edges
+        edges = unique(sort([elem(:,[1,2]);elem(:,[2,3]);elem(:,[3,4]);elem(:,[4,1])],2),'rows');
+    end
+    indNodBd=[];
+    indLocalEdgBd=[];
+    indElemBd=[];
+    % look for the edges belonging only to one element
+    for i=1:size(edges,1)
+        n1=edges(i,1);
+        n2=edges(i,2);
+        [indRow,indCol]=find(elem == n1); %find elements owning the first node
+        [indElem,col]=find(elem(indRow,:) == n2); % owing also the second one
+        if (length(indElem) == 1) %boundary edges
+            indNodBd=[indNodBd, n1,n2];
+            indElemBd=[indElemBd;indRow(indElem)];
+            lloc1=find(elem(indRow(indElem),:)==n1);
+            lloc2=find(elem(indRow(indElem),:)==n2);
+            if (ndim == 3) %triangle edges
+                aux=[0,0,0];
+                aux(lloc1)=1;
+                aux(lloc2)=1;
+                number = aux(1)+2*aux(2)+4*aux(3);
+                switch (number) %identify the appropriate element edge
+                    case 3
+                        edgeBd=1;
+                    case 5
+                        edgeBd=3;
+                    case 6
+                        edgeBd=2;
+                    otherwise, error('edge not allowed');
+                end
+            elseif (ndim == 4) %quadrilateral edges
+                aux=[0,0,0,0];
+                aux(lloc1)=1;
+                aux(lloc2)=1;
+                number = aux(1)+2*aux(2)+4*aux(3)+8*aux(4);
+                switch (number) %identify the appropriate element edge
+                    case 3
+                        edgeBd=1;
+                    case 6
+                        edgeBd=2;
+                    case 9
+                        edgeBd=4;
+                    case 12
+                        edgeBd=3;
+                    otherwise, error('edge not allowed');
+                end
+            end
+            indLocalEdgBd=[indLocalEdgBd, edgeBd];
+        end
+    end
+    indNodBd=unique(indNodBd);
 end

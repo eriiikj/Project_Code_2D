@@ -195,8 +195,8 @@ for k=1:nbseg
     k2 = mod(k1, ndim) + 1;
     v1 = coordTG(enodTG(indElemBd(i),k1),:);
     v2 = coordTG(enodTG(indElemBd(i),k2),:);
-    x1 = v1(1); x2 = v2(1);
-    y1 = v1(2); y2 = v2(2);    
+    x1 = line_ex(iseg, 1); x2 = line_ex(iseg, 2);
+    y1 = line_ey(iseg, 1); y2 = line_ey(iseg, 2);
     Le = norm([(x2-x1), (y2-y1)]);
     % Mass matrix
     Me      = zeros(2,2);
