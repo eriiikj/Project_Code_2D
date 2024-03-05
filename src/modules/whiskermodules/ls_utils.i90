@@ -1031,6 +1031,140 @@ subroutine compute_common_vp_spatial(lssys, mesh, diffsys)
    return
 end subroutine compute_common_vp_spatial
 
+subroutine compute_common_vp_spatial2(lssys, mesh, diffsys)
+! --- Routine for computing a common velocity field in deformed configuration ---
+   implicit none
+
+! Intent inout
+   type(diffusion_system), intent(inout) :: diffsys
+   type(ls_system), intent(inout)        :: lssys
+   
+! Intent in
+   type(mesh_system), intent(in)         :: mesh
+
+! Subrouitine variables
+   integer  :: g, ie, Igrain_gp(mesh%nrgp), inod
+   real(dp) :: ed_e_gr(mesh%nodel,lssys%ngrains), jed_e_gr(mesh%nodel,lssys%ngrains), bcvaled_e_gr(mesh%nodel,lssys%ngrains)
+   real(dp) :: agp_e_gr(mesh%nrgp,lssys%ngrains), jgp_e_gr(mesh%nrgp,lssys%ngrains), bcvalgp_e_gr(mesh%nrgp,lssys%ngrains)
+   integer  :: g_cols(2), minIdx(1), snsn_closest(1)
+   real(dp) :: xnod, ynod, xint, yint, grain_nod
+   real(dp) :: mean_x, mapply, mzetagbapply
+   real(dp) :: mgbpos(2), numsnsngb, snsn_gb_distance
+
+! New closest interface point
+   do g=1,lssys%ngrains
+       do inod=1,mesh%nnod
+
+! g_cols
+           g_cols = [2*(g-1) + 1, 2*(g-1) + 2]
+
+! Coordinates of nod
+           xnod = mesh%newcoord(1,inod)
+           ynod = mesh%newcoord(2,inod)            
+
+! Find coordinates of closest point on interface
+           minIdx =  minloc(sqrt((xnod - lssys%line_ex(1:lssys%line_seg(g),g_cols(1)))**2 + & 
+           (ynod - lssys%line_ey(1:lssys%line_seg(g),g_cols(1)))**2))
+           xint = lssys%line_ex(minIdx(1),g_cols(1))
+           yint = lssys%line_ey(minIdx(1),g_cols(1))
+
+! Find corresponding nod in grain_mesh
+           minIdx = minloc(sqrt((diffsys%grain_meshes(g)%coord(1,:) - xint)**2 + (diffsys%grain_meshes(g)%coord(2,:) - yint)**2))
+           grain_nod = minIdx(1)
+
+! See if closest interface node is not present in bcnod
+           if (all(abs(diffsys%grain_meshes(g)%bcnod(:,1) - grain_nod).gt.0)) then
+! Closest interface node does not exist in bcnod
+
+               lssys%jnod(inod,g) = 0d0               
+
+! Closest interface node exist in bcnod
+! Find local position of nod in bcnod
+               minIdx = minloc(abs(diffsys%grain_meshes(g)%bcnod(:,1) - grain_nod))                
+               lssys%bcval(inod,g) = diffsys%grain_meshes(g)%bcval(minIdx(1))
+
+           else
+! Closest interface node exist in bcnod
+! Find local position of nod in bcnod
+               minIdx = minloc(abs(diffsys%grain_meshes(g)%bcnod(:,1) - grain_nod))
+               lssys%jnod(inod,g)  = diffsys%grain_meshes(g)%jint(minIdx(1))
+               lssys%bcval(inod,g) = diffsys%grain_meshes(g)%bcval(minIdx(1))
+           endif
+       enddo
+   enddo    
+
+! Loop through all elements and compute common velocity field in each gauss point
+   do ie=1,mesh%nelm
+
+! ed_e_gr  : [elmvals_g1 , elmvals_g2 , ....., elmvals_gn]
+! jed_e_gr : [jelmvals_g1, jelmvals_g2, ....., jelmvals_gn]
+
+
+       do g=1,lssys%ngrains
+           ed_e_gr(:,g) = lssys%ed(:,ie,g)
+       enddo
+
+       do g=1,lssys%ngrains
+           jed_e_gr(:,g) = lssys%jnod(mesh%enod(:,ie),g)
+       enddo
+
+       do g=1,lssys%ngrains
+           bcvaled_e_gr(:,g) = lssys%bcval(mesh%enod(:,ie),g)
+       enddo
+
+!
+       where (abs(jed_e_gr(:,g)).lt.1d-22) jed_e_gr(:,g) = 0d0
+
+! Convert from nodvals to gauss point vals
+       call elm2D4_nodmat_to_gpmat(agp_e_gr, ed_e_gr, lssys%ngrains)
+       call elm2D4_nodmat_to_gpmat(jgp_e_gr, jed_e_gr, lssys%ngrains)
+       call elm2D4_nodmat_to_gpmat(bcvalgp_e_gr, bcvaled_e_gr, lssys%ngrains)
+
+
+! Find which grain each gauss point in the element belong to
+       Igrain_gp = minloc(agp_e_gr,2)
+
+! Compute velocity in all gauss points of element
+       call lvlset2D4_global_vp(lssys%vp(:,:,ie),mesh%newcoord(:,mesh%enod(:,ie)),ed_e_gr,jgp_e_gr,agp_e_gr,&
+       bcvalgp_e_gr,Igrain_gp, lssys, diffsys, ie)
+       
+! Apply mobility based on xdistance to Sn gb's
+       mean_x  = sum(mesh%newcoord(1,mesh%enod(:,ie)))/size(mesh%enod(:,ie))
+               
+! Sn/Sn gb positions
+       numsnsngb = 4
+       mgbpos(1) = 0d0
+
+! g = 6
+! g_cols = [2*(g-1) + 1, 2*(g-1) + 2]
+! mgbpos(2) = maxval(lssys%line_ex(:,g_cols))
+
+! g = 7
+! g_cols = [2*(g-1) + 1, 2*(g-1) + 2]
+! mgbpos(3) = maxval(lssys%line_ex(:,g_cols))
+
+! mgbpos(4) = mesh%model_width
+       mgbpos(2) = mesh%model_width
+       
+! Closest distance to Sn/Sn gb
+       snsn_gb_distance = minval(abs(mgbpos - mean_x))
+       snsn_closest     = minloc(abs(mgbpos - mean_x))        
+
+! Sn/Sn gb mobility
+       mapply = lssys%mzeta + (lssys%mzetagb - lssys%mzeta)*exp(-lssys%malpha*snsn_gb_distance)
+
+! If distance to Sn less than threshold -> apply Sn/IMC mobility
+       if (abs(sum(lssys%ed(:,ie,5))/4d0).lt.2.5d-5*2d0) then
+           lssys%vp(:,:,ie) = lssys%vp(:,:,ie)*mapply
+       else
+           lssys%vp(:,:,ie) = lssys%vp(:,:,ie)*lssys%mzeta
+       endif
+
+   enddo
+
+   return
+end subroutine compute_common_vp_spatial2
+
 
 subroutine remove_ls(lssys)
 ! --- Routine for removing level set if it is larger than zero everywhere ---

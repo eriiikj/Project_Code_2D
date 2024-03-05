@@ -171,7 +171,7 @@ program main
 
 ! --- Compute new velocity field ---
       print *, 'Entering compute_common_vp'
-      call compute_common_vp_spatial(lssys,mesh,diffsys)
+      call compute_common_vp_spatial2(lssys,mesh,diffsys)
       print *, 'Leaving compute_common_vp'
 
 ! --- Save output data from level set and diffusion ---
