@@ -15,7 +15,7 @@ module diffusion_types
         integer               :: nalloc_nelm, nalloc_nnod, nalloc_nbc
         integer               :: nelm, nnod
         integer               :: dofnod, nelmx, nelmy, nrgp, nodel, ndof, dofel
-        integer,  allocatable :: enod(:,:), bcnod(:,:), bcdof(:)
+        integer,  allocatable :: enod(:,:), bcnod(:,:), bcdof(:), indNodBd(:), indElemBd(:), indLocalEdgBd(:)
         real(dp), allocatable :: coord(:,:), bcval(:), bcval_idx(:)
         real(dp), allocatable :: a(:), r(:), ed(:,:), j_flux(:,:), jint(:)
         real(dp), allocatable :: p(:)

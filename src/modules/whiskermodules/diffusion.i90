@@ -310,7 +310,7 @@ subroutine diffusion_grain(diffsys, i_IMC, grain_mesh, g, input_location, lssys,
 ! Read mesh from json file
     call clock_time(t1, omp_run)    
     call read_json_phase_mesh2(phase_mesh_location, i_IMC, grain_mesh%coord, grain_mesh%enod, grain_mesh%bcnod, grain_mesh%bcval, &
-    grain_mesh%bcval_idx, g)
+    grain_mesh%bcval_idx, grain_mesh%indNodBd, grain_mesh%indElemBd, grain_mesh%indLocalEdgBd, g)
     call clock_time(t2, omp_run)
     diffsys%read_mesh_time = diffsys%read_mesh_time + (t2 - t1)
 
@@ -335,8 +335,9 @@ subroutine diffusion_grain(diffsys, i_IMC, grain_mesh, g, input_location, lssys,
 
 ! Obtain jint of grain
     print *, 'Before compute jint'
-    call ComputeJint3(grain_mesh, lssys%line_ex([1:lssys%line_seg(g)],g_cols), lssys%line_ey([1:lssys%line_seg(g)],g_cols), &
-    lssys%line_seg(g))
+! call ComputeJint3(grain_mesh, lssys%line_ex([1:lssys%line_seg(g)],g_cols), lssys%line_ey([1:lssys%line_seg(g)],g_cols), &
+! lssys%line_seg(g))
+    call compute_jint4(grain_mesh)
     print *, 'After compute jint'
 
 ! Save diffusion results
@@ -351,129 +352,81 @@ end subroutine diffusion_grain
 
 
 
-
-
-subroutine ComputeJint3(grain_mesh, line_ex, line_ey, nseg)
-! --- Routine for computing jint ---
+subroutine compute_jint4(grain_mesh)
+! --- Routine for ---
 
 ! Intent inout
   type(grain_mesh_system),intent(inout) :: grain_mesh
-  
-! Intent in
-  real(dp), intent(in)  :: line_ex(:,:), line_ey(:,:)
-  integer, intent(in)   :: nseg
 
-! Subroutine variables
-  type(sparse)          :: M
-  integer, allocatable  :: lines(:), enod_m(:,:), enod_l(:,:), bcvali(:), oldNods(:)
-  real(dp), allocatable :: bcval_u(:), bcval_coords(:,:), bb(:)
-  logical, allocatable  :: bool_seg(:)
-  integer               :: nbnods, nbcval, nnods_bcseg, nseg_bcval, i, j, k, iseg, ierr, nod1(1), nod2(1), cc
-  real(dp)              :: bcval, x1, x2, y1, y2, Le, Me(2,2)
 
-! Number of boundary nods
-  nbnods = size(grain_mesh%bcnod(:, 1))
+  integer                               :: nbseg, i, k, k1, k2, nod1, nod2, nods(2), ierr
+  integer                               :: enod_l(2,size(grain_mesh%indLocalEdgBd)), enod_m(2,size(grain_mesh%indLocalEdgBd))
+  real(dp)                              :: x1, x2, y1, y2, Le
+  real(dp), dimension(2)                :: v1, v2
+  real(dp), dimension(2, 2)             :: Me
+  real(dp), dimension(:)                :: b(size(grain_mesh%indLocalEdgBd))
+  integer, allocatable                  :: oldNods(:)
+  type(sparse)                          :: M
 
-! Initialize jint
-  allocate(grain_mesh%jint(nbnods), stat=ierr)
-  grain_mesh%jint = 0d0
+! Number of boundary segments
+  nbseg = size(grain_mesh%indLocalEdgBd)
 
-! Loop through each bcval (phase interface)
-  call FindUniqueREAL(grain_mesh%bcval, bcval_u)
-  nbcval = size(bcval_u)
+! Initialize enod_l
+  enod_l = 0
 
-! Loop through each bcval (phase interface).
-! 1) Find coordinates along the bcval interface
-! 2) Find the lines connecting the coordinates
-  allocate(bool_seg(nseg))
-  do i = 1, nbcval
-      bool_seg    = .false.
-      bcval       = bcval_u(i)
-      bcvali      = pack([(j, j=1,nbnods)], grain_mesh%bcval == bcval)
-      nnods_bcseg = size(bcvali)
-      allocate(bcval_coords(2,nnods_bcseg))
-      bcval_coords = grain_mesh%coord(:,grain_mesh%bcnod(bcvali,1))
-      allocate(enod_l(2,nnods_bcseg*4),stat=ierr)
-      enod_l = 0
-      cc = 0
-      do iseg = 1, nseg
-          x1 = line_ex(iseg, 1)
-          x2 = line_ex(iseg, 2)
-          y1 = line_ey(iseg, 1)
-          y2 = line_ey(iseg, 2)
-
-!  Check if segment endpoints are in coords
-          nod1 = pack(bcvali, (abs(bcval_coords(1,:) - x1) .lt. 1d-8) .and. (abs(bcval_coords(2,:) - y1) .lt. 1d-8))
-          nod2 = pack(bcvali, (abs(bcval_coords(1,:) - x2) .lt. 1d-8) .and. (abs(bcval_coords(2,:) - y2) .lt. 1d-8))
-
-          if (nod1(1).ne.0 .and. nod2(1).ne.0) then
-              bool_seg(iseg) = .true.              
-              nod1 = grain_mesh%bcnod(nod1(1),1)
-              nod2 = grain_mesh%bcnod(nod2(1),1)
-              cc   = cc + 1
-              enod_l(:,cc) = [nod1(1), nod2(1)]
-          end if
-      end do
-
-! Extract enod_m
-      allocate(enod_m(2,cc),stat=ierr)
-      enod_m = enod_l(:,1:cc)
-
-! Rewrite enod_m from unique values to 1:nnod
-      call FindUniqueIntegers(reshape(enod_m,[cc*2]), oldNods)
-      call bubble_sort_1D_integer(oldNods)
-      do k=1,size(oldNods)
-        where (enod_l .eq. oldNods(k)) enod_m = k
-      enddo
-
-! Find lines with true values
-      lines      = pack([(j, j=1, nseg)],bool_seg)
-      nseg_bcval = size(lines)
-
-! --- Compute mass matrix ---
-      print *, 'before allocating M'
-      call spaTopDef(M,enod_m,1)   
-      M%a = 0d0
-      do k=1,nseg_bcval
-
-! iseg
-        iseg = lines(k)
-
-! Coordinates and length of element
-        x1 = line_ex(iseg, 1)
-        x2 = line_ex(iseg, 2)
-        y1 = line_ey(iseg, 1)
-        y2 = line_ey(iseg, 2)
-        Le = norm2([(x2-x1), (y2-y1)]) ! Length of line segment
-
-! Mass matrix
-        Me(1,:) = [2d0, 1d0]
-        Me(2,:) = [1d0, 2d0]
-        Me      = Le/6d0*Me
-        call assem(M,Me,enod_m(:,k),1)
-      enddo
-
-! Solve M*vnod = -r
-      allocate(bb(size(bcvali)))      
-      bb = -grain_mesh%r(grain_mesh%bcnod(bcvali,1))
-      call solveq(M, bb)
-      grain_mesh%jint(bcvali) = bb
-
-! Deallocate
-      deallocate(bb)
-      deallocate(lines)
-      deallocate(bcval_coords)
-      deallocate(enod_l)
-      deallocate(enod_m)
-      deallocate(bcvali)
+! Compute enod_l
+  do i = 1, nbseg
+      k1          = grain_mesh%indLocalEdgBd(i)
+      k2          = mod(k1, grain_mesh%nodel) + 1
+      nod1        = grain_mesh%enod(k1,grain_mesh%indElemBd(i))
+      nod2        = grain_mesh%enod(k2,grain_mesh%indElemBd(i))
+      enod_l(:,i) = [nod1, nod2]
   end do
 
-! Deallocate
-  deallocate(bool_seg)
-  deallocate(bcval_u)
+! Rewrite enod_m from unique values to 1:nnod
+  call FindUniqueIntegers(reshape(enod_l,[nbseg*2]), oldNods)
+  call bubble_sort_1D_integer(oldNods)
+  do k=1,size(oldNods)
+    where (enod_l .eq. oldNods(k)) enod_m = k
+  enddo
 
+! Allocate M
+  call spaTopDef(M,enod_m,1)   
+  M%a = 0d0
+
+! Compute mass matrix M
+  do i = 1, nbseg
+      nods = enod_l(:,i)
+      nod1 = nods(1)
+      nod2 = nods(2)
+
+      v1 = grain_mesh%coord(:,nod1)
+      v2 = grain_mesh%coord(:,nod2)
+
+      x1 = v1(1)
+      x2 = v2(1)
+      y1 = v1(2)
+      y2 = v2(2)
+
+      Le = sqrt((x2 - x1)**2 + (y2 - y1)**2)
+
+! Mass matrix
+      Me(1,:) = [2d0, 1d0]
+      Me(2,:) = [1d0, 2d0]
+      Me      = Le/6d0*Me
+      call assem(M,Me,enod_m(:,i),1)
+  end do
+
+  allocate(grain_mesh%jint(nbseg), stat=ierr)    
+  b = -grain_mesh%r(grain_mesh%indNodBd)
+  call solveq(M, b)
+  grain_mesh%jint = b
+  
   return
-end subroutine ComputeJint3
+end subroutine compute_jint4
+
+
+
 
 
 subroutine mesh_reset(grain_mesh)
@@ -505,20 +458,6 @@ subroutine mesh_reset(grain_mesh)
   if (allocated(grain_mesh%jint)) then
     deallocate(grain_mesh%jint)
   endif
-
-
-! Reset variables
-! mesh%nelm   = 0
-! mesh%nnod   = 0
-! mesh%coord  = 0d0
-! mesh%enod   = 0
-! mesh%a      = 0d0
-! mesh%r      = 0d0
-! mesh%ed     = 0d0
-! mesh%j_flux = 0d0
-! mesh%jint   = 0d0
-! mesh%bcnod  = 0
-! mesh%bcval  = 0d0
 
   return
 end subroutine mesh_reset
@@ -1145,6 +1084,128 @@ subroutine compute_jint2(grain_mesh, I_IMC)
 
   return
 end subroutine compute_jint2
+
+subroutine ComputeJint3(grain_mesh, line_ex, line_ey, nseg)
+! --- Routine for computing jint ---
+
+! Intent inout
+  type(grain_mesh_system),intent(inout) :: grain_mesh
+  
+! Intent in
+  real(dp), intent(in)  :: line_ex(:,:), line_ey(:,:)
+  integer, intent(in)   :: nseg
+
+! Subroutine variables
+  type(sparse)          :: M
+  integer, allocatable  :: lines(:), enod_m(:,:), enod_l(:,:), bcvali(:), oldNods(:)
+  real(dp), allocatable :: bcval_u(:), bcval_coords(:,:), bb(:)
+  logical, allocatable  :: bool_seg(:)
+  integer               :: nbnods, nbcval, nnods_bcseg, nseg_bcval, i, j, k, iseg, ierr, nod1(1), nod2(1), cc
+  real(dp)              :: bcval, x1, x2, y1, y2, Le, Me(2,2)
+
+! Number of boundary nods
+  nbnods = size(grain_mesh%bcnod(:, 1))
+
+! Initialize jint
+  allocate(grain_mesh%jint(nbnods), stat=ierr)
+  grain_mesh%jint = 0d0
+
+! Loop through each bcval (phase interface)
+  call FindUniqueREAL(grain_mesh%bcval, bcval_u)
+  nbcval = size(bcval_u)
+
+! Loop through each bcval (phase interface).
+! 1) Find coordinates along the bcval interface
+! 2) Find the lines connecting the coordinates
+  allocate(bool_seg(nseg))
+  do i = 1, nbcval
+      bool_seg    = .false.
+      bcval       = bcval_u(i)
+      bcvali      = pack([(j, j=1,nbnods)], grain_mesh%bcval == bcval)
+      nnods_bcseg = size(bcvali)
+      allocate(bcval_coords(2,nnods_bcseg))
+      bcval_coords = grain_mesh%coord(:,grain_mesh%bcnod(bcvali,1))
+      allocate(enod_l(2,nnods_bcseg*4),stat=ierr)
+      enod_l = 0
+      cc = 0
+      do iseg = 1, nseg
+          x1 = line_ex(iseg, 1)
+          x2 = line_ex(iseg, 2)
+          y1 = line_ey(iseg, 1)
+          y2 = line_ey(iseg, 2)
+
+!  Check if segment endpoints are in coords
+          nod1 = pack(bcvali, (abs(bcval_coords(1,:) - x1) .lt. 1d-8) .and. (abs(bcval_coords(2,:) - y1) .lt. 1d-8))
+          nod2 = pack(bcvali, (abs(bcval_coords(1,:) - x2) .lt. 1d-8) .and. (abs(bcval_coords(2,:) - y2) .lt. 1d-8))
+
+          if (nod1(1).ne.0 .and. nod2(1).ne.0) then
+              bool_seg(iseg) = .true.              
+              nod1 = grain_mesh%bcnod(nod1(1),1)
+              nod2 = grain_mesh%bcnod(nod2(1),1)
+              cc   = cc + 1
+              enod_l(:,cc) = [nod1(1), nod2(1)]
+          end if
+      end do
+
+! Extract enod_m
+      allocate(enod_m(2,cc),stat=ierr)
+      enod_m = enod_l(:,1:cc)
+
+! Rewrite enod_m from unique values to 1:nnod
+      call FindUniqueIntegers(reshape(enod_m,[cc*2]), oldNods)
+      call bubble_sort_1D_integer(oldNods)
+      do k=1,size(oldNods)
+        where (enod_l .eq. oldNods(k)) enod_m = k
+      enddo
+
+! Find lines with true values
+      lines      = pack([(j, j=1, nseg)],bool_seg)
+      nseg_bcval = size(lines)
+
+! --- Compute mass matrix ---
+      print *, 'before allocating M'
+      call spaTopDef(M,enod_m,1)   
+      M%a = 0d0
+      do k=1,nseg_bcval
+
+! iseg
+        iseg = lines(k)
+
+! Coordinates and length of element
+        x1 = line_ex(iseg, 1)
+        x2 = line_ex(iseg, 2)
+        y1 = line_ey(iseg, 1)
+        y2 = line_ey(iseg, 2)
+        Le = norm2([(x2-x1), (y2-y1)]) ! Length of line segment
+
+! Mass matrix
+        Me(1,:) = [2d0, 1d0]
+        Me(2,:) = [1d0, 2d0]
+        Me      = Le/6d0*Me
+        call assem(M,Me,enod_m(:,k),1)
+      enddo
+
+! Solve M*vnod = -r
+      allocate(bb(size(bcvali)))      
+      bb = -grain_mesh%r(grain_mesh%bcnod(bcvali,1))
+      call solveq(M, bb)
+      grain_mesh%jint(bcvali) = bb
+
+! Deallocate
+      deallocate(bb)
+      deallocate(lines)
+      deallocate(bcval_coords)
+      deallocate(enod_l)
+      deallocate(enod_m)
+      deallocate(bcvali)
+  end do
+
+! Deallocate
+  deallocate(bool_seg)
+  deallocate(bcval_u)
+
+  return
+end subroutine ComputeJint3
   
 
 subroutine interpolate_glob_to_grain(global_mesh,grain_mesh,p_ed)

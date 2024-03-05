@@ -268,7 +268,9 @@ class OutputData(object):
         output_data_file["nnod"]            = self.nnod
         output_data_file["nodel"]           = self.nodel
         output_data_file["dofspernode"]     = self.dofspernode
-        
+        output_data_file["indNodBd"]        = self.indNodBd.tolist()
+        output_data_file["indElemBd"]       = self.indElemBd.tolist()
+        output_data_file["indLocalEdgBd"]   = self.indLocalEdgBd
         
         with open(filename, "w") as ofile:
             json.dump(output_data_file, ofile, sort_keys = True, indent = 4)
@@ -421,6 +423,9 @@ class Mesh(object):
         bcval_idx = bcval.copy()
         bcnod_g   = bcnod
         bcval_g   = bcval
+        
+        # All boundary nodes
+        indNodBd, indElemBd, indLocalEdgBd, edges = self.boundary_nodes(coord_g, enod_g)
 
         # --- Transfer model variables to output data ---
         self.output_data.coord          = coord_g
@@ -428,10 +433,60 @@ class Mesh(object):
         self.output_data.bcnod          = bcnod_g
         self.output_data.bcval          = bcval_g
         self.output_data.bcval_idx      = bcval_idx
+        self.output_data.indNodBd       = indNodBd + 1
+        self.output_data.indElemBd      = indElemBd + 1
+        self.output_data.indLocalEdgBd  = indLocalEdgBd
         self.output_data.nelm           = nelm_g
         self.output_data.nnod           = nnod_g
         self.output_data.nodel          = nodel_g
         self.output_data.dofspernode    = 1
+        
+    
+    def boundary_nodes(self, nodes, elem):
+        numNod = nodes.shape[0]
+        numElem, ndim = elem.shape
+    
+        # Triangle edges
+        edges = np.unique(np.sort(np.concatenate((elem[:, [0, 1]], elem[:, [1, 2]], elem[:, [2, 0]]), axis=0), axis=1), axis=0)
+
+        indNodBd      = []
+        indLocalEdgBd = []
+        indElemBd     = []
+    
+        # Look for the edges belonging only to one element
+        for i in range(edges.shape[0]):
+            n1, n2 = edges[i, 0], edges[i, 1]
+            indRow, indCol = np.where(elem == n1)  # Find elements owning the first node
+            indElem, col = np.where(elem[indRow, :] == n2)  # Owning also the second one
+    
+            if len(indElem) == 1:  # Boundary edges
+                indNodBd.extend([n1, n2])
+                indElemBd.append(indRow[indElem])
+                lloc1 = np.where((elem[indRow[indElem], :] == n1)[0])[0][0]
+                lloc2 = np.where((elem[indRow[indElem], :] == n2)[0])[0][0]
+    
+                aux = np.array([0, 0, 0])
+                aux[lloc1] = 1
+                aux[lloc2] = 1
+                number = aux[0] + 2 * aux[1] + 4 * aux[2]
+
+                if number == 3:
+                    edgeBd = 1
+                elif number == 5:
+                    edgeBd = 3
+                elif number == 6:
+                    edgeBd = 2
+                else:
+                    raise ValueError('Edge not allowed')
+    
+                indLocalEdgBd.append(edgeBd)
+    
+        indNodBd = np.unique(indNodBd)
+        return indNodBd, np.concatenate(indElemBd), indLocalEdgBd, edges
+    
+        # Example usage:
+        # indNodBd, indElemBd, indLocalEdgBd, edges = boundary_nodes(nodes_array, elem_array)
+ 
         
     
 

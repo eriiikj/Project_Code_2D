@@ -28,7 +28,10 @@ grain = struct(...
     'j_flux',[],...
     'vnod',[],...
     'p',[],...
-    'p_ed',[]);
+    'p_ed',[],...
+    'indNodBd',[],...
+    'indElemBd',[],...
+    'indLocalEdgBd',[]);
 
 % Import level set mesh properties
 [ngrains,IMC_steps,~,~,~,~,edof] = load_level_set_init();
@@ -50,7 +53,9 @@ for i_IMC = 1%1:step_size:IMC_steps
         [grainArr(g).edof,grainArr(g).enod,grainArr(g).coord,...
          grainArr(g).dofs,grainArr(g).ex,grainArr(g).ey,...
          grainArr(g).bcnod,grainArr(g).bcval,...
-         grainArr(g).nodel,grainArr(g).nelm,grainArr(g).nnod]...
+         grainArr(g).nodel,grainArr(g).nelm,...
+         grainArr(g).nnod,grainArr(g).indNodBd,grainArr(g).indElemBd...
+         grainArr(g).indLocalEdgBd]...
          = import_grain_mesh(i_IMC,g);
     
         % Load grain results
@@ -63,7 +68,7 @@ for i_IMC = 1%1:step_size:IMC_steps
     % Plot grain mesh with concentration
     f1 = figure(1);
     cla;
-    for g=2%1:ngrains
+    for g=4%1:ngrains
 %         plot_mesh(grainArr(g).ex,grainArr(g).ey,'k')
         plot_2D_conc(grainArr(g).ex,grainArr(g).ey,grainArr(g).ed,i_IMC)
         hold on
@@ -71,8 +76,6 @@ for i_IMC = 1%1:step_size:IMC_steps
         axis equal  
         box on
     end
-
-
 
 
 end
@@ -160,9 +163,11 @@ end
 
 
 
-coordTG = grainArr(2).coord*1e3;
-enodTG  = grainArr(2).enod;
-[indNodBd, indElemBd, indLocalEdgBd, edges] = boundaryNodes(coordTG, enodTG);
+coordTG       = grainArr(g).coord;
+enodTG        = grainArr(g).enod;
+indNodBd      = grainArr(g).indNodBd;
+indElemBd     = grainArr(g).indElemBd;   
+indLocalEdgBd = grainArr(g).indLocalEdgBd;   
 figure()
 hold on
 for i=1:length(indElemBd)
@@ -189,26 +194,34 @@ box on
 
 nbnods = length(indNodBd);
 nbseg  = length(indLocalEdgBd);
-M = zeros(nbnods,nbnods);
-for k=1:nbseg
+enod_m = zeros(nbseg,2);
+enod_m(:,1)       = 1:nbseg;
+enod_m(1:end-1,2) = 2:nbseg;
+enod_m(end,2)     = 1;
+enod_m            = enod_m';
+M2 = zeros(nbseg,nbseg);
+myvec = [];
+for i=1:size(indElemBd,1)
     k1 = indLocalEdgBd(i);
     k2 = mod(k1, ndim) + 1;
+    myvec = [myvec; enodTG(indElemBd(i),k1)];
+    myvec = [myvec; enodTG(indElemBd(i),k2)];
     v1 = coordTG(enodTG(indElemBd(i),k1),:);
     v2 = coordTG(enodTG(indElemBd(i),k2),:);
-    x1 = line_ex(iseg, 1); x2 = line_ex(iseg, 2);
-    y1 = line_ey(iseg, 1); y2 = line_ey(iseg, 2);
+    x1 = v1(1); x2 = v2(1);
+    y1 = v1(2); y2 = v2(2);
     Le = norm([(x2-x1), (y2-y1)]);
     % Mass matrix
     Me      = zeros(2,2);
     Me(1,:) = [2, 1];
     Me(2,:) = [1, 2];
     Me      = Le/6*Me;
-    M(enod_m(:,k),enod_m(:,k)) = M(enod_m(:,k),enod_m(:,k)) + Me;
+    M2(enod_m(:,k),enod_m(:,k)) = M2(enod_m(:,k),enod_m(:,k)) + Me;
 end
 
 % Solve M*vnod = -r
-b = -grainArr(g).r(grainArr(g).bcnod(bcvali,1));
-jint2(bcvali) = M\b;
+b2 = -grainArr(g).r(indNodBd);
+jint3 = M2\b2;
 
 
 
@@ -291,7 +304,7 @@ end
 
 
 function [edof,enod,coord,dofs,ex,ey,bcnod,bcval,nodel, ...
-    nelm,nnod] = import_grain_mesh(i_IMC,g)
+    nelm,nnod,indNodBd,indElemBd,indLocalEdgBd] = import_grain_mesh(i_IMC,g)
 
 
 % Input data and mesh location
@@ -320,6 +333,9 @@ coord          = mesh_struct.coord'*1e-3;
 nodel          = mesh_struct.nodel;
 nelm           = mesh_struct.nelm;
 nnod           = mesh_struct.nnod;
+indNodBd       = mesh_struct.indNodBd;
+indElemBd      = mesh_struct.indElemBd;
+indLocalEdgBd  = mesh_struct.indLocalEdgBd;    
 
 % Dofs (one dof per node)
 dofs = (1:nnod)';
@@ -528,69 +544,4 @@ plot(line_ex(end,:)*mm_to_um,line_ey(end,:)*mm_to_um,'Color',...
 color,'LineWidth',3,'Marker','o','Markersize',4,...
 'DisplayName',['GB ' num2str(g)])
 
-end
-
-function [indNodBd, indElemBd, indLocalEdgBd, edges] = boundaryNodes(nodes, elem)
-% output:
-% indNodBd  -->  list of all nodes on the boundary
-% indElemBd -->  list of indices of the Elements on the boundary
-% indLocalEdgBd  -->  list of indices of the local element edges on the boundary
-% edges     -->  list of all edges defined in the total mesh
-%
-    numNod  = size(nodes,1);
-    [numElem, ndim] = size(elem);
-    if (ndim == 3) %triangle edges
-        edges = unique(sort([elem(:,[1,2]);elem(:,[2,3]);elem(:,[3,1])],2),'rows');
-    elseif (ndim == 4) %quadrilateral edges
-        edges = unique(sort([elem(:,[1,2]);elem(:,[2,3]);elem(:,[3,4]);elem(:,[4,1])],2),'rows');
-    end
-    indNodBd=[];
-    indLocalEdgBd=[];
-    indElemBd=[];
-    % look for the edges belonging only to one element
-    for i=1:size(edges,1)
-        n1=edges(i,1);
-        n2=edges(i,2);
-        [indRow,indCol]=find(elem == n1); %find elements owning the first node
-        [indElem,col]=find(elem(indRow,:) == n2); % owing also the second one
-        if (length(indElem) == 1) %boundary edges
-            indNodBd=[indNodBd, n1,n2];
-            indElemBd=[indElemBd;indRow(indElem)];
-            lloc1=find(elem(indRow(indElem),:)==n1);
-            lloc2=find(elem(indRow(indElem),:)==n2);
-            if (ndim == 3) %triangle edges
-                aux=[0,0,0];
-                aux(lloc1)=1;
-                aux(lloc2)=1;
-                number = aux(1)+2*aux(2)+4*aux(3);
-                switch (number) %identify the appropriate element edge
-                    case 3
-                        edgeBd=1;
-                    case 5
-                        edgeBd=3;
-                    case 6
-                        edgeBd=2;
-                    otherwise, error('edge not allowed');
-                end
-            elseif (ndim == 4) %quadrilateral edges
-                aux=[0,0,0,0];
-                aux(lloc1)=1;
-                aux(lloc2)=1;
-                number = aux(1)+2*aux(2)+4*aux(3)+8*aux(4);
-                switch (number) %identify the appropriate element edge
-                    case 3
-                        edgeBd=1;
-                    case 6
-                        edgeBd=2;
-                    case 9
-                        edgeBd=4;
-                    case 12
-                        edgeBd=3;
-                    otherwise, error('edge not allowed');
-                end
-            end
-            indLocalEdgBd=[indLocalEdgBd, edgeBd];
-        end
-    end
-    indNodBd=unique(indNodBd);
 end

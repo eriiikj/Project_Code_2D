@@ -600,7 +600,8 @@ subroutine read_json_diffusion_mesh(input_location, i_IMC, coord, enod)
   return
 end subroutine read_json_diffusion_mesh
 
-subroutine read_json_phase_mesh2(input_location, i_IMC, coord, enod, bcnod, bcval, bcval_idx, grain)
+subroutine read_json_phase_mesh2(input_location, i_IMC, coord, enod, bcnod, bcval, bcval_idx, indNodBd, indElemBd, indLocalEdgBd, &
+  grain)
   implicit none
 
 ! Input location
@@ -625,7 +626,7 @@ subroutine read_json_phase_mesh2(input_location, i_IMC, coord, enod, bcnod, bcva
 
 ! Out
   real(dp), allocatable, intent(inout)     :: coord(:,:), bcval(:), bcval_idx(:)
-  integer, allocatable, intent(inout)      :: enod(:,:), bcnod(:,:)  
+  integer, allocatable, intent(inout)      :: enod(:,:), bcnod(:,:), indNodBd(:), indElemBd(:), indLocalEdgBd(:)
   
 
 ! ! Filename phase mesh file
@@ -717,6 +718,15 @@ subroutine read_json_phase_mesh2(input_location, i_IMC, coord, enod, bcnod, bcva
 
 ! ----- bcval_idx -----
   call my_json_file%get('bcval_idx', bcval_idx, found); if (.not. found) call exit(0)
+
+! ----- indNodBd -----
+  call my_json_file%get('indNodBd', indNodBd, found); if (.not. found) call exit(0)
+
+! ----- indElemBd -----
+  call my_json_file%get('indElemBd', indElemBd, found); if (.not. found) call exit(0)
+
+! ----- indLocalEdgBd -----
+  call my_json_file%get('indLocalEdgBd', indLocalEdgBd, found); if (.not. found) call exit(0)
 
 ! ----- Destroy -----
   call my_json_file%destroy()

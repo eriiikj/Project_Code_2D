@@ -28,7 +28,10 @@ grain = struct(...
     'j_flux',[],...
     'vnod',[],...
     'p',[],...
-    'p_ed',[]);
+    'p_ed',[],...
+    'indNodBd',[],...
+    'indElemBd',[],...
+    'indLocalEdgBd',[]);
 
 % Import level set mesh properties
 [ngrains,IMC_steps,~,~,~,~,edof] = load_level_set_init();
@@ -50,7 +53,9 @@ for i_IMC = 1%1:step_size:IMC_steps
         [grainArr(g).edof,grainArr(g).enod,grainArr(g).coord,...
          grainArr(g).dofs,grainArr(g).ex,grainArr(g).ey,...
          grainArr(g).bcnod,grainArr(g).bcval,...
-         grainArr(g).nodel,grainArr(g).nelm,grainArr(g).nnod]...
+         grainArr(g).nodel,grainArr(g).nelm,...
+         grainArr(g).nnod,grainArr(g).indNodBd,grainArr(g).indElemBd...
+         grainArr(g).indLocalEdgBd]...
          = import_grain_mesh(i_IMC,g);
     
         % Load grain results
@@ -63,7 +68,7 @@ for i_IMC = 1%1:step_size:IMC_steps
     % Plot grain mesh with concentration
     f1 = figure(1);
     cla;
-    for g=2%1:ngrains
+    for g=4%1:ngrains
 %         plot_mesh(grainArr(g).ex,grainArr(g).ey,'k')
         plot_2D_conc(grainArr(g).ex,grainArr(g).ey,grainArr(g).ed,i_IMC)
         hold on
@@ -73,96 +78,75 @@ for i_IMC = 1%1:step_size:IMC_steps
     end
 
 
-
-
 end
 
 
 
 
 
-% --- Compute jint2 ---
-g_cols  = [2*(g-1) + 1,2*(g-1) + 2];
-nseg    = line_seg(g);
-line_ex = line_ex(1:nseg,g_cols);
-line_ey = line_ey(1:nseg,g_cols);
-nbnods  = length(grainArr(g).bcnod(:,1));
-jint2   = zeros(nbnods,1);
-bcvals  = grainArr(g).bcval;
-bcnods  = grainArr(g).bcnod(:,1);
-nbcnods = length(bcnods);
-bcval_u = unique(bcvals);
 
-% Loop through each unique bcval (phase interface). 
-% 1) Find coordinates along the bcval interface
-% 2) Find the lines connecting the coordinates
-bool_seg = false(nseg, 1);
-for j = 1:length(bcval_u)
-    bool_seg(:)  = false;
-    bcval        = bcval_u(j);
-    bcvali       = find(bcvals == bcval);
-    nnods_bcseg  = length(bcvali);
-    bcval_coords = grainArr(g).coord(bcnods(bcvali), :);
-    enodL        = zeros(1000,2);
-    cc = 0;
-    for iseg = 1:nseg
-        x1 = line_ex(iseg, 1); x2 = line_ex(iseg, 2);
-        y1 = line_ey(iseg, 1); y2 = line_ey(iseg, 2);
-        
-        P1incoords = any((abs(bcval_coords(:,1) - x1) < 1e-8) &...
-                          abs(bcval_coords(:,2) - y1) < 1e-8);
-        P2incoords = any((abs(bcval_coords(:,1) - x2) < 1e-8) &...
-                          abs(bcval_coords(:,2) - y2) < 1e-8);
-        if (P1incoords && P2incoords)
-            bool_seg(iseg) = true;
-            nod1 = (abs(bcval_coords(:,1) - x1) < 1e-8) & ...
-                          (abs(bcval_coords(:,2) - y1) < 1e-8);
-            nod1 = bcnods(bcvali(nod1));
-            nod2 = (abs(bcval_coords(:,1) - x2) < 1e-8) & ...
-                          (abs(bcval_coords(:,2) - y2) < 1e-8);
-            nod2 = bcnods(bcvali(nod2));
-            cc =  cc + 1;
-            enodL(cc,:) = [nod1 nod2];
-            
-        end
-    end 
-    enodL  = enodL(1:cc,:);
-    enod_m = enodL;
-    % New enod
-    oldNods = unique(enod_m(:));
-    newNods = (1:length(oldNods))';
-    for k=1:length(oldNods)
-        mask = enodL == oldNods(k);
-        enod_m(mask) = newNods(k);
-    end
-    enod_m     = enod_m';
-    lines      = find(bool_seg);
-    nseg_bcval = length(lines);
-    M = zeros(nnods_bcseg,nnods_bcseg);
-    for k=1:nseg_bcval
-        iseg = lines(k);
-        x1 = line_ex(iseg, 1); x2 = line_ex(iseg, 2);
-        y1 = line_ey(iseg, 1); y2 = line_ey(iseg, 2);
-        Le = norm([(x2-x1), (y2-y1)]);
-        % Mass matrix
-        Me      = zeros(2,2);
-        Me(1,:) = [2, 1];
-        Me(2,:) = [1, 2];
-        Me      = Le/6*Me;
-        M(enod_m(:,k),enod_m(:,k)) = M(enod_m(:,k),enod_m(:,k)) + Me;
-    end
 
-    % Solve M*vnod = -r
-    b = -grainArr(g).r(grainArr(g).bcnod(bcvali,1));
-    jint2(bcvali) = M\b;
+
+
+% Short form
+coordTG       = grainArr(g).coord;
+enodTG        = grainArr(g).enod;
+indNodBd      = grainArr(g).indNodBd;
+indElemBd     = grainArr(g).indElemBd;   
+indLocalEdgBd = grainArr(g).indLocalEdgBd;   
+nodel         = grainArr(g).nodel;
+
+
+figure()
+hold on
+nbnods = length(indNodBd);
+nbseg  = length(indLocalEdgBd);
+M2     = zeros(nbseg,nbseg);
+enodL  = zeros(nbseg,2);
+for i=1:nbseg
+    k1 = indLocalEdgBd(i);
+    k2 = mod(k1, nodel) + 1;
+    nod1 = enodTG(indElemBd(i),k1);
+    nod2 = enodTG(indElemBd(i),k2);
+    enodL(i,:) = [nod1,nod2]; 
 end
 
+% New enod
+enod_m = enodL;
+oldNods = unique(enod_m(:));
+newNods = (1:length(oldNods))';
+for k=1:length(oldNods)
+    mask = enodL == oldNods(k);
+    enod_m(mask) = newNods(k);
+end
+enod_m = enod_m';
+
+for i=1:nbseg
+    nods = enodL(i,:); nod1 = nods(1); nod2 = nods(2);
+    v1 = coordTG(nod1,:);
+    v2 = coordTG(nod2,:);
+    x1 = v1(1); x2 = v2(1);
+    y1 = v1(2); y2 = v2(2);
+    Le = norm([(x2-x1), (y2-y1)]);
+    % Mass matrix
+    Me      = zeros(2,2);
+    Me(1,:) = [2, 1];
+    Me(2,:) = [1, 2];
+    Me      = Le/6*Me;
+    M2(enod_m(:,i),enod_m(:,i)) = M2(enod_m(:,i),enod_m(:,i)) + Me;
+    X  = [v1(1); v2(1)];
+    Y  = [v1(2); v2(2)];
+    plot(X,Y,'ko-')
+end
+axis equal
+box on
+
+% Solve M*vnod = -r
+b2 = -grainArr(g).r(indNodBd);
+jint3 = M2\b2;
 
 
-
-coordTG = grainArr(2).coord*1e3;
-enodTG  = grainArr(2).enod;
-[indNodBd, indElemBd, indLocalEdgBd, edges] = boundaryNodes(coordTG, enodTG);
+% Plot boundary elements
 figure()
 hold on
 for i=1:length(indElemBd)
@@ -172,48 +156,84 @@ plot(coordTG(indNodBd,1), coordTG(indNodBd,2),'rs');
 axis equal
 box on
 
-figure()
-ndim = 3;
-hold on
-for i=1:size(indElemBd,1)
-    k1 = indLocalEdgBd(i);
-    k2 = mod(k1, ndim) + 1;
-    v1 = coordTG(enodTG(indElemBd(i),k1),:);
-    v2 = coordTG(enodTG(indElemBd(i),k2),:);
-    X  = [v1(1); v2(1)];
-    Y  = [v1(2); v2(2)];
-    plot(X,Y,'ko-')
-end
-axis equal
-box on
-
-nbnods = length(indNodBd);
-nbseg  = length(indLocalEdgBd);
-M = zeros(nbnods,nbnods);
-for k=1:nbseg
-    k1 = indLocalEdgBd(i);
-    k2 = mod(k1, ndim) + 1;
-    v1 = coordTG(enodTG(indElemBd(i),k1),:);
-    v2 = coordTG(enodTG(indElemBd(i),k2),:);
-    x1 = v1(1); x2 = v2(1);
-    y1 = v1(2); y2 = v2(2);    
-    Le = norm([(x2-x1), (y2-y1)]);
-    % Mass matrix
-    Me      = zeros(2,2);
-    Me(1,:) = [2, 1];
-    Me(2,:) = [1, 2];
-    Me      = Le/6*Me;
-    M(enod_m(:,k),enod_m(:,k)) = M(enod_m(:,k),enod_m(:,k)) + Me;
-end
-
-% Solve M*vnod = -r
-b = -grainArr(g).r(grainArr(g).bcnod(bcvali,1));
-jint2(bcvali) = M\b;
 
 
 
-
-
+% % --- Compute jint2 ---
+% g_cols  = [2*(g-1) + 1,2*(g-1) + 2];
+% nseg    = line_seg(g);
+% line_ex = line_ex(1:nseg,g_cols);
+% line_ey = line_ey(1:nseg,g_cols);
+% nbnods  = length(grainArr(g).bcnod(:,1));
+% jint2   = zeros(nbnods,1);
+% bcvals  = grainArr(g).bcval;
+% bcnods  = grainArr(g).bcnod(:,1);
+% nbcnods = length(bcnods);
+% bcval_u = unique(bcvals);
+% 
+% % Loop through each unique bcval (phase interface). 
+% % 1) Find coordinates along the bcval interface
+% % 2) Find the lines connecting the coordinates
+% bool_seg = false(nseg, 1);
+% for j = 1:length(bcval_u)
+%     bool_seg(:)  = false;
+%     bcval        = bcval_u(j);
+%     bcvali       = find(bcvals == bcval);
+%     nnods_bcseg  = length(bcvali);
+%     bcval_coords = grainArr(g).coord(bcnods(bcvali), :);
+%     enodL        = zeros(1000,2);
+%     cc = 0;
+%     for iseg = 1:nseg
+%         x1 = line_ex(iseg, 1); x2 = line_ex(iseg, 2);
+%         y1 = line_ey(iseg, 1); y2 = line_ey(iseg, 2);
+%         
+%         P1incoords = any((abs(bcval_coords(:,1) - x1) < 1e-8) &...
+%                           abs(bcval_coords(:,2) - y1) < 1e-8);
+%         P2incoords = any((abs(bcval_coords(:,1) - x2) < 1e-8) &...
+%                           abs(bcval_coords(:,2) - y2) < 1e-8);
+%         if (P1incoords && P2incoords)
+%             bool_seg(iseg) = true;
+%             nod1 = (abs(bcval_coords(:,1) - x1) < 1e-8) & ...
+%                           (abs(bcval_coords(:,2) - y1) < 1e-8);
+%             nod1 = bcnods(bcvali(nod1));
+%             nod2 = (abs(bcval_coords(:,1) - x2) < 1e-8) & ...
+%                           (abs(bcval_coords(:,2) - y2) < 1e-8);
+%             nod2 = bcnods(bcvali(nod2));
+%             cc =  cc + 1;
+%             enodL(cc,:) = [nod1 nod2];
+%             
+%         end
+%     end 
+%     enodL  = enodL(1:cc,:);
+%     enod_m = enodL;
+%     % New enod
+%     oldNods = unique(enod_m(:));
+%     newNods = (1:length(oldNods))';
+%     for k=1:length(oldNods)
+%         mask = enodL == oldNods(k);
+%         enod_m(mask) = newNods(k);
+%     end
+%     enod_m     = enod_m';
+%     lines      = find(bool_seg);
+%     nseg_bcval = length(lines);
+%     M = zeros(nnods_bcseg,nnods_bcseg);
+%     for k=1:nseg_bcval
+%         iseg = lines(k);
+%         x1 = line_ex(iseg, 1); x2 = line_ex(iseg, 2);
+%         y1 = line_ey(iseg, 1); y2 = line_ey(iseg, 2);
+%         Le = norm([(x2-x1), (y2-y1)]);
+%         % Mass matrix
+%         Me      = zeros(2,2);
+%         Me(1,:) = [2, 1];
+%         Me(2,:) = [1, 2];
+%         Me      = Le/6*Me;
+%         M(enod_m(:,k),enod_m(:,k)) = M(enod_m(:,k),enod_m(:,k)) + Me;
+%     end
+% 
+%     % Solve M*vnod = -r
+%     b = -grainArr(g).r(grainArr(g).bcnod(bcvali,1));
+%     jint2(bcvali) = M\b;
+% end
 
 %% Load functions
 
@@ -291,7 +311,7 @@ end
 
 
 function [edof,enod,coord,dofs,ex,ey,bcnod,bcval,nodel, ...
-    nelm,nnod] = import_grain_mesh(i_IMC,g)
+    nelm,nnod,indNodBd,indElemBd,indLocalEdgBd] = import_grain_mesh(i_IMC,g)
 
 
 % Input data and mesh location
@@ -320,6 +340,9 @@ coord          = mesh_struct.coord'*1e-3;
 nodel          = mesh_struct.nodel;
 nelm           = mesh_struct.nelm;
 nnod           = mesh_struct.nnod;
+indNodBd       = mesh_struct.indNodBd;
+indElemBd      = mesh_struct.indElemBd;
+indLocalEdgBd  = mesh_struct.indLocalEdgBd;    
 
 % Dofs (one dof per node)
 dofs = (1:nnod)';
@@ -528,69 +551,4 @@ plot(line_ex(end,:)*mm_to_um,line_ey(end,:)*mm_to_um,'Color',...
 color,'LineWidth',3,'Marker','o','Markersize',4,...
 'DisplayName',['GB ' num2str(g)])
 
-end
-
-function [indNodBd, indElemBd, indLocalEdgBd, edges] = boundaryNodes(nodes, elem)
-% output:
-% indNodBd  -->  list of all nodes on the boundary
-% indElemBd -->  list of indices of the Elements on the boundary
-% indLocalEdgBd  -->  list of indices of the local element edges on the boundary
-% edges     -->  list of all edges defined in the total mesh
-%
-    numNod  = size(nodes,1);
-    [numElem, ndim] = size(elem);
-    if (ndim == 3) %triangle edges
-        edges = unique(sort([elem(:,[1,2]);elem(:,[2,3]);elem(:,[3,1])],2),'rows');
-    elseif (ndim == 4) %quadrilateral edges
-        edges = unique(sort([elem(:,[1,2]);elem(:,[2,3]);elem(:,[3,4]);elem(:,[4,1])],2),'rows');
-    end
-    indNodBd=[];
-    indLocalEdgBd=[];
-    indElemBd=[];
-    % look for the edges belonging only to one element
-    for i=1:size(edges,1)
-        n1=edges(i,1);
-        n2=edges(i,2);
-        [indRow,indCol]=find(elem == n1); %find elements owning the first node
-        [indElem,col]=find(elem(indRow,:) == n2); % owing also the second one
-        if (length(indElem) == 1) %boundary edges
-            indNodBd=[indNodBd, n1,n2];
-            indElemBd=[indElemBd;indRow(indElem)];
-            lloc1=find(elem(indRow(indElem),:)==n1);
-            lloc2=find(elem(indRow(indElem),:)==n2);
-            if (ndim == 3) %triangle edges
-                aux=[0,0,0];
-                aux(lloc1)=1;
-                aux(lloc2)=1;
-                number = aux(1)+2*aux(2)+4*aux(3);
-                switch (number) %identify the appropriate element edge
-                    case 3
-                        edgeBd=1;
-                    case 5
-                        edgeBd=3;
-                    case 6
-                        edgeBd=2;
-                    otherwise, error('edge not allowed');
-                end
-            elseif (ndim == 4) %quadrilateral edges
-                aux=[0,0,0,0];
-                aux(lloc1)=1;
-                aux(lloc2)=1;
-                number = aux(1)+2*aux(2)+4*aux(3)+8*aux(4);
-                switch (number) %identify the appropriate element edge
-                    case 3
-                        edgeBd=1;
-                    case 6
-                        edgeBd=2;
-                    case 9
-                        edgeBd=4;
-                    case 12
-                        edgeBd=3;
-                    otherwise, error('edge not allowed');
-                end
-            end
-            indLocalEdgBd=[indLocalEdgBd, edgeBd];
-        end
-    end
-    indNodBd=unique(indNodBd);
 end
