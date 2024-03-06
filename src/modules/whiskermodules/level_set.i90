@@ -378,13 +378,6 @@ subroutine update_ls_system(lssys,mesh,i_IMC,input_location, omp_run, pq, diffsy
     call interface_reconstruction(lssys, mesh)
   endif
 
-! 6) --- Sort line segments ---
-! do g = 1,lssys%ngrains
-!   g_cols = [2*(g-1) + 1, 2*(g-1) + 2]
-!   call sort_lines(lssys%line_ex(:,g_cols(1):g_cols(2)),lssys%line_ey(:,g_cols(1):g_cols(2)),lssys%tplines(:,g), &
-!   lssys%line_seg(g),lssys%sep_lines(:,g_cols(1):g_cols(2)),lssys%nsep_lines(g),mesh)
-! enddo
-
 ! 6) --- Reinitialize level set function ---
   do g = 1,lssys%ngrains
     g_cols = [2*(g-1) + 1, 2*(g-1) + 2]
@@ -418,6 +411,12 @@ subroutine update_ls_system(lssys,mesh,i_IMC,input_location, omp_run, pq, diffsy
     lssys%line_coord([1:lssys%line_coordN(g)],g_cols) = unique_coord
   enddo
   
+! --- Sort line segments ---
+  do g = 1,lssys%ngrains
+    g_cols = [2*(g-1) + 1, 2*(g-1) + 2]
+    call sort_lines(lssys%line_ex(:,g_cols(1):g_cols(2)),lssys%line_ey(:,g_cols(1):g_cols(2)),lssys%tplines(:,g), &
+    lssys%line_seg(g),lssys%sep_lines(:,g_cols(1):g_cols(2)),lssys%nsep_lines(g),mesh)
+  enddo
 
 ! 8) --- Output data ---
 

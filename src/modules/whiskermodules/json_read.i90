@@ -600,7 +600,131 @@ subroutine read_json_diffusion_mesh(input_location, i_IMC, coord, enod)
   return
 end subroutine read_json_diffusion_mesh
 
-subroutine read_json_phase_mesh2(input_location, i_IMC, coord, enod, bcnod, bcval, bcval_idx, indNodBd, indElemBd, indLocalEdgBd, &
+subroutine read_json_phase_mesh2(input_location, i_IMC, coord, enod, bcnod, bcval, bcval_idx, &
+  grain)
+  implicit none
+
+! Input location
+  character(len=:),allocatable, intent(in) :: input_location
+  integer, intent(in)                      :: i_IMC, grain
+
+! Path
+  character(len=255)                       :: filename, cwd
+
+! json
+  type(json_file)                          :: my_json_file
+  type(json_core)                          :: core
+  type(json_value),pointer                 :: readpointer,child
+
+! Read variables
+  real(dp), allocatable                    :: coordrow(:)
+  integer,  allocatable                    :: enodrow(:), bcnodrow(:)
+
+! Other
+  logical                                  :: found, file_e
+  integer                                  :: rows, cols, i, var_type  
+
+! Out
+  real(dp), allocatable, intent(inout)     :: coord(:,:), bcval(:), bcval_idx(:)
+  integer, allocatable, intent(inout)      :: enod(:,:), bcnod(:,:)
+  
+
+! Filename phase mesh file
+  if (i_IMC.lt.10) then
+    write(filename, '(A,I1,A,I1,A)' ), 'phase_mesh_', i_IMC, '_', grain, '.json'
+  elseif (i_IMC.ge.10 .and. i_IMC.lt.100) then
+    write(filename, '(A,I2,A,I1,A)' ), 'phase_mesh_', i_IMC, '_', grain, '.json'
+  elseif (i_IMC.ge.100 .and. i_IMC.lt.1000) then
+    write(filename, '(A,I3,A,I1,A)' ), 'phase_mesh_', i_IMC, '_', grain, '.json'
+  endif
+
+! ----- Locate file -----
+  call getcwd(cwd)           ! Save path
+  call chdir(input_location)
+
+  inquire(file=trim(filename), exist=file_e)
+  if (.not. file_e) then
+    print*, 'Phase mesh file does not exist'
+    call exit(0)
+  endif
+
+! ----- Initiate and load file -----
+  call my_json_file%initialize()
+  call my_json_file%load_file(trim(filename)); if (my_json_file%failed()) stop
+
+! ----- Coord -----
+  call my_json_file%info('coord',found,var_type,rows)
+  call my_json_file%info('coord(1)',found,var_type,cols)  
+
+! Pointer to the coord matrix:
+  allocate(coord(rows,cols))
+  call my_json_file%get('coord',readpointer)
+
+! Read coord and store in matrix
+  do i=1,rows
+    call core%get_child(readpointer,i,child)
+    if (.not. associated(child)) error stop 'error: column not found'
+    call core%get(child,coordrow) 
+    if (size(coordrow)/=cols) error stop 'error: column is wrong size'
+    coord(i,1:size(coordrow)) = coordrow
+  end do
+
+! ----- enod -----
+  call my_json_file%info('enod',found,var_type,rows)
+  call my_json_file%info('enod(1)',found,var_type,cols)  
+
+! Pointer to the enod matrix:
+  allocate(enod(rows,cols))
+  call my_json_file%get('enod',readpointer)
+
+! Read enod and store in matrix
+  do i=1,rows
+    call core%get_child(readpointer,i,child)
+    if (.not. associated(child)) error stop 'error: column not found'
+    call core%get(child,enodrow) 
+    if (size(enodrow)/=cols) error stop 'error: column is wrong size'
+    enod(i,1:size(enodrow)) = enodrow
+  end do
+
+! ----- bcnod -----
+  call my_json_file%info('bcnod',found,var_type,rows)
+  call my_json_file%info('bcnod(1)',found,var_type,cols)
+
+! Pointer to the bcnod matrix:
+  allocate(bcnod(rows,cols))
+  call my_json_file%get('bcnod',readpointer)
+
+! Read bcnod and store in matrix
+  do i=1,rows
+    call core%get_child(readpointer,i,child)
+    if (.not. associated(child)) error stop 'error: column not found'
+    call core%get(child,bcnodrow) 
+    if (size(bcnodrow)/=cols) error stop 'error: column is wrong size'
+    bcnod(i,1:size(bcnodrow)) = bcnodrow
+  end do
+
+
+! ----- bcval -----
+  call my_json_file%get('bcval', bcval, found); if (.not. found) call exit(0)
+
+! ----- bcval_idx -----
+  call my_json_file%get('bcval_idx', bcval_idx, found); if (.not. found) call exit(0)
+
+! ----- Destroy -----
+  call my_json_file%destroy()
+
+! --- Convert to mm ---
+  coord = coord*1d-3
+
+! ----- Go back to program -----
+  call chdir(cwd)
+
+  return
+end subroutine read_json_phase_mesh2
+
+
+
+subroutine read_json_phase_mesh3(input_location, i_IMC, coord, enod, bcnod, bcval, bcval_idx, indNodBd, indElemBd, indLocalEdgBd, &
   grain)
   implicit none
 
@@ -627,16 +751,6 @@ subroutine read_json_phase_mesh2(input_location, i_IMC, coord, enod, bcnod, bcva
 ! Out
   real(dp), allocatable, intent(inout)     :: coord(:,:), bcval(:), bcval_idx(:)
   integer, allocatable, intent(inout)      :: enod(:,:), bcnod(:,:), indNodBd(:), indElemBd(:), indLocalEdgBd(:)
-  
-
-! ! Filename phase mesh file
-! if (i_IMC.lt.10) then
-!   write(filename, '(A,I1,A,I1,A)' ), 'phase_mesh_', i_IMC, '_', grain, '.json'
-! elseif (i_IMC.ge.10 .and. i_IMC.lt.100) then
-!   write(filename, '(A,I2,A,I1,A)' ), 'phase_mesh_', i_IMC, '_', grain, '.json'
-! elseif (i_IMC.ge.100 .and. i_IMC.lt.1000) then
-!   write(filename, '(A,I3,A,I1,A)' ), 'phase_mesh_', i_IMC, '_', grain, '.json'
-! endif
 
 ! Filename phase mesh file
   if (i_IMC.lt.10) then
@@ -738,7 +852,7 @@ subroutine read_json_phase_mesh2(input_location, i_IMC, coord, enod, bcnod, bcva
   call chdir(cwd)
 
   return
-end subroutine read_json_phase_mesh2
+end subroutine read_json_phase_mesh3
 
 
 subroutine read_json_init_level_set(input_location, a_ls)

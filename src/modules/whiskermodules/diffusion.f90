@@ -89,6 +89,15 @@ subroutine init_diffusion_system(diffsys, ngrains)
   sn_imc             = 0.99941d0
   sn_sn              = 113d0
 
+  ! Equilibrium molar fractions
+  ! Row 1: Cu eq comps
+  ! Row 2: IMC eq comps
+  ! Row 3: Sn eq comps
+  diffsys%eq_x(1,:) = [cu_cu , cu_imc , cu_sn]
+  diffsys%eq_x(2,:) = [imc_cu, imc_imc, imc_sn]
+  diffsys%eq_x(3,:) = [sn_cu , sn_imc , sn_sn]
+
+
   ! Diffusion potentials
   mu_cu_cu   = diffsys%thermo_parameterA(1)*(cu_cu  - diffsys%thermo_parameterxb(1)) + diffsys%thermo_parameterB(1)
   mu_cu_imc  = diffsys%thermo_parameterA(1)*(cu_imc - diffsys%thermo_parameterxb(1)) + diffsys%thermo_parameterB(1)
@@ -102,7 +111,7 @@ subroutine init_diffusion_system(diffsys, ngrains)
   mu_sn_imc  = diffsys%thermo_parameterA(3)*(sn_imc - diffsys%thermo_parameterxb(3)) + diffsys%thermo_parameterB(3)
   mu_sn_sn   = diffsys%thermo_parameterA(3)*(sn_sn  - diffsys%thermo_parameterxb(3)) + diffsys%thermo_parameterB(3)
   
-  ! Equilibrium compositions
+  ! Equilibrium chemical potentials
   ! Row 1: Cu eq comps
   ! Row 2: IMC eq comps
   ! Row 3: Sn eq comps
@@ -193,7 +202,7 @@ subroutine generate_global_diffusion_mesh(input_location, diffsys, mesh, lssys, 
     deallocate(diffsys%enod)
   endif  
 
-  ! Generate new diffusion mesh
+  ! Read in new diffusion mesh
   call read_json_diffusion_mesh(diffusion_mesh_location, i_IMC, diffsys%coord, diffsys%enod)  
 
   diffsys%nnod  = size(diffsys%coord,2)
@@ -237,6 +246,8 @@ subroutine generate_global_diffusion_mesh(input_location, diffsys, mesh, lssys, 
     nodidx(i)=i
   enddo
 
+
+
   ! --- Reinitialize triangle mesh ---
   do g = 1,lssys%ngrains
     g_cols = [2*(g-1) + 1, 2*(g-1) + 2]
@@ -244,7 +255,7 @@ subroutine generate_global_diffusion_mesh(input_location, diffsys, mesh, lssys, 
     lssys%line_ey(:,g_cols(1):g_cols(2)), diffsys%closest_line(:,g),lssys%line_seg(g),diffsys%coord)
     where(abs(diffsys%ls(:,g)).lt.1d-8) diffsys%ls(:,g) = 0d0
 
-    ! Post-processing sign of reinitialized mesh as this is not always true from the last state
+    ! Post-processing the sign of reinitialized mesh as this is not always true from the last state
     ch = .true.
     do while (ch)
       print *, 'changing signs grain: ', g
@@ -331,7 +342,7 @@ subroutine diffusion_grain(diffsys, i_IMC, grain_mesh, g, input_location, lssys,
     phase_mesh_location        = '/home/er7128ja/Nextcloud/Projekt/Project_Code_2D/Python_output/single_study/phase_meshes'
 
 
-    ! Generete mesh by running python script
+    ! ! Generete mesh by running python script
     ! call chdir(phase_mesh_script_location)
     ! call clock_time(t1, omp_run)
     ! write(command_line,'(A37,I1)'), 'python grain_mesh_triangular_Main.py ', g
@@ -342,7 +353,9 @@ subroutine diffusion_grain(diffsys, i_IMC, grain_mesh, g, input_location, lssys,
 
     ! Read mesh from json file
     call clock_time(t1, omp_run)    
-    call read_json_phase_mesh2(phase_mesh_location, i_IMC, grain_mesh%coord, grain_mesh%enod, grain_mesh%bcnod, grain_mesh%bcval, &
+    ! call read_json_phase_mesh2(phase_mesh_location, i_IMC, grain_mesh%coord, grain_mesh%enod, grain_mesh%bcnod, grain_mesh%bcval, &
+    ! grain_mesh%bcval_idx, g)
+    call read_json_phase_mesh3(phase_mesh_location, i_IMC, grain_mesh%coord, grain_mesh%enod, grain_mesh%bcnod, grain_mesh%bcval, &
     grain_mesh%bcval_idx, grain_mesh%indNodBd, grain_mesh%indElemBd, grain_mesh%indLocalEdgBd, g)
     call clock_time(t2, omp_run)
     diffsys%read_mesh_time = diffsys%read_mesh_time + (t2 - t1)
@@ -1398,7 +1411,7 @@ subroutine interpolate_scalar_mesh1_to_mesh2(mesh1_enod, mesh1_coord, mesh1_ed, 
     enddo
 
     if (pwt.eqv..false.) then
-      print *, 'Error in interpolating. No element found'
+      print *, 'Error in interpolating. No element found for coords (x,y) = ', x, y
       call exit(0)
     endif
 
@@ -1442,7 +1455,7 @@ subroutine point_within_triangle(condition_satisfied,x,y,x1,x2,x3,y1,y2,y3)
   real(dp), intent(in)   :: x, y, x1, x2, x3, y1, y2, y3
 
   ! Subroutine variables
-  real(dp)               :: detT, c1, c2, c3, tol=1d-13
+  real(dp)               :: detT, c1, c2, c3, tol=1d-12
 
   ! Barycentric coordinates of (x,y) in the triangle
   detT = (x1-x3)*(y2-y3) - (x2-x3)*(y1-y3)
@@ -1451,7 +1464,7 @@ subroutine point_within_triangle(condition_satisfied,x,y,x1,x2,x3,y1,y2,y3)
   c3   = 1d0 - c1 - c2
 
   if (((0d0-tol).le.c1 .and. c1.le.(1d0+tol)) .and. ((0d0-tol).le.c2 .and. c2.le.(1d0+tol)) .and. &
-  ((0d0-tol).le.c3 .and. c3.le.(1d0+tol)) .and. ((c1+c2+c3).le.1d0)) then
+  ((0d0-tol).le.c3 .and. c3.le.(1d0+tol)) .and. ((c1+c2+c3).le.(1d0+tol))) then
     condition_satisfied = .true.
   endif
 

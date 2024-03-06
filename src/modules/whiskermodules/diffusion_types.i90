@@ -38,7 +38,7 @@ module diffusion_types
         real(dp)              :: thermo_parameterB(3)  = [-2.1146d4, -6.9892d3, 7.1680d3]  ! Parameter B [J/mol]
         real(dp)              :: thermo_parameterxb(3) = [0.10569d0, 0.41753d0, 0.99941d0] ! Parameter xbar [J/mol]
         real(dp)              :: molar_volumes(3)      = [7.09d0, 10.7d0, 16.3d0]*1d3      ! Molar volume [mm3/mol]
-        real(dp)              :: eq_comp(3,3)
+        real(dp)              :: eq_x(3,3), eq_comp(3,3)
 
 ! Time
         real(dp)              :: generate_mesh_time=0d0, read_mesh_time=0d0, solve_time=0d0
