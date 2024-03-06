@@ -72,10 +72,44 @@ subroutine init_diffusion_system(diffsys, ngrains)
   integer, intent(in) :: ngrains
  
 ! Subroutine variables
-  integer ::ierr
+  real(dp) :: cu_cu, cu_imc, cu_sn, imc_cu, imc_imc, imc_sn, sn_cu, sn_imc, sn_sn
+  real(dp) :: mu_cu_cu, mu_cu_imc, mu_cu_sn, mu_imc_cu, mu_imc_imc, mu_imc_sn, mu_sn_cu, mu_sn_imc, mu_sn_sn
+  integer  :: ierr
 
 ! Allocate grain mesh system
-  allocate(diffsys%grain_meshes(ngrains),stat=ierr)  
+  allocate(diffsys%grain_meshes(ngrains),stat=ierr)
+
+! Equilibrium compositions
+  cu_cu              = 111d0
+  cu_imc             = 0.1d0 
+  cu_sn              = 0.31117d0
+  imc_cu             = 0.38214d0
+  imc_imc            = 112d0
+  imc_sn             = 0.45292d0
+  sn_cu              = 0.999763d0
+  sn_imc             = 0.99941d0
+  sn_sn              = 113d0
+
+! Diffusion potentials
+  mu_cu_cu   = diffsys%thermo_parameterA(1)*(cu_cu  - diffsys%thermo_parameterxb(1)) + diffsys%thermo_parameterB(1)
+  mu_cu_imc  = diffsys%thermo_parameterA(1)*(cu_imc - diffsys%thermo_parameterxb(1)) + diffsys%thermo_parameterB(1)
+  mu_cu_sn   = diffsys%thermo_parameterA(1)*(cu_sn  - diffsys%thermo_parameterxb(1)) + diffsys%thermo_parameterB(1)
+
+  mu_imc_cu  = diffsys%thermo_parameterA(2)*(imc_cu  - diffsys%thermo_parameterxb(2)) + diffsys%thermo_parameterB(2)
+  mu_imc_imc = diffsys%thermo_parameterA(2)*(imc_imc - diffsys%thermo_parameterxb(2)) + diffsys%thermo_parameterB(2)
+  mu_imc_sn  = diffsys%thermo_parameterA(2)*(imc_sn  - diffsys%thermo_parameterxb(2)) + diffsys%thermo_parameterB(2)
+
+  mu_sn_cu   = diffsys%thermo_parameterA(3)*(sn_cu  - diffsys%thermo_parameterxb(3)) + diffsys%thermo_parameterB(3)
+  mu_sn_imc  = diffsys%thermo_parameterA(3)*(sn_imc - diffsys%thermo_parameterxb(3)) + diffsys%thermo_parameterB(3)
+  mu_sn_sn   = diffsys%thermo_parameterA(3)*(sn_sn  - diffsys%thermo_parameterxb(3)) + diffsys%thermo_parameterB(3)
+  
+! Equilibrium compositions
+! Row 1: Cu eq comps
+! Row 2: IMC eq comps
+! Row 3: Sn eq comps
+  diffsys%eq_comp(1,:) = [mu_cu_cu , mu_cu_imc , mu_cu_sn]
+  diffsys%eq_comp(2,:) = [mu_imc_cu , mu_imc_imc , mu_imc_sn]
+  diffsys%eq_comp(3,:) = [mu_sn_cu , mu_sn_imc , mu_sn_sn]
 
   return
 end subroutine init_diffusion_system

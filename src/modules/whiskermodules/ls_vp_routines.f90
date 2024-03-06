@@ -122,7 +122,7 @@ subroutine lvlset2D4_global_vp(vp_e, coord, ed_e_gr, jgp_e_gr, agp_e_gr, bcvalgp
             ! Grain number
             other_grain = other_grains(k)
             
-            ! Normal direction at gp for grain
+            ! Normal direction at gp for other grain
             nj    = matmul(B,ed_e_gr(:,other_grain))
             normn = norm2(nj)
             
@@ -138,7 +138,6 @@ subroutine lvlset2D4_global_vp(vp_e, coord, ed_e_gr, jgp_e_gr, agp_e_gr, bcvalgp
             ! Other molar volume
             Vmj = diffsys%molar_volumes(other_material)
 
-            
             if (inside_material.ne.other_material) then        
                 
                 ! Other molar fraction
@@ -214,7 +213,183 @@ subroutine lvlset2D4_global_vp(vp_e, coord, ed_e_gr, jgp_e_gr, agp_e_gr, bcvalgp
 end subroutine lvlset2D4_global_vp
 
 
+subroutine lvlset2D4_global_vp2(vp_e, coord, ed_e_gr, jgp_e_gr, agp_e_gr, Igrain_gp, lssys, diffsys, ie)
+    ! --- ---
+    implicit none
 
+    ! Intent out
+    real(dp), intent(inout)     :: vp_e(:,:)
+
+    ! Intent in
+    type(ls_system), intent(in) :: lssys
+    type(diffusion_system), intent(in) :: diffsys
+    real(dp), intent(in)        :: coord(:,:), ed_e_gr(:,:), jgp_e_gr(:,:), agp_e_gr(:,:)
+    integer, intent(in)         :: Igrain_gp(:), ie
+
+    ! Subroutine variables    
+    real(dp)                    :: JT(8,2), JTinv(2,2), DNX(2,4), B(2,4), nj(2), normn, jdiff, cdiff, vel_cont, f_j, ni(2)
+    real(dp)                    :: DetJ, inside_material, other_material, Vmi, Vmj
+    integer                     :: GP_NR, indx(2), inside_grain, grain_idx(lssys%ngrains), k, other_grain
+    integer, allocatable        :: other_grains(:)
+    integer, parameter          :: NGP=4
+    real(dp)                    :: xi, xj, ci, cj
+    
+
+    ! Define grain idx
+    do k=1,lssys%ngrains
+        grain_idx(k) = k
+    enddo
+
+
+    JT=MATMUL(DNR4,transpose(coord))
+    vp_e = 0d0
+    do GP_NR=1,NGP
+        indx = (/ 2*gp_nr-1, 2*gp_nr /)
+        detJ = det2(JT(indx,:))
+        call inv2(JTinv,JT(indx,:))
+        dNX  = matmul(JTinv,DNR4(indx,:))
+        B    = dNX
+
+        ! Inside grain at current gp
+        inside_grain = Igrain_gp(GP_NR)
+
+        ! Material of inside grain
+        inside_material = lssys%material(inside_grain)
+
+        ! Inside molar volume
+        Vmi = diffsys%molar_volumes(inside_material)
+
+        ! Normal direction at gp for grain
+        ni    = matmul(B,ed_e_gr(:,inside_grain))
+        normn = norm2(ni)
+        ni    = ni/normn
+
+        ! Grains to sum over at current gp
+        other_grains = pack(grain_idx, (grain_idx-inside_grain).ne.0)
+
+        do k = 1,size(other_grains)
+
+            ! Grain number
+            other_grain = other_grains(k)
+            
+            ! Normal direction at gp for other grain
+            nj    = matmul(B,ed_e_gr(:,other_grain))
+            normn = norm2(nj)
+            
+            if (normn.gt.1d-13) then
+                nj = nj/normn
+            else
+                print *, 'Level set normal is zero'
+            endif
+
+            ! Material other grain            
+            other_material  = lssys%material(other_grain)  
+
+            ! Equilibrium concentration for inside grain and other grain for inside/other phase interface
+
+
+        enddo
+
+
+
+        ! Inside molar fraction
+        ! xi =  (bcvalgp_e_gr(GP_NR,inside_grain) - diffsys%thermo_parameterB(inside_material)) &
+        ! /diffsys%thermo_parameterA(inside_material) + diffsys%thermo_parameterxb(inside_material)
+
+        ! ! Inside concentration
+        ! ci = xi/diffsys%molar_volumes(inside_material)
+
+        
+
+
+        ! do k = 1,size(other_grains)
+
+        !     ! Grain number
+        !     other_grain = other_grains(k)
+            
+        !     ! Normal direction at gp for other grain
+        !     nj    = matmul(B,ed_e_gr(:,other_grain))
+        !     normn = norm2(nj)
+            
+        !     if (normn.gt.1d-13) then
+        !         nj = nj/normn
+        !     else
+        !         print *, 'Level set normal is zero'
+        !     endif
+
+         
+            
+        !     ! Other molar volume
+        !     Vmj = diffsys%molar_volumes(other_material)
+
+        !     if (inside_material.ne.other_material) then        
+                
+        !         ! Other molar fraction
+        !         xj =  (bcvalgp_e_gr(GP_NR,other_grain) - diffsys%thermo_parameterB(other_material)) &
+        !         /diffsys%thermo_parameterA(other_material) + diffsys%thermo_parameterxb(other_material)
+
+        !         ! Other concentration
+        !         cj = xj/diffsys%molar_volumes(other_material)
+
+        !         ! Jdiff
+        !         jdiff = (jgp_e_gr(GP_NR,other_grain) + jgp_e_gr(GP_NR,inside_grain))
+
+        !         ! Cdiff
+        !         ! cdiff = (bcvalgp_e_gr(GP_NR,other_grain)-bcvalgp_e_gr(GP_NR,inside_grain))
+        !         cdiff = cj - ci
+                
+        !         ! Velocity contribution ij
+        !         vel_cont = (1/cdiff)*jdiff
+                
+                
+    
+        !         if (abs(bcvalgp_e_gr(GP_NR,other_grain)-bcvalgp_e_gr(GP_NR,inside_grain)).lt.1d-12) then
+        !             ! ! print*, 'Dividing by zero in vp construction routine'
+        !             ! jdiff = (jgp_e_gr(GP_NR,other_grain) + jgp_e_gr(GP_NR,inside_grain))/10000000d0
+        !             ! ! print *, 'as'
+        !             ! ! call exit(0)
+        !             ! if (jdiff.ne.0d0 .and. abs(f_j).gt.0.5d0) then
+        !             !     print *, 'as'
+        !             ! endif
+        !             print *, 'jdiff inf'
+        !         endif
+        !     else
+        !         vel_cont = 0d0                
+        !     endif
+
+        !     ! s = sign(1d-1,bcvalgp_e_gr(GP_NR,other_grain)-bcvalgp_e_gr(GP_NR,inside_grain))
+        !     ! jdiff = s*(jgp_e_gr(GP_NR,inside_grain) + jgp_e_gr(GP_NR,other_grain))
+
+
+        !     ! if (inside_grain.eq.2) then
+        !     !     print *, 'a'
+        !     ! endif
+
+        !     ! if (abs((coord(1,1)-0.000475d0)).lt.1d-5 .and. abs((coord(2,1)-0.0005205d0)).lt.1d-5) then
+        !     !     print *, 'as'
+        !     ! endif
+
+            
+        !     ! Decaying function       
+        !     f_j = exp(-lssys%alpha*abs(agp_e_gr(GP_NR,other_grain)))
+
+        !     ! Define vector vpvec  
+        !     vp_e(:,GP_NR) = vp_e(:,GP_NR) + f_j*vel_cont*nj
+
+        !     if (isnan(vel_cont)) then
+        !         print *, 'vel_cont is NAN'
+        !     endif
+
+        ! enddo
+
+
+    enddo
+
+    ! Deallocate
+    deallocate(other_grains)
+
+    return
+end subroutine lvlset2D4_global_vp2
 
 subroutine lvlset2D4vp_exp_brown(vpvec,coord,ed,P0, model_width, cu_height)
     ! Routine for computing vp for a 4-node element using experimental data related to radius of circle

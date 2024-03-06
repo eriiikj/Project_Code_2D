@@ -90,28 +90,6 @@ for i_IMC = 1%1:step_size:IMC_steps
     patch(exTG',eyTG','white')
     axis equal
     box on
-
-    [indNodBd, indElemBd, indLocalEdgBd, edges] = boundaryNodes(coordTG, enodTG)
-
-    hold on
-    for i=1:length(indElemBd)
-        fill(coordTG(enodTG(indElemBd(i),:),1),coordTG(enodTG(indElemBd(i),:),2),'y')
-    end
-    plot(coordTG(indNodBd,1), coordTG(indNodBd,2),'rs');
-
-    figure()
-    ndim = 3;
-    for i=1:size(indElemBd,1)
-        k1 = indLocalEdgBd(i);
-        k2 = mod(k1, ndim) + 1;
-        v1 = coordTG(enodTG(indElemBd(i),k1),:);
-        v2 = coordTG(enodTG(indElemBd(i),k2),:);
-        X  = [v1(1); v2(1)];
-        Y  = [v1(2); v2(2)];
-        plot(X,Y,'k')
-        hold on;
-    end
-    axis equal
 end
 
 
