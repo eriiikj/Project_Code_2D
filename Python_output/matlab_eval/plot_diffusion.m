@@ -39,7 +39,7 @@ grainArr = repmat(grain, 1, ngrains);
 
 %% Diffusion equation
 step_size = 1;
-for i_IMC = 9%1:step_size:IMC_steps
+for i_IMC = 1%1:step_size:IMC_steps
 
 
     % Load level set

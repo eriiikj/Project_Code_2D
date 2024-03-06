@@ -66,15 +66,18 @@ class InputData(object):
         self.material           = 0
         self.tot_imc_area_init  = 0
         self.tot_imc_area       = 0
-        self.P1nod              = 0
-        self.P2nod              = 0
-        self.P3nod              = 0
-        self.P4nod              = 0
+        # self.P1nod              = 0
+        # self.P2nod              = 0
+        # self.P3nod              = 0
+        # self.P4nod              = 0
         self.node_tags          = 0
         self.spline_tags        = 0
         self.line_coord         = 0
         self.line_conn          = 0
         self.mesh_points        = 0
+        self.indNodBd           = 0
+        self.indElemBd          = 0
+        self.indLocalEdgBd      = 0
 
         # Location
         self.location           = None
@@ -92,7 +95,7 @@ class InputData(object):
         # --- Constraint Delanuay triangularization using triangle ---
         tri_input     = dict(vertices=self.mesh_points,segments=self.line_conn) # segments=self.line_conn
         print('Creating a constraint delanuay triangularization...')
-        triangulation = triangle.triangulate(tri_input,opts='pcq') #pcqa0.03 
+        triangulation = triangle.triangulate(tri_input,opts='') #pcqa0.03 
         print('Finished delanuay triangularization')
         tris          = triangulation['triangles']
         tris          = tris.flatten()
@@ -156,52 +159,52 @@ class InputData(object):
         self.location         = input_data_file["location"]
         
         
-    def load_LsInit(self):
-        """Read indata from file."""
+    # def load_LsInit(self):
+    #     """Read indata from file."""
         
-        cwd = os.getcwd()
-        path = self.python_location + '/single_study/mat_files'
+    #     cwd = os.getcwd()
+    #     path = self.python_location + '/single_study/mat_files'
         
-        # Filename initial level set data
-        filename = path + '/level_setinit.mat'
+    #     # Filename initial level set data
+    #     filename = path + '/level_setinit.mat'
         
         
 
-        with open(filename, "r") as ifile:
+    #     with open(filename, "r") as ifile:
             
-            # Load the .mat file
-            data = scipy.io.loadmat(filename)
+    #         # Load the .mat file
+    #         data = scipy.io.loadmat(filename)
 
-            # Access the variable by its name
-            self.ex     = np.transpose(data['ex'])*1e3
-            self.ey     = np.transpose(data['ey'])*1e3
-            self.coord  = np.transpose(data['coord'])*1e3
+    #         # Access the variable by its name
+    #         self.ex     = np.transpose(data['ex'])*1e3
+    #         self.ey     = np.transpose(data['ey'])*1e3
+    #         self.coord  = np.transpose(data['coord'])*1e3
             
 
-        axisbc = np.array([np.min(self.ex),np.max(self.ex),\
-                           np.min(self.ey),np.max(self.ey)])
+    #     axisbc = np.array([np.min(self.ex),np.max(self.ex),\
+    #                        np.min(self.ey),np.max(self.ey)])
             
-        # Identify domain corners:
-        #  P4 ----- P3
-        #  |         |
-        #  |         |
-        #  |         |
-        #  P1 ----- P2
+    #     # Identify domain corners:
+    #     #  P4 ----- P3
+    #     #  |         |
+    #     #  |         |
+    #     #  |         |
+    #     #  P1 ----- P2
         
-        P1   = np.array([axisbc[0],axisbc[2]])
-        P2   = np.array([axisbc[1],axisbc[2]])
-        P3   = np.array([axisbc[1],axisbc[3]])
-        P4   = np.array([axisbc[0],axisbc[3]])
+    #     P1   = np.array([axisbc[0],axisbc[2]])
+    #     P2   = np.array([axisbc[1],axisbc[2]])
+    #     P3   = np.array([axisbc[1],axisbc[3]])
+    #     P4   = np.array([axisbc[0],axisbc[3]])
         
-        # Mesh nodes
-        self.P1nod = np.where(np.sqrt(((self.coord[:,0]-P1[0]))**2 + \
-                                 ((self.coord[:,1]-P1[1]))**2)<1e-12)[0][0]
-        self.P2nod = np.where(np.sqrt(((self.coord[:,0]-P2[0]))**2 + \
-                                 ((self.coord[:,1]-P2[1]))**2)<1e-12)[0][0]
-        self.P3nod = np.where(np.sqrt(((self.coord[:,0]-P3[0]))**2 + \
-                                 ((self.coord[:,1]-P3[1]))**2)<1e-12)[0][0]
-        self.P4nod = np.where(np.sqrt(((self.coord[:,0]-P4[0]))**2 + \
-                                 ((self.coord[:,1]-P4[1]))**2)<1e-12)[0][0]
+    #     # Mesh nodes
+    #     self.P1nod = np.where(np.sqrt(((self.coord[:,0]-P1[0]))**2 + \
+    #                              ((self.coord[:,1]-P1[1]))**2)<1e-12)[0][0]
+    #     self.P2nod = np.where(np.sqrt(((self.coord[:,0]-P2[0]))**2 + \
+    #                              ((self.coord[:,1]-P2[1]))**2)<1e-12)[0][0]
+    #     self.P3nod = np.where(np.sqrt(((self.coord[:,0]-P3[0]))**2 + \
+    #                              ((self.coord[:,1]-P3[1]))**2)<1e-12)[0][0]
+    #     self.P4nod = np.where(np.sqrt(((self.coord[:,0]-P4[0]))**2 + \
+    #                              ((self.coord[:,1]-P4[1]))**2)<1e-12)[0][0]
 
             
     def load_LsStep(self):
@@ -248,11 +251,14 @@ class InputData(object):
         self.line_ex_all = self.line_ex_all.round(decimals=6)
         self.line_ey_all = self.line_ey_all.round(decimals=6)
             
-        # Domain corners
-        self.P1 = self.coord[self.P1nod]
-        self.P2 = self.coord[self.P2nod]
-        self.P3 = self.coord[self.P3nod]
-        self.P4 = self.coord[self.P4nod]
+        # # Domain corners
+        # self.P1 = self.coord[self.P1nod]
+        # self.P2 = self.coord[self.P2nod]
+        # self.P3 = self.coord[self.P3nod]
+        # self.P4 = self.coord[self.P4nod]
+        
+        # All domain boundary nodes
+        self.indNodBd, self.indElemBd, self.indLocalEdgBd, edges = self.boundary_nodes(self.coord, self.enod)
             
         
         
@@ -275,8 +281,12 @@ class InputData(object):
         # Domain corners
         corner_coords = np.vstack((self.P1, self.P2, self.P3, self.P4))
         
+        # Domain nodes
+        domain_coords = self.coord[self.indNodBd,:]
+        
         # All mesh_points (line_coord + domain corners)
-        self.mesh_points = np.unique(np.vstack((self.line_coord, corner_coords)), axis=0)
+        # self.mesh_points = np.unique(np.vstack((self.line_coord, corner_coords)), axis=0)
+        self.mesh_points = np.unique(np.vstack((self.line_coord, domain_coords)), axis=0)
         
         
         
@@ -325,6 +335,69 @@ class InputData(object):
         coord[N:, 1]  = line_ey[:, 1]
         unique_coord  = np.unique(coord, axis=0)
         return coord
+    
+    
+    
+    def boundary_nodes(self, nodes, elem):
+        numNod = nodes.shape[0]
+        numElem, ndim = elem.shape
+    
+        # Triangle edges
+        if (ndim==3):
+            edges = np.unique(np.sort(np.concatenate((elem[:, [0, 1]], elem[:, [1, 2]], elem[:, [2, 0]]), axis=0), axis=1), axis=0)
+        elif (ndim==4):
+            edges = np.unique(np.sort(np.concatenate((elem[:, [0, 1]], elem[:, [1, 2]], elem[:, [2, 3]],elem[:, [3, 0]]), axis=0), axis=1), axis=0)
+        indNodBd      = []
+        indLocalEdgBd = []
+        indElemBd     = []
+    
+        # Look for the edges belonging only to one element
+        for i in range(edges.shape[0]):
+            n1, n2 = edges[i, 0], edges[i, 1]
+            indRow, indCol = np.where(elem == n1)  # Find elements owning the first node
+            indElem, col = np.where(elem[indRow, :] == n2)  # Owning also the second one
+    
+            if len(indElem) == 1:  # Boundary edges
+                indNodBd.extend([n1, n2])
+                indElemBd.append(indRow[indElem])
+                lloc1 = np.where((elem[indRow[indElem], :] == n1)[0])[0][0]
+                lloc2 = np.where((elem[indRow[indElem], :] == n2)[0])[0][0]
+    
+                if (ndim==3):
+                    aux = np.array([0, 0, 0])
+                    aux[lloc1] = 1
+                    aux[lloc2] = 1
+                    number = aux[0] + 2 * aux[1] + 4 * aux[2]
+    
+                    if number == 3:
+                        edgeBd = 1
+                    elif number == 5:
+                        edgeBd = 3
+                    elif number == 6:
+                        edgeBd = 2
+                    else:
+                        raise ValueError('Edge not allowed')
+                        
+                if (ndim==4):
+                    aux = np.array([0, 0, 0, 0])
+                    aux[lloc1] = 1
+                    aux[lloc2] = 1
+                    number = aux[0] + 2 * aux[1] + 4 * aux[2] + 8 * aux[3]
+                    if number == 3:
+                        edgeBd = 1
+                    elif number == 6:
+                        edgeBd = 2
+                    elif number == 9:
+                        edgeBd = 4
+                    elif number == 12:
+                        edgeBd = 3
+                    else:
+                        raise ValueError('Edge not allowed')
+    
+                indLocalEdgBd.append(edgeBd)
+    
+        indNodBd = np.unique(indNodBd)
+        return indNodBd, np.concatenate(indElemBd), indLocalEdgBd, edges
             
         
 class OutputData(object):
@@ -570,45 +643,3 @@ class Mesh(object):
         # --- Save output data as json file ---
         self.output_data.save('triangle_mesh_' + str(self.input_data.version) + '.json')
         
-        # # # --- Export location to Fortran ---
-        # # self.exportLocationToFortran()
-        
-        # # --- Leave dir ---
-        # os.chdir(cwd)
-        
-        
- 
-    def exportLocationToFortran(self):
-        """Export location to Fortran program."""
-        
-        input_data_location_file                   = {}
-        input_data_location_file["input_location"] = self.input_data.location
-
-        exportFileName = 'python_phase_input_location.json'
-        
-        # --- Enter Fortran build ---
-        current_dir      = os.getcwd()
-        abs_fortran_path = self.input_data.fortran_location
-        isDir            = os.path.isdir(abs_fortran_path) 
-        if isDir: 
-            os.chdir(abs_fortran_path)
-        else:
-            print("Fortran export input location not found.")
-
-        print("Entering %s and specifying location %s." % (abs_fortran_path, self.input_data.location))
-        with open(exportFileName, "w") as ofile:
-            json.dump(input_data_location_file, ofile, sort_keys = True, indent = 4)
-            
-        # --- Go out of Fortran build ---
-        os.chdir(current_dir)
-
-    def makeDirinCurrent(self,dir_name):
-        """Make dir and enter"""
-        current_dir = os.getcwd()
-        path        = os.path.join(current_dir, dir_name) 
-        isDir       = os.path.isdir(path) 
-        if isDir: shutil.rmtree(path)
-        
-        os.mkdir(path) 
-        print("Directory '% s' created" % dir_name) 
-        os.chdir(path)

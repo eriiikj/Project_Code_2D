@@ -309,7 +309,7 @@ subroutine update_ls_system(lssys,mesh,i_IMC,input_location, omp_run, pq, diffsy
   allocate(indecies2(size(lssys%a(:,g))))  
 
   ! 1) --- Update level set functions ---
-  if (i_IMC.gt.1) then
+  if (i_IMC .eq. 1) then
     do g=1,lssys%ngrains
       if (ls_spatial) then
         call update_level_set_function_spatial(lssys, mesh, g)
@@ -355,7 +355,6 @@ subroutine update_ls_system(lssys,mesh,i_IMC,input_location, omp_run, pq, diffsy
   lssys%tp_points   = 0d0
   lssys%ntp_points  = 0  
 
-  ! Interpolate line segments in deformed configuration
   do g = 1, lssys%ngrains
     g_cols = [2*(g-1) + 1, 2*(g-1) + 2]
     if (ls_spatial) then
@@ -394,7 +393,7 @@ subroutine update_ls_system(lssys,mesh,i_IMC,input_location, omp_run, pq, diffsy
   enddo
 
   ! 7) --- Adaptive mesh refinement with refinement length lseg ---
-  lseg = 2.5d-5
+  lseg = 2.0d-5
   do g = 1,lssys%ngrains      
     g_cols = [2*(g-1) + 1, 2*(g-1) + 2]
     call interface_lseg_adjustment(lssys%line_ex(:,g_cols(1):g_cols(2)), lssys%line_ey(:,g_cols(1):g_cols(2)), &
@@ -410,17 +409,14 @@ subroutine update_ls_system(lssys,mesh,i_IMC,input_location, omp_run, pq, diffsy
     lssys%line_coord([1:lssys%line_coordN(g)],g_cols) = unique_coord
   enddo
   
-   ! --- Sort line segments ---
-  do g = 1,lssys%ngrains
-    g_cols = [2*(g-1) + 1, 2*(g-1) + 2]
-    call sort_lines(lssys%line_ex(:,g_cols(1):g_cols(2)),lssys%line_ey(:,g_cols(1):g_cols(2)),lssys%tplines(:,g), &
-    lssys%line_seg(g),lssys%sep_lines(:,g_cols(1):g_cols(2)),lssys%nsep_lines(g),mesh)
-  enddo
+  !  ! --- Sort line segments ---
+  ! do g = 1,lssys%ngrains
+  !   g_cols = [2*(g-1) + 1, 2*(g-1) + 2]
+  !   call sort_lines(lssys%line_ex(:,g_cols(1):g_cols(2)),lssys%line_ey(:,g_cols(1):g_cols(2)),lssys%tplines(:,g), &
+  !   lssys%line_seg(g),lssys%sep_lines(:,g_cols(1):g_cols(2)),lssys%nsep_lines(g),mesh)
+  ! enddo
 
   ! 8) --- Output data ---
-
-  ! Save output data (for diffusion script to load)
-  call write_level_set_iter_to_matlab(lssys, mesh, i_IMC, input_location)
 
   ! Velocity field acc to Brown
   ! x0     = (mesh%axisbc(1) + mesh%axisbc(2))/2d0
@@ -483,5 +479,95 @@ subroutine update_ls_system(lssys,mesh,i_IMC,input_location, omp_run, pq, diffsy
 end subroutine update_ls_system
 
 
+
+subroutine get_ls_positions(lssys,mesh,i_IMC,input_location, omp_run, pq, ls_spatial)
+  ! --- Routine for updating all level set functions with the previously computed vp ---
+  implicit none
+
+  ! Intent inout
+  type(ls_system), intent(inout)            :: lssys
+  
+
+  ! Intent in
+  type(mesh_system), intent(in)             :: mesh
+  integer,intent(in)                        :: i_IMC
+  character(len=:), allocatable, intent(in) :: input_location
+  logical, intent(in)                       :: omp_run
+  type(plot_system), intent(inout)          :: pq
+  logical, intent(in)                       :: ls_spatial
+
+  ! Subroutine variables
+  integer                                   :: g, g_cols(2)
+  real(dp)                                  :: lseg
+  real(dp), allocatable                     :: unique_coord(:,:)
+
+  ! 2) --- Remove level set function if it is zero everywhere ---
+  call remove_ls(lssys)
+
+  ! 3) --- Interaction-correction step ---
+  call interaction_correction(lssys%a, lssys%ngrains)
+
+  ! Update ed
+  do g=1,lssys%ngrains
+    call extract(lssys%ed(:,:,g),lssys%a(:,g),mesh%enod,1)
+  enddo
+  
+  ! 4) --- Interpolate interfaces ---
+  lssys%line_ex     = 0d0
+  lssys%line_ey     = 0d0
+  lssys%line_seg    = 0
+  lssys%line_coord  = 0d0
+  lssys%line_coordN = 0
+  lssys%line_elms   = 0  
+  lssys%line_seg_cc = .false.
+  lssys%int_elms    = .false.
+  lssys%sep_lines   = 0
+  lssys%jnod        = 0d0  
+  lssys%vp          = 0d0
+  lssys%vpm         = 0d0
+  lssys%tp_points   = 0d0
+  lssys%ntp_points  = 0  
+
+  do g = 1, lssys%ngrains
+    g_cols = [2*(g-1) + 1, 2*(g-1) + 2]
+    if (ls_spatial) then
+      call get_interface_spatial(lssys%line_ex(:, g_cols(1):g_cols(2)), lssys%line_ey(:, g_cols(1):g_cols(2)), &
+      lssys%line_elms(:, g), lssys%line_seg(g), lssys%ed(:,:,g), mesh)
+    else
+      call get_interface(lssys%line_ex(:, g_cols(1):g_cols(2)), lssys%line_ey(:, g_cols(1):g_cols(2)), &
+      lssys%line_elms(:, g), lssys%line_seg(g), lssys%ed(:,:,g), mesh)
+    endif
+    
+    ! Obtain logical array with a true bool if the element contains a line
+    lssys%int_elms(lssys%line_elms(1:lssys%line_seg(g),g),g) = .true.
+  end do
+
+  ! 5) --- Interface reconstruction (post-processing step) ---
+  if (ls_spatial) then
+    call interface_reconstruction_spatial(lssys, mesh)
+  else
+    call interface_reconstruction(lssys, mesh)
+  endif
+
+
+  ! 7) --- Adaptive mesh refinement with refinement length lseg ---
+  lseg = 2.0d-5
+  do g = 1,lssys%ngrains      
+    g_cols = [2*(g-1) + 1, 2*(g-1) + 2]
+    call interface_lseg_adjustment(lssys%line_ex(:,g_cols(1):g_cols(2)), lssys%line_ey(:,g_cols(1):g_cols(2)), &
+    lssys%line_seg(g), lssys%tp_points([1:lssys%ntp_points],:), mesh%bcnod_all, mesh%newcoord, lseg)
+  enddo
+
+  ! Extract line_coord
+  do g = 1,lssys%ngrains      
+    g_cols = [2*(g-1) + 1, 2*(g-1) + 2]
+    call lines_to_coord(lssys%line_ex([1:lssys%line_seg(g)],g_cols(1):g_cols(2)), &
+    lssys%line_ey([1:lssys%line_seg(g)],g_cols(1):g_cols(2)), lssys%line_seg(g), unique_coord)
+    lssys%line_coordN(g) = size(unique_coord,1)
+    lssys%line_coord([1:lssys%line_coordN(g)],g_cols) = unique_coord
+  enddo
+
+  return
+end subroutine get_ls_positions
 
 end module level_set

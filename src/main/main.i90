@@ -127,27 +127,28 @@ program main
       write(*,*)
       write(*,'(A79)') '------------------------------ New IMC interface ------------------------------'
       write(*,"(A9,I3,A4,I3)") 'IMC step ', i_IMC, ' of ', IMC_steps      
-
-
+      
 ! Save old level set state
       lssys_old        = lssys
       newton_loop_conv = .false.
-
-! Evolve interface and solve mechanical problem
-      do while (newton_loop_conv .eqv. .false.)
-
-! --- Update level set ---
-         call update_ls_system(lssys, mesh, i_IMC, input_location, omp_run, pq, diffsys, ls_spatial)
-
+      
 ! --- Solve mechanical problem for the current IMC boundary ---
-         write(*,*)
-         write(*,'(A39)') '-------------- Load loop --------------'
-         write(*,"(A24,G10.3)") 'Volume transformation : ', IMC_vol_transf
-         write(*,"(A6,G15.6)") 'Time: ', lssys%time
-         write(*,"(A12,G10.3)") 'Time step : ', lssys%h
-! call loadloop(mesh, lssys, IMC_eps_star, pq, i_IMC, omp_run, input_location, newton_loop_conv)
-         newton_loop_conv = .true.
-
+      write(*,*)
+      write(*,'(A39)') '-------------- Load loop --------------'
+      write(*,"(A24,G10.3)") 'Volume transformation : ', IMC_vol_transf
+      write(*,"(A6,G15.6)") 'Time: ', lssys%time
+      write(*,"(A12,G10.3)") 'Time step : ', lssys%h
+      
+! Evolve interface and solve mechanical problem
+      do while (newton_loop_conv .eqv. .false.)         
+         
+! --- Update level set functions ---
+         call update_ls_system(lssys, mesh, i_IMC, input_location, omp_run, pq, diffsys, ls_spatial)
+         
+! --- Solve mechanical problem ---
+         call loadloop(mesh, lssys, IMC_eps_star, pq, i_IMC, omp_run, input_location, newton_loop_conv)
+! newton_loop_conv = .true.
+         
 ! If Newton loop fail - take shorter time step
          if (newton_loop_conv .eqv. .false.) then
             lssys   = lssys_old
@@ -157,25 +158,27 @@ program main
             ls_h    = ls_h*1.3d0
             lssys%h = ls_h
          endif
-
+         
          if (lssys%h.lt.1d-6) then
             print *, 'Time step is zero'
 ! ls_h = 0d0
             call exit()
-         endif
+         endif         
+      enddo
+      
+! --- Obtain level set positions in new configuration ---
+      call get_ls_positions(lssys,mesh,i_IMC,input_location, omp_run, pq, ls_spatial)
 
-      enddo      
+! --- Save ls state ---
+      call write_level_set_iter_to_matlab(lssys, mesh, i_IMC, input_location)
 
-! --- Solve diffusion problem for all grains ---
+! --- Solve diffusion problem for updated configuration ---
       call solve_diffusion_problem_global(diffsys, i_IMC, lssys, mesh, pq, input_location, omp_run)
 
-! --- Compute new velocity field ---
+! --- Compute velocity field from diffusion ---
       print *, 'Entering compute_common_vp'
       call compute_common_vp_spatial2(lssys,mesh,diffsys)
       print *, 'Leaving compute_common_vp'
-
-! --- Save output data from level set and diffusion ---
-      call write_level_set_iter_to_matlab(lssys, mesh, i_IMC, input_location)      
       
 ! --- Plot ---
       call plot_vtk(pq, input_location, mesh%nnodgp, mesh, lssys, i_IMC)

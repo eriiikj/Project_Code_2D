@@ -227,7 +227,7 @@ subroutine generate_global_diffusion_mesh(input_location, diffsys, mesh, lssys, 
 
   ! Interpolate old level set values to new mesh
   do g=1,lssys%ngrains
-    call interpolate_scalar_mesh1_to_mesh2(mesh%enod, mesh%coord, lssys%ed(:,:,g), diffsys%enod, diffsys%coord, diffsys%ls(:,g))
+    call interpolate_scalar_mesh1_to_mesh2(mesh%enod, mesh%newcoord, lssys%ed(:,:,g), diffsys%enod, diffsys%coord, diffsys%ls(:,g))
   enddo
 
   if (allocated(elmidx)) then
@@ -1371,12 +1371,16 @@ subroutine interpolate_scalar_mesh1_to_mesh2(mesh1_enod, mesh1_coord, mesh1_ed, 
   nnod1 = size(mesh1_coord,2)
   nnod2 = size(mesh2_coord,2)
 
-  ! Interpolate pq%p from global mesh to grain_mesh
+  ! Interpolate scalar from global mesh to grain_mesh
   do inod=1,nnod2
 
     ! Coordinates of point in new mesh
     x = mesh2_coord(1,inod)
     y = mesh2_coord(2,inod)
+
+    if (abs((x-0.00d0)).lt.1d-5 .and.  abs((y-0.000d0)).lt.1d-5) then
+        print *, 'as'
+    endif
     
     ! Find which element in the global mesh that the point (x,y) belong to
     pwt = .false.
@@ -1406,7 +1410,7 @@ subroutine interpolate_scalar_mesh1_to_mesh2(mesh1_enod, mesh1_coord, mesh1_ed, 
       call point_within_triangle(pwt,x,y,x1,x2,x3,y1,y2,y3)
       if (pwt) then
         exit
-      endif 
+      endif
 
     enddo
 
@@ -1455,7 +1459,7 @@ subroutine point_within_triangle(condition_satisfied,x,y,x1,x2,x3,y1,y2,y3)
   real(dp), intent(in)   :: x, y, x1, x2, x3, y1, y2, y3
 
   ! Subroutine variables
-  real(dp)               :: detT, c1, c2, c3, tol=1d-12
+  real(dp)               :: detT, c1, c2, c3, tol=1d-10
 
   ! Barycentric coordinates of (x,y) in the triangle
   detT = (x1-x3)*(y2-y3) - (x2-x3)*(y1-y3)

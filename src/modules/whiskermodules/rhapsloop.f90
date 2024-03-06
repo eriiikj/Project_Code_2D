@@ -225,6 +225,16 @@ contains
       return
    end subroutine init_NewtonEqIter
 
+   subroutine update_coord(mesh)
+      implicit none
+      type(mesh_system), intent(inout)          :: mesh
+
+      ! Update coordinates
+      call updcoord(mesh%newcoord,mesh%coord,a)
+      call coordxtr(mesh%newex,mesh%newey,mesh%newcoord,mesh%enod)
+
+      return
+   end subroutine update_coord
 
    subroutine loadloop(mesh, lssys, IMC_eps_star, pq, i_IMC, omp_run, input_location, newton_loop_conv)
       implicit none
@@ -290,11 +300,8 @@ contains
       ! Calculate cauchy stresses and save in plot_quantities
       call pushforward(pq%cau,es,dg,'j')
 
-      ! --- Load loop finished ---
-
-      ! Update coordinates
-      call updcoord(mesh%newcoord,mesh%coord,a)
-      call coordxtr(mesh%newex,mesh%newey,mesh%newcoord,mesh%enod)
+      ! --- Load loop finished ---    
+      call update_coord(mesh)
 
       ! --- Compute plot quantities ---
       call compute_plot_quantities(pq, mesh, lssys)

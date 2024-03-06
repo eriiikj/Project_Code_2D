@@ -303,9 +303,9 @@ subroutine lvlset2D4_global_vp2(vp_e, coord, ed_e_gr, jgp_e_gr, agp_e_gr, Igrain
                     print *, 'vel_cont is NAN'
                 endif
 
-                if (abs((coord(1,1)-0.00075d0)).lt.1d-5 .and. abs((coord(2,1)-0.0006d0)).lt.1d-5) then
-                    print *, 'as'
-                endif
+! if (abs((coord(1,1)-0.000975d0)).lt.1d-5 .and. abs((coord(2,1)-0.000625d0)).lt.1d-5) then
+!     print *, 'as'
+! endif
 
 ! Decaying function
                 f_j = exp(-lssys%alpha*abs(agp_e_gr(GP_NR,other_grain)))

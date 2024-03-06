@@ -79,7 +79,7 @@ if __name__ == "__main__":
     main_instance = MainClass()
     
     # --- Load initial level set data
-    main_instance.onLoadLsInit()
+    # main_instance.onLoadLsInit()
 
 
     # --- Load level set state ---
