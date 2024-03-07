@@ -59,9 +59,6 @@ if __name__ == "__main__":
 
     # --- Create main instance ---
     main_instance = MainClass()
-    
-    # --- Load initial level set data
-    # main_instance.onLoadLsInit()
 
     # --- Load level set state ---
     main_instance.onLoadLsStep()

@@ -199,13 +199,12 @@ class InputData(object):
         input_data_file["imc_steps"]              = self.imc_steps
         
         # Level set parameters
-        input_data_file["ls_gamma"]               = self.ls_gamma
-        input_data_file["ls_m"]                   = self.ls_m
-        input_data_file["ls_zeta"]                = self.ls_zeta
-        input_data_file["ls_mzetagb"]             = self.ls_mzetagb
+        input_data_file["lsrho_bulk"]             = self.lsrho_bulk
+        input_data_file["lsrho_snsn"]             = self.lsrho_snsn
+        input_data_file["lsrho_lambda"]           = self.lsrho_lambda
+        input_data_file["lskappa"]                = self.lskappa
         input_data_file["ls_phiw"]                = self.ls_phiw
-        input_data_file["ls_malpha"]              = self.ls_malpha
-        input_data_file["ls_DIMC"]                = self.ls_DIMC
+        input_data_file["d_DIMC"]                 = self.d_DIMC
 
         
         # Location

@@ -27,7 +27,7 @@ module ls_types
       integer               :: ntp_points
       
 ! Update level set function
-      real(dp)              :: theta = 1d0, gamma, m, zeta, mzeta, mzetagb, malpha
+      real(dp)              :: theta = 1d0, lsrho_bulk, lsrho_snsn, lsrho_lambda, lskappa
       real(dp)              :: vk, D(2,2)
       real(dp)              :: h                                                 ! Time step
       real(dp)              :: w                                                 ! Interpolation width

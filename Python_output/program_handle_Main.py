@@ -61,7 +61,6 @@ class MainClass(object):
         self.input_data.geom_y4                = el_size*6    # upper ycoord mid region
         self.input_data.geom_y5                = el_size*8    # upper ycoord finer region
         
-        
         # Mesh
         self.input_data.mesh_el_size_x         = 25e-3 # 25e-3
         self.input_data.mesh_el_size_y_coarse  = 25e-3
@@ -84,13 +83,14 @@ class MainClass(object):
         self.input_data.imc_steps              = 1
         
         # Level set function parameters
+        self.input_data.lsrho_bulk             = 1.0
+        self.input_data.lsrho_snsn             = 40.0
+        self.input_data.lsrho_lambda           = 8e3
         self.input_data.ls_gamma               = 0.625*1e-6
-        self.input_data.ls_m                   = 10e-18*(1e3)**3/(1/3600)
-        self.input_data.ls_zeta                = 1/self.input_data.ls_m
-        self.input_data.ls_mzetagb             = 40
+        self.input_data.ls_m                   = 2*1e-19*(1e3)**3/(1/3600)
+        self.input_data.lskappa                = 2*self.input_data.ls_gamma*self.input_data.ls_m
         self.input_data.ls_phiw                = 25e-5
-        self.input_data.ls_malpha              = 8e3
-        self.input_data.ls_DIMC                = (4.575e-20)*(1e3)**2*3600
+        self.input_data.d_DIMC                 = (4.575e-20)*(1e3)**2*3600
         
         # Location
         self.input_data.location               = None

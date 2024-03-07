@@ -58,13 +58,13 @@ mm_to_nm = 1e6;
 % tvec_4M = tvec; IMC_vol_per_area_4M = IMC_vol_per_area;
 
 % MC1
-load(['/home/er7128ja/Nextcloud/Projekt/Project_Code/Python_output/', ...
+load(['/home/er7128ja/Nextcloud/Projekt/Project_Code_2D/Python_output/', ...
       'matlab_eval/mat_eval_files/IMC_volume_MC1.mat'])
 tvec_MC1 = tvec; IMC_vol_per_area_MC1 = IMC_vol_per_area;
 
 
 % MC2
-load(['/home/er7128ja/Nextcloud/Projekt/Project_Code/Python_output/', ...
+load(['/home/er7128ja/Nextcloud/Projekt/Project_Code_2D/Python_output/', ...
       'matlab_eval/mat_eval_files/IMC_volume_MC2.mat'])
 tvec_MC2 = tvec; IMC_vol_per_area_MC2 = IMC_vol_per_area;
 

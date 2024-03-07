@@ -111,14 +111,8 @@ subroutine allocate_ls_system(lssys,ngrains,nelm,nrgp,nnod,nodel,enod)
   call spaTopDef(lssys%C_hat,enod,1)
   call spaTopDef(lssys%K_hat,enod,1)
 
-! vk
-  lssys%vk  = 2*lssys%m*lssys%gamma
-
-! mzeta
-  lssys%mzeta = 1d0
-
 ! D matrix used in update of level set
-  lssys%D = lssys%vk*reshape([1d0, 0d0, 0d0, 1d0], [2,2])
+  lssys%D = lssys%lskappa*reshape([1d0, 0d0, 0d0, 1d0], [2,2])
 
 ! Assign material to each level set function. Cu=1, IMC=2, Sn=3.
   lssys%material(1) = 1
@@ -133,8 +127,6 @@ subroutine allocate_ls_system(lssys,ngrains,nelm,nrgp,nnod,nodel,enod)
 ! IMC area
   lssys%IMC_area      = 0d0
   lssys%IMC_area_init = 0d0
-
-
 
   return
 end subroutine allocate_ls_system
@@ -158,7 +150,6 @@ subroutine init_ls_system(lssys,mesh,IMC_steps, input_location)
   real(dp)                                  :: x0, y0, x_min, x_max, y_min, y_max, r_min, r_max, EE_min, EE_max, r, cu_height
   integer                                   :: ngrains
 
-
 ! Short form
   ngrains = lssys%ngrains
 
@@ -169,22 +160,22 @@ subroutine init_ls_system(lssys,mesh,IMC_steps, input_location)
 ! Initiatial level set data
   x0     = (mesh%axisbc(1) + mesh%axisbc(2))/2d0
   y0     = (mesh%axisbc(3) + mesh%axisbc(4))/2d0
-  x_min  = 0.2d0*x0
-  x_max  = 1.8d0*x0
-  y_min  = 0.2d0*x0
-  y_max  = 1.8d0*x0
-  r_min  = 1.65d-3
-  r_max  = 1.70d-3
-  EE_min = 1d-5
-  EE_max = 2d-5  
-! call rand_vec(lssys%xvec , x_min, x_max)
-! call rand_vec(lssys%yvec , y_min, y_max)
-! call rand_vec(lssys%rvec , r_min, r_max)
-! call rand_vec(lssys%EEvec, EE_min, EE_max)
-  lssys%xvec  = [0.56d0, 1.31d0, 1.0d0, 0.4d0]*x0
-  lssys%yvec  = [0.71d0, 0.71d0, 1.4d0, 0.5d0]*y0
-! lssys%rvec  = 0.35d-3
-! lssys%EEvec = 3d-5
+! x_min  = 0.2d0*x0
+! x_max  = 1.8d0*x0
+! y_min  = 0.2d0*x0
+! y_max  = 1.8d0*x0
+! r_min  = 1.65d-3
+! r_max  = 1.70d-3
+! EE_min = 1d-5
+! EE_max = 2d-5
+! ! call rand_vec(lssys%xvec , x_min, x_max)
+! ! call rand_vec(lssys%yvec , y_min, y_max)
+! ! call rand_vec(lssys%rvec , r_min, r_max)
+! ! call rand_vec(lssys%EEvec, EE_min, EE_max)
+! lssys%xvec  = [0.56d0, 1.31d0, 1.0d0, 0.4d0]*x0
+! lssys%yvec  = [0.71d0, 0.71d0, 1.4d0, 0.5d0]*y0
+! ! lssys%rvec  = 0.35d-3
+! ! lssys%EEvec = 3d-5
   
 ! print *, 'xvec: ', lssys%xvec
 ! print *, 'yvec: ', lssys%yvec
@@ -350,11 +341,11 @@ subroutine update_ls_system(lssys,mesh,i_IMC,input_location, omp_run, pq, diffsy
   lssys%line_seg_cc = .false.
   lssys%int_elms    = .false.
   lssys%sep_lines   = 0
-  lssys%jnod        = 0d0  
+  lssys%jnod        = 0d0
   lssys%vp          = 0d0
   lssys%vpm         = 0d0
   lssys%tp_points   = 0d0
-  lssys%ntp_points  = 0  
+  lssys%ntp_points  = 0
 
   do g = 1, lssys%ngrains
     g_cols = [2*(g-1) + 1, 2*(g-1) + 2]
@@ -393,7 +384,7 @@ subroutine update_ls_system(lssys,mesh,i_IMC,input_location, omp_run, pq, diffsy
     call elm2D4_nodmat_to_gpmat(lssys%a_gp(:,:,g), lssys%ed(:,:,g), mesh%nelm)
   enddo
 
-! ! 7) --- Adaptive mesh refinement with refinement length lseg ---
+! ! 7) --- Aaptive mesh refinement with refinement length lseg ---
 ! lseg = 2.0d-5
 ! do g = 1,lssys%ngrains
 !   g_cols = [2*(g-1) + 1, 2*(g-1) + 2]
@@ -478,6 +469,7 @@ subroutine update_ls_system(lssys,mesh,i_IMC,input_location, omp_run, pq, diffsy
 
   return
 end subroutine update_ls_system
+
 
 
 
@@ -568,7 +560,7 @@ subroutine get_ls_positions(lssys,mesh,i_IMC,input_location, omp_run, pq, ls_spa
 
 ! 5) --- Adaptive mesh refinement with refinement length lseg ---
   lseg = 2.0d-5
-  do g = 1,lssys%ngrains      
+  do g = 1,lssys%ngrains
     g_cols = [2*(g-1) + 1, 2*(g-1) + 2]
     call interface_lseg_adjustment(lssys%line_ex(:,g_cols(1):g_cols(2)), lssys%line_ey(:,g_cols(1):g_cols(2)), &
     lssys%line_seg(g), lssys%tp_points([1:lssys%ntp_points],:), mesh%bcnod_all, mesh%newcoord, lseg)

@@ -23,7 +23,7 @@ import pyvtk as vtk
 
 import subprocess
 
-import gmsh
+# import gmsh
 import triangle
 
 # Calfem

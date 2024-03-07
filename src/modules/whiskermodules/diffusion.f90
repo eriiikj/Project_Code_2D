@@ -149,11 +149,11 @@ subroutine solve_diffusion_problem_global(diffsys,i_IMC,lssys,mesh,pq,input_loca
     call diffusion_grain(diffsys,i_IMC, diffsys%grain_meshes(g), g, input_location, lssys, omp_run)
   enddo
 
-  ! ! Compute IMC area
-  ! call compute_IMC_area(lssys,diffsys)
-  ! if (i_IMC.eq.1) then
-  !   lssys%IMC_area_init = lssys%IMC_area
-  ! endif  
+  ! Compute IMC area
+  call compute_IMC_area(lssys,diffsys)
+  if (i_IMC.eq.1) then
+    lssys%IMC_area_init = lssys%IMC_area
+  endif  
 
   return
 end subroutine solve_diffusion_problem_global
@@ -257,7 +257,7 @@ subroutine generate_global_diffusion_mesh(input_location, diffsys, mesh, lssys, 
     ! Post-processing the sign of reinitialized mesh as this is not always true from the last state
     ch = .true.
     do while (ch)
-      print *, 'changing signs grain: ', g
+      ! print *, 'changing signs grain: ', g
       ch = .false.  
       nodidx2 = pack(nodidx,diffsys%ls(:,g).lt.8d-6)    
       do i=1,size(nodidx2)
@@ -347,11 +347,11 @@ subroutine diffusion_grain(diffsys, i_IMC, grain_mesh, g, input_location, lssys,
     ! write(command_line,'(A37,I1)'), 'python grain_mesh_triangular_Main.py ', g
     ! call execute_command_line(trim(command_line))
     ! call clock_time(t2, omp_run)
-    ! diffsys%generate_mesh_time = diffsys%generate_mesh_time + (t2 - t1)    
+    ! diffsys%generate_mesh_time = diffsys%generate_mesh_time + (t2 - t1)
     ! call chdir(main_location)
 
     ! Read mesh from json file
-    call clock_time(t1, omp_run)    
+    call clock_time(t1, omp_run)
     ! call read_json_phase_mesh2(phase_mesh_location, i_IMC, grain_mesh%coord, grain_mesh%enod, grain_mesh%bcnod, grain_mesh%bcval, &
     ! grain_mesh%bcval_idx, g)
     call read_json_phase_mesh3(phase_mesh_location, i_IMC, grain_mesh%coord, grain_mesh%enod, grain_mesh%bcnod, grain_mesh%bcval, &

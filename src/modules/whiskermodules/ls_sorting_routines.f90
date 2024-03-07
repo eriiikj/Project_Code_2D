@@ -739,7 +739,7 @@ subroutine add_line_segments_noSorting(line_ex, line_ey, nseg, lseg)
     do while (n_add_lines.gt.0)
 
       ! Print info
-      print *, 'Number of lines added: ', n_add_lines
+    !   print *, 'Number of lines added: ', n_add_lines
 
       ! Copy lines
       line_ex_new_copy = line_ex_new

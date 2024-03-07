@@ -66,94 +66,7 @@ subroutine read_json_input_location(input_location)
 end subroutine read_json_input_location
 
 
-! subroutine read_json_input(input_location, imc_bound, IMC_vol_transf, IMC_steps, load_steps)
-!   implicit none
-
-!   ! Input location
-!   character(len=:),allocatable, intent(in) :: input_location
-
-!   ! Path
-!   character(len=255)                       :: filename, cwd
-
-!   ! json
-!   type(json_file)                          :: my_json_file
-
-!   ! Other
-!   logical                                  :: found, file_e
-
-!   real(dp)                                 :: Cu_height, IMC_side_height_start, IMC_mid_height_start, IMC_radius_inc, interface_w
-!   real(dp)                                 :: IMC_final_vol_per_area
-
-!   ! Out
-!   type(IMC_boundary_system), intent(inout) :: imc_bound
-!   real(dp), intent(out)                    :: IMC_vol_transf
-
-!   integer , intent(inout)                  :: IMC_steps, load_steps
-
-!   filename = 'python_input.json'
-  
-!   ! ----- Locate file -----
-!   call getcwd(cwd)           ! Save current location
-!   call chdir(input_location)
-
-!   inquire(file=filename, exist=file_e)
-!   if (file_e) then
-!     print*, 'Input data file does exist'
-!   else
-!     print*, 'Input data file does not exist'
-!     call exit(0)
-!   endif
-
-!   ! ----- Initiate and load file -----
-!   call my_json_file%initialize()
-!   call my_json_file%load_file(filename); if (my_json_file%failed()) stop
-
-!   ! --- Cu_height ---
-!   call my_json_file%get('y3', Cu_height, found); if (.not. found) call exit(0)
-
-!   ! --- IMC_side_height_start ---
-!   call my_json_file%get('imc_side_height_start', IMC_side_height_start, found); if (.not. found) call exit(0)
-
-!   ! --- IMC_mid_height_start ---
-!   call my_json_file%get('imc_mid_height_start', IMC_mid_height_start, found); if (.not. found) call exit(0)
-
-!   ! --- IMC_radius_inc ---
-!   call my_json_file%get('imc_radius_inc', IMC_radius_inc, found); if (.not. found) call exit(0)
-
-!   ! --- Interface width ---
-!   call my_json_file%get('interface_w', interface_w, found); if (.not. found) call exit(0)
-
-!   ! --- IMC volume per area ---
-!   call my_json_file%get('imc_final_vol_per_area', IMC_final_vol_per_area, found); if (.not. found) call exit(0)
-
-!   ! --- Convert to mm ---
-!   imc_bound%Cu_height              = Cu_height*1d-3
-!   imc_bound%IMC_side_height_start  = IMC_side_height_start*1d-3
-!   imc_bound%IMC_mid_height_start   = IMC_mid_height_start*1d-3
-!   imc_bound%IMC_radius_inc         = IMC_radius_inc*1d-3
-!   imc_bound%interface_w            = interface_w*1d-3
-!   imc_bound%IMC_final_vol_per_area = IMC_final_vol_per_area*1d-3
-
-
-!   ! ----- IMC_vol_transf -----
-!   call my_json_file%get('imc_vol_transf', IMC_vol_transf, found); if (.not. found) call exit(0)
-
-!   ! ----- IMC_steps -----
-!   call my_json_file%get('imc_steps', IMC_steps, found); if (.not. found) call exit(0)
-
-!   ! ----- load_steps -----
-!   call my_json_file%get('load_steps', load_steps, found); if (.not. found) call exit(0)
-
-!   ! ----- Destroy -----
-!   call my_json_file%destroy()
-
-!   ! ----- Go back to program -----
-!   call chdir(cwd)
-
-!   return
-! end subroutine read_json_input
-
-subroutine read_json_input_2(input_location, IMC_vol_transf, IMC_steps, lssys, diffsys)
+subroutine read_json_input(input_location, IMC_vol_transf, IMC_steps, lssys, diffsys)
   implicit none
 
 ! Input location
@@ -196,26 +109,23 @@ subroutine read_json_input_2(input_location, IMC_vol_transf, IMC_steps, lssys, d
 ! ----- IMC_steps -----
   call my_json_file%get('imc_steps', IMC_steps, found); if (.not. found) call exit(0)
 
-! ----- ls gamma -----
-  call my_json_file%get('ls_gamma', lssys%gamma, found); if (.not. found) call exit(0)
+! ----- lsrho_bulk -----
+  call my_json_file%get('lsrho_bulk', lssys%lsrho_bulk, found); if (.not. found) call exit(0)
 
-! ----- ls m -----
-  call my_json_file%get('ls_m', lssys%m, found); if (.not. found) call exit(0)
+! ----- lsrho_snsn-----
+  call my_json_file%get('lsrho_snsn', lssys%lsrho_snsn, found); if (.not. found) call exit(0)
 
-! ----- ls zeta -----
-  call my_json_file%get('ls_zeta', lssys%zeta, found); if (.not. found) call exit(0)
+! ----- lsrho_lambda -----
+  call my_json_file%get('lsrho_lambda', lssys%lsrho_lambda, found); if (.not. found) call exit(0)
 
-! ----- ls mzetagb -----
-  call my_json_file%get('ls_mzetagb', lssys%mzetagb, found); if (.not. found) call exit(0)
+! ----- lskappa -----
+  call my_json_file%get('lskappa', lssys%lskappa, found); if (.not. found) call exit(0)
 
 ! ----- ls phiw -----
   call my_json_file%get('ls_phiw', lssys%w, found); if (.not. found) call exit(0)
 
-! ----- ls malpha -----
-  call my_json_file%get('ls_malpha', lssys%malpha, found); if (.not. found) call exit(0)
-
 ! ----- diff DIMC -----
-  call my_json_file%get('ls_DIMC', diffsys%D_diff_material(2), found); if (.not. found) call exit(0)
+  call my_json_file%get('d_DIMC', diffsys%D_diff_material(2), found); if (.not. found) call exit(0)
 
 ! ----- Destroy -----
   call my_json_file%destroy()
@@ -224,35 +134,7 @@ subroutine read_json_input_2(input_location, IMC_vol_transf, IMC_steps, lssys, d
   call chdir(cwd)
 
   return
-end subroutine read_json_input_2
-
-! subroutine read_default_input(imc_bound, IMC_vol_transf, IMC_steps, load_steps)
-!   implicit none
-
-!   ! Out
-!   type(IMC_boundary_system), intent(inout) :: imc_bound
-!   real(dp), intent(out)                    :: IMC_vol_transf
-
-!   integer , intent(inout)                  :: IMC_steps, load_steps
-
-!    ! --- Input data - standard values ---
-
-!    ! Define default values for IMC boundary increase
-!   imc_bound%Cu_height             = 1d-3     ! Height of Cu-layer
-!   imc_bound%IMC_side_height_start = 0.03d-3  ! IMC start height at ends, must be smaller than grain_width/2 (all grains same width)
-!   imc_bound%IMC_mid_height_start  = 0.02d-3  ! IMC mid height (center of grain) at start
-!   imc_bound%IMC_radius_inc        = 0.002d-3 ! IMC radius reduction by increment
-!   imc_bound%interface_w           = 0.4d-3   ! IMC radius reduction by increment
-
-!   ! Define default value of IMC volume increase
-!   IMC_vol_transf = 1.1d0
-
-!   ! Define standard values of IMC load loop
-!   IMC_steps   = 2
-!   load_steps  = 5
-  
-!   return
-! end subroutine read_default_input
+end subroutine read_json_input
 
 
 
