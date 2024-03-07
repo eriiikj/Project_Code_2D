@@ -309,7 +309,7 @@ subroutine update_ls_system(lssys,mesh,i_IMC,input_location, omp_run, pq, diffsy
   allocate(indecies2(size(lssys%a(:,g))))  
 
   ! 1) --- Update level set functions ---
-  if (i_IMC .eq. 1) then
+  if (i_IMC .ne. 1) then
     do g=1,lssys%ngrains
       if (ls_spatial) then
         call update_level_set_function_spatial(lssys, mesh, g)
@@ -392,22 +392,22 @@ subroutine update_ls_system(lssys,mesh,i_IMC,input_location, omp_run, pq, diffsy
     call elm2D4_nodmat_to_gpmat(lssys%a_gp(:,:,g), lssys%ed(:,:,g), mesh%nelm)
   enddo
 
-  ! 7) --- Adaptive mesh refinement with refinement length lseg ---
-  lseg = 2.0d-5
-  do g = 1,lssys%ngrains      
-    g_cols = [2*(g-1) + 1, 2*(g-1) + 2]
-    call interface_lseg_adjustment(lssys%line_ex(:,g_cols(1):g_cols(2)), lssys%line_ey(:,g_cols(1):g_cols(2)), &
-    lssys%line_seg(g), lssys%tp_points([1:lssys%ntp_points],:), mesh%bcnod_all, mesh%newcoord, lseg)
-  enddo
+  ! ! 7) --- Adaptive mesh refinement with refinement length lseg ---
+  ! lseg = 2.0d-5
+  ! do g = 1,lssys%ngrains      
+  !   g_cols = [2*(g-1) + 1, 2*(g-1) + 2]
+  !   call interface_lseg_adjustment(lssys%line_ex(:,g_cols(1):g_cols(2)), lssys%line_ey(:,g_cols(1):g_cols(2)), &
+  !   lssys%line_seg(g), lssys%tp_points([1:lssys%ntp_points],:), mesh%bcnod_all, mesh%newcoord, lseg)
+  ! enddo
 
-  ! Extract line_coord
-  do g = 1,lssys%ngrains      
-    g_cols = [2*(g-1) + 1, 2*(g-1) + 2]
-    call lines_to_coord(lssys%line_ex([1:lssys%line_seg(g)],g_cols(1):g_cols(2)), &
-    lssys%line_ey([1:lssys%line_seg(g)],g_cols(1):g_cols(2)), lssys%line_seg(g), unique_coord)
-    lssys%line_coordN(g) = size(unique_coord,1)
-    lssys%line_coord([1:lssys%line_coordN(g)],g_cols) = unique_coord
-  enddo
+  ! ! Extract line_coord
+  ! do g = 1,lssys%ngrains      
+  !   g_cols = [2*(g-1) + 1, 2*(g-1) + 2]
+  !   call lines_to_coord(lssys%line_ex([1:lssys%line_seg(g)],g_cols(1):g_cols(2)), &
+  !   lssys%line_ey([1:lssys%line_seg(g)],g_cols(1):g_cols(2)), lssys%line_seg(g), unique_coord)
+  !   lssys%line_coordN(g) = size(unique_coord,1)
+  !   lssys%line_coord([1:lssys%line_coordN(g)],g_cols) = unique_coord
+  ! enddo
   
   !  ! --- Sort line segments ---
   ! do g = 1,lssys%ngrains
@@ -501,10 +501,10 @@ subroutine get_ls_positions(lssys,mesh,i_IMC,input_location, omp_run, pq, ls_spa
   real(dp)                                  :: lseg
   real(dp), allocatable                     :: unique_coord(:,:)
 
-  ! 2) --- Remove level set function if it is zero everywhere ---
+  ! 1) --- Remove level set function if it is zero everywhere ---
   call remove_ls(lssys)
 
-  ! 3) --- Interaction-correction step ---
+  ! 2) --- Interaction-correction step ---
   call interaction_correction(lssys%a, lssys%ngrains)
 
   ! Update ed
@@ -512,7 +512,7 @@ subroutine get_ls_positions(lssys,mesh,i_IMC,input_location, omp_run, pq, ls_spa
     call extract(lssys%ed(:,:,g),lssys%a(:,g),mesh%enod,1)
   enddo
   
-  ! 4) --- Interpolate interfaces ---
+  ! 3) --- Interpolate interfaces ---
   lssys%line_ex     = 0d0
   lssys%line_ey     = 0d0
   lssys%line_seg    = 0
@@ -542,15 +542,30 @@ subroutine get_ls_positions(lssys,mesh,i_IMC,input_location, omp_run, pq, ls_spa
     lssys%int_elms(lssys%line_elms(1:lssys%line_seg(g),g),g) = .true.
   end do
 
-  ! 5) --- Interface reconstruction (post-processing step) ---
+  ! 4) --- Interface reconstruction (post-processing step) ---
   if (ls_spatial) then
     call interface_reconstruction_spatial(lssys, mesh)
   else
     call interface_reconstruction(lssys, mesh)
   endif
 
+    ! 6) --- Reinitialize level set function ---
+  do g = 1,lssys%ngrains
+    g_cols = [2*(g-1) + 1, 2*(g-1) + 2]
+    if (ls_spatial) then
+      call reinit_level_set_spatial(lssys%a(:,g),lssys%a(:,g),lssys%line_ex(:,g_cols(1):g_cols(2)), &
+      lssys%line_ey(:,g_cols(1):g_cols(2)), lssys%closest_line(:,g),lssys%line_seg(g),mesh)
+    else
+      call reinit_level_set(lssys%a(:,g),lssys%line_ex(:,g_cols(1):g_cols(2)),lssys%line_ey(:,g_cols(1):g_cols(2)), &
+      lssys%closest_line(:,g),lssys%line_seg(g),mesh)
+    endif
+    
+    ! Update ed
+    call extract(lssys%ed(:,:,g),lssys%a(:,g),mesh%enod,1)
+    call elm2D4_nodmat_to_gpmat(lssys%a_gp(:,:,g), lssys%ed(:,:,g), mesh%nelm)
+  enddo
 
-  ! 7) --- Adaptive mesh refinement with refinement length lseg ---
+  ! 5) --- Adaptive mesh refinement with refinement length lseg ---
   lseg = 2.0d-5
   do g = 1,lssys%ngrains      
     g_cols = [2*(g-1) + 1, 2*(g-1) + 2]

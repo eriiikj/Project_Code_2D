@@ -42,6 +42,7 @@ class InputData(object):
         self.line_ex            = 0
         self.line_ey            = 0
         self.line_conn          = 0
+        self.line_coord_all     = 0
         self.line_ex_all        = 0
         self.line_ey_all        = 0
         self.nseg               = 0
@@ -125,6 +126,8 @@ class InputData(object):
             self.ngrains        = np.shape(self.a)[1]
             self.line_ex_all    = (data['line_ex']*1e3)
             self.line_ey_all    = data['line_ey']*1e3
+            self.line_coord_all = data['line_coord']*1e3
+            self.line_coordN    = data['line_coordN'].flatten()
             self.line_seg_all   = data['line_seg'].flatten()
             self.material       = data['material'].flatten()
             self.tppoints       = data['tppoints']*1e3
@@ -133,8 +136,7 @@ class InputData(object):
         # Round line coords to 6 decimals 
         self.line_ex_all = self.line_ex_all.round(decimals=6)
         self.line_ey_all = self.line_ey_all.round(decimals=6)
-        
-        self.tppoints = self.tppoints.round(decimals=6)
+        self.tppoints    = self.tppoints.round(decimals=6)
         
                 
     def get_line_conn(self, line_coord, line_ex, line_ey):
@@ -286,15 +288,17 @@ class Mesh(object):
             
      
         # Short form
-        ngrains      = self.input_data.ngrains
-        line_ex_all  = self.input_data.line_ex_all
-        line_ey_all  = self.input_data.line_ey_all
-        line_seg_all = self.input_data.line_seg_all
-        tppoints     = self.input_data.tppoints
-        enod         = self.input_data.enod
-        coord        = self.input_data.coord
-        nodel        = self.input_data.nodel
-        ls           = self.input_data.ls
+        ngrains        = self.input_data.ngrains
+        line_ex_all    = self.input_data.line_ex_all
+        line_ey_all    = self.input_data.line_ey_all
+        line_seg_all   = self.input_data.line_seg_all
+        line_coord_all = self.input_data.line_coord_all
+        line_coordN    = self.input_data.line_coordN
+        tppoints       = self.input_data.tppoints
+        enod           = self.input_data.enod
+        coord          = self.input_data.coord
+        nodel          = self.input_data.nodel
+        ls             = self.input_data.ls
         
  
         # Extract partitioned mesh for each grain
@@ -359,14 +363,16 @@ class Mesh(object):
             
             # Point P
             P = coord_g[bcnod,:]
+            
+            if (i==25):
+                s = 9
                     
             # See if point P is in other grain
             P_in_g = []
             for gg in other_grains:
                 gg_cols = [2*gg, 2*gg + 1]
-                line_ex_g = line_ex_all[:line_seg_all[gg],[gg_cols[0],gg_cols[1]]]
-                line_ey_g = line_ey_all[:line_seg_all[gg],[gg_cols[0],gg_cols[1]]]
-                if ((abs((line_ex_g - P[0]) + (line_ey_g - P[1]))<1e-13).any()):
+                line_coord_gg = line_coord_all[:line_coordN[gg],gg_cols]
+                if (np.any(np.sqrt((line_coord_gg[:,0]-P[0])**2 + (line_coord_gg[:,1]-P[1])**2)<1e-5)):
                     P_in_g.append(gg)
             
             P_in_g = np.array(P_in_g)
@@ -509,6 +515,7 @@ class Mesh(object):
 
         # Extract mesh
         for g in range(self.input_data.ngrains):
+            
             # Reset output data
             self.output_data.reset()
             

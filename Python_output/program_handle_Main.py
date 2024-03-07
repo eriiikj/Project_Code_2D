@@ -85,7 +85,7 @@ class MainClass(object):
         
         # Level set function parameters
         self.input_data.ls_gamma               = 0.625*1e-6
-        self.input_data.ls_m                   = 1e-18*(1e3)**3/(1/3600)
+        self.input_data.ls_m                   = 10e-18*(1e3)**3/(1/3600)
         self.input_data.ls_zeta                = 1/self.input_data.ls_m
         self.input_data.ls_mzetagb             = 40
         self.input_data.ls_phiw                = 25e-5

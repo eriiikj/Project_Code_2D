@@ -94,7 +94,7 @@ program main
 
    ! Initiate level set
    ngrains   = 5
-   IMC_steps = 1
+   IMC_steps = 50
    call allocate_ls_system(lssys,ngrains,mesh%nelm,mesh%nrgp,mesh%nnod,mesh%nodel,mesh%enod)
    call init_ls_system(lssys,mesh,IMC_steps,input_location)
 
@@ -162,7 +162,7 @@ program main
             print *, 'Time step is zero'
             ! ls_h = 0d0
             call exit()
-         endif         
+         endif
       enddo
       
       ! --- Obtain level set positions in new configuration ---
@@ -178,6 +178,9 @@ program main
       print *, 'Entering compute_common_vp'
       call compute_common_vp_spatial2(lssys,mesh,diffsys)
       print *, 'Leaving compute_common_vp'
+
+      ! --- Save ls state ---
+      call write_level_set_iter_to_matlab(lssys, mesh, i_IMC, input_location)
       
       ! --- Plot ---
       call plot_vtk(pq, input_location, mesh%nnodgp, mesh, lssys, i_IMC)

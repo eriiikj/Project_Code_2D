@@ -23,7 +23,7 @@ import pyvtk as vtk
 
 import subprocess
 
-# import gmsh
+import gmsh
 import triangle
 
 # Calfem
@@ -66,14 +66,13 @@ class InputData(object):
         self.material           = 0
         self.tot_imc_area_init  = 0
         self.tot_imc_area       = 0
-        # self.P1nod              = 0
-        # self.P2nod              = 0
-        # self.P3nod              = 0
-        # self.P4nod              = 0
         self.node_tags          = 0
         self.spline_tags        = 0
         self.line_coord         = 0
         self.line_conn          = 0
+        self.all_line_conn      = 0
+        self.boundary_coord    = 0
+        self.boundary_conn      = 0
         self.mesh_points        = 0
         self.indNodBd           = 0
         self.indElemBd          = 0
@@ -93,9 +92,11 @@ class InputData(object):
         
         
         # --- Constraint Delanuay triangularization using triangle ---
-        tri_input     = dict(vertices=self.mesh_points,segments=self.line_conn) # segments=self.line_conn
+        # tri_input     = dict(vertices=self.boundary_coord,segments=self.boundary_conn)
+        # tri_input     = dict(vertices=self.line_coord,segments=self.line_conn) 
+        tri_input     = dict(vertices=self.mesh_points,segments=self.all_line_conn) 
         print('Creating a constraint delanuay triangularization...')
-        triangulation = triangle.triangulate(tri_input,opts='') #pcqa0.03 
+        triangulation = triangle.triangulate(tri_input,opts='pqYY') #pcqa0.03 
         print('Finished delanuay triangularization')
         tris          = triangulation['triangles']
         tris          = tris.flatten()
@@ -103,9 +104,10 @@ class InputData(object):
         vertices      = triangulation['vertices']
         N             = np.shape(vertices)[0]
         
-        # Extract xyz data
+        
+        
+        # # Extract xyz data
         # xyz = self.xyz_from_coord(vertices)
-            
             
         # # Add triangles to gmsh
         # surf = gmsh.model.addDiscreteEntity(2)
@@ -159,52 +161,52 @@ class InputData(object):
         self.location         = input_data_file["location"]
         
         
-    # def load_LsInit(self):
-    #     """Read indata from file."""
+    def load_LsInit(self):
+        """Read indata from file."""
         
-    #     cwd = os.getcwd()
-    #     path = self.python_location + '/single_study/mat_files'
+        cwd = os.getcwd()
+        path = self.python_location + '/single_study/mat_files'
         
-    #     # Filename initial level set data
-    #     filename = path + '/level_setinit.mat'
+        # Filename initial level set data
+        filename = path + '/level_setinit.mat'
         
         
 
-    #     with open(filename, "r") as ifile:
+        with open(filename, "r") as ifile:
             
-    #         # Load the .mat file
-    #         data = scipy.io.loadmat(filename)
+            # Load the .mat file
+            data = scipy.io.loadmat(filename)
 
-    #         # Access the variable by its name
-    #         self.ex     = np.transpose(data['ex'])*1e3
-    #         self.ey     = np.transpose(data['ey'])*1e3
-    #         self.coord  = np.transpose(data['coord'])*1e3
+            # Access the variable by its name
+            self.ex     = np.transpose(data['ex'])*1e3
+            self.ey     = np.transpose(data['ey'])*1e3
+            self.coord  = np.transpose(data['coord'])*1e3
             
 
-    #     axisbc = np.array([np.min(self.ex),np.max(self.ex),\
-    #                        np.min(self.ey),np.max(self.ey)])
+        axisbc = np.array([np.min(self.ex),np.max(self.ex),\
+                            np.min(self.ey),np.max(self.ey)])
             
-    #     # Identify domain corners:
-    #     #  P4 ----- P3
-    #     #  |         |
-    #     #  |         |
-    #     #  |         |
-    #     #  P1 ----- P2
+        # Identify domain corners:
+        #  P4 ----- P3
+        #  |         |
+        #  |         |
+        #  |         |
+        #  P1 ----- P2
         
-    #     P1   = np.array([axisbc[0],axisbc[2]])
-    #     P2   = np.array([axisbc[1],axisbc[2]])
-    #     P3   = np.array([axisbc[1],axisbc[3]])
-    #     P4   = np.array([axisbc[0],axisbc[3]])
+        P1   = np.array([axisbc[0],axisbc[2]])
+        P2   = np.array([axisbc[1],axisbc[2]])
+        P3   = np.array([axisbc[1],axisbc[3]])
+        P4   = np.array([axisbc[0],axisbc[3]])
         
-    #     # Mesh nodes
-    #     self.P1nod = np.where(np.sqrt(((self.coord[:,0]-P1[0]))**2 + \
-    #                              ((self.coord[:,1]-P1[1]))**2)<1e-12)[0][0]
-    #     self.P2nod = np.where(np.sqrt(((self.coord[:,0]-P2[0]))**2 + \
-    #                              ((self.coord[:,1]-P2[1]))**2)<1e-12)[0][0]
-    #     self.P3nod = np.where(np.sqrt(((self.coord[:,0]-P3[0]))**2 + \
-    #                              ((self.coord[:,1]-P3[1]))**2)<1e-12)[0][0]
-    #     self.P4nod = np.where(np.sqrt(((self.coord[:,0]-P4[0]))**2 + \
-    #                              ((self.coord[:,1]-P4[1]))**2)<1e-12)[0][0]
+        # Mesh nodes
+        self.P1nod = np.where(np.sqrt(((self.coord[:,0]-P1[0]))**2 + \
+                                  ((self.coord[:,1]-P1[1]))**2)<1e-12)[0][0]
+        self.P2nod = np.where(np.sqrt(((self.coord[:,0]-P2[0]))**2 + \
+                                  ((self.coord[:,1]-P2[1]))**2)<1e-12)[0][0]
+        self.P3nod = np.where(np.sqrt(((self.coord[:,0]-P3[0]))**2 + \
+                                  ((self.coord[:,1]-P3[1]))**2)<1e-12)[0][0]
+        self.P4nod = np.where(np.sqrt(((self.coord[:,0]-P4[0]))**2 + \
+                                  ((self.coord[:,1]-P4[1]))**2)<1e-12)[0][0]
 
             
     def load_LsStep(self):
@@ -237,7 +239,7 @@ class InputData(object):
             # Global variables
             self.a              = data['a']
             self.ngrains        = np.shape(self.a)[1]
-            self.line_ex_all    = (data['line_ex']*1e3)
+            self.line_ex_all    = data['line_ex']*1e3
             self.line_ey_all    = data['line_ey']*1e3
             self.line_seg_all   = data['line_seg'].flatten()
             self.material       = data['material'].flatten()
@@ -250,6 +252,7 @@ class InputData(object):
         # Round line coords to 6 decimals 
         self.line_ex_all = self.line_ex_all.round(decimals=6)
         self.line_ey_all = self.line_ey_all.round(decimals=6)
+        # self.coord = self.coord.round(decimals=6)
             
         # # Domain corners
         # self.P1 = self.coord[self.P1nod]
@@ -259,8 +262,9 @@ class InputData(object):
         
         # All domain boundary nodes
         self.indNodBd, self.indElemBd, self.indLocalEdgBd, edges = self.boundary_nodes(self.coord, self.enod)
+        self.indLocalEdgBd = np.asarray(self.indLocalEdgBd)
+        self.indLocalEdgBd = self.indLocalEdgBd - 1
             
-        
         
         # --- Extract all line coords ---
         line_coord = np.empty((0, 2), dtype=float)
@@ -275,22 +279,11 @@ class InputData(object):
             # Stack line coords
             line_coord    = np.vstack((line_coord,self.lines_to_coord(line_ex, line_ey)))
             
+            
         # Unique line coords
         self.line_coord = np.unique(line_coord, axis=0)
             
-        # Domain corners
-        corner_coords = np.vstack((self.P1, self.P2, self.P3, self.P4))
-        
-        # Domain nodes
-        domain_coords = self.coord[self.indNodBd,:]
-        
-        # All mesh_points (line_coord + domain corners)
-        # self.mesh_points = np.unique(np.vstack((self.line_coord, corner_coords)), axis=0)
-        self.mesh_points = np.unique(np.vstack((self.line_coord, domain_coords)), axis=0)
-        
-        
-        
-        
+    
         # --- Extract line connectivity matrix line_conn connecting the 
         #     line_coords---
         line_conn = np.empty((0, 2), dtype=int)
@@ -303,10 +296,40 @@ class InputData(object):
             line_ey       = self.line_ey_all[:nseg,g_cols]
  
             # Line segment connectivity of coords
-            line_conn     = np.vstack((line_conn, self.get_line_conn(self.mesh_points, line_ex, line_ey)))
+            line_conn     = np.vstack((line_conn, self.get_line_conn(self.line_coord, line_ex, line_ey)))
             
-        # Unique line connectivity
-        self.line_conn = np.unique(line_conn, axis=0)
+            
+            
+        # Domain corners
+        # corner_coords = np.vstack((self.P1, self.P2, self.P3, self.P4))
+        
+        # Domain nodes
+        boundary_coord      = self.coord[self.indNodBd,:]
+        self.boundary_coord = boundary_coord
+        
+        
+        # --- Extract boundary connectivity ---
+        boundary_segs = np.size(self.indElemBd)
+        boundary_conn = np.zeros([boundary_segs,2],dtype=int)
+        for iseg in range(boundary_segs):
+            k1=self.indLocalEdgBd[iseg]
+            k2=k1+1
+            if (k1==3):
+                k2=0
+            nod1 = self.enod[self.indElemBd[iseg],k1]
+            nod2 = self.enod[self.indElemBd[iseg],k2]
+            boundary_conn[iseg,:] = [nod1,nod2]
+        
+        # All mesh_points (line_coord + boundary_coords). OBS order important
+        self.mesh_points = np.vstack((self.line_coord, boundary_coord))
+        
+        # All line connectivity
+        self.line_conn     = np.unique(line_conn, axis=0)
+        self.boundary_conn = boundary_conn
+        self.all_line_conn = np.vstack((self.line_conn, boundary_conn + np.shape(self.line_coord)[0]))
+        
+        
+        s = 0
                 
                 
     def get_line_conn(self, line_coord, line_ex, line_ey):
@@ -499,14 +522,14 @@ class Mesh(object):
         # Location
         print('Generating mesh in folder: ', os.getcwd())
         
-        # Generate mesh
+        # # Generate mesh
         # gmsh.model.mesh.generate(2)
         
-        # Graphical illustration of mesh
+        # # Graphical illustration of mesh
         # if 'close' not in sys.argv:
         #     gmsh.fltk.run()
         
-        # Finalize Gmsh
+        # # Finalize Gmsh
         # gmsh.finalize()
   
         # Extract coord and enod

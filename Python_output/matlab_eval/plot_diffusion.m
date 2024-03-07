@@ -39,7 +39,7 @@ grainArr = repmat(grain, 1, ngrains);
 
 %% Diffusion equation
 step_size = 1;
-for i_IMC = 1%1:step_size:IMC_steps
+for i_IMC = 5%1:step_size:IMC_steps
 
 
     % Load level set
@@ -50,9 +50,9 @@ for i_IMC = 1%1:step_size:IMC_steps
     [coordT,enodT,edofT,nelmT,ndofT,dofspernodeT,nodelT,exT,eyT] = ...
     import_triangle_mesh(i_IMC);
 
-    % Plot triangle mesh
-    plot_mesh(exT,eyT,'k')
-    axis equal
+%     % Plot triangle mesh
+%     plot_mesh(exT,eyT,'k')
+%     axis equal
 
     % Load interpolated level set field
     [ls,ls_ed] = import_diffusion_glob(i_IMC,edofT,nodelT);

@@ -190,6 +190,7 @@ subroutine generate_global_diffusion_mesh(input_location, diffsys, mesh, lssys, 
   call chdir(diffusion_mesh_script_location)
   write(command_line,'(A28)'), 'python triangle_mesh_Main.py'
   call execute_command_line(trim(command_line))
+  print *, 'Finished triangle mesh'
 
   ! Read global diffusion mesh
   if (allocated(diffsys%ls)) then
@@ -245,8 +246,6 @@ subroutine generate_global_diffusion_mesh(input_location, diffsys, mesh, lssys, 
   do i=1,diffsys%nnod
     nodidx(i)=i
   enddo
-
-
 
   ! --- Reinitialize triangle mesh ---
   do g = 1,lssys%ngrains
@@ -394,7 +393,6 @@ subroutine diffusion_grain(diffsys, i_IMC, grain_mesh, g, input_location, lssys,
 
     return
 end subroutine diffusion_grain
-
 
 
 
@@ -1370,7 +1368,7 @@ subroutine interpolate_scalar_mesh1_to_mesh2(mesh1_enod, mesh1_coord, mesh1_ed, 
   nelm2 = size(mesh2_enod,2)
   nnod1 = size(mesh1_coord,2)
   nnod2 = size(mesh2_coord,2)
-
+  
   ! Interpolate scalar from global mesh to grain_mesh
   do inod=1,nnod2
 
@@ -1378,9 +1376,9 @@ subroutine interpolate_scalar_mesh1_to_mesh2(mesh1_enod, mesh1_coord, mesh1_ed, 
     x = mesh2_coord(1,inod)
     y = mesh2_coord(2,inod)
 
-    if (abs((x-0.00d0)).lt.1d-5 .and.  abs((y-0.000d0)).lt.1d-5) then
-        print *, 'as'
-    endif
+    ! if (abs((x-0.00d0)).lt.1d-5 .and.  abs((y-0.000d0)).lt.1d-5) then
+    !     print *, 'as'
+    ! endif
     
     ! Find which element in the global mesh that the point (x,y) belong to
     pwt = .false.
