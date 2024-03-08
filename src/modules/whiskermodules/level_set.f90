@@ -167,7 +167,7 @@ subroutine init_ls_system(lssys,mesh,IMC_steps, input_location)
   ! r_max  = 1.70d-3
   ! EE_min = 1d-5
   ! EE_max = 2d-5  
-  ! ! call rand_vec(lssys%xvec , x_min, x_max)
+  call rand_vec(lssys%xvec , x_min, x_max)
   ! ! call rand_vec(lssys%yvec , y_min, y_max)
   ! ! call rand_vec(lssys%rvec , r_min, r_max)
   ! ! call rand_vec(lssys%EEvec, EE_min, EE_max)
@@ -439,7 +439,8 @@ subroutine update_ls_system(lssys,mesh,i_IMC,input_location, omp_run, pq, diffsy
 
   ! Compute sn_hphi_plot
   lssys%sn_a = lssys%a(:,5)
-  lssys%sn_hphi_plot = 0.5d0*(1d0 - tanh((lssys%sn_a+lssys%w*0.4d0)/(lssys%w/6d0)))
+  ! lssys%sn_hphi_plot = 0.5d0*(1d0 - tanh((lssys%sn_a+lssys%w*0.4d0)/(lssys%w/6d0)))
+  lssys%sn_hphi_plot = 0.5d0*(1d0 - tanh((lssys%sn_a)/(lssys%w/10d0)))
   call extract(lssys%sn_hphi_ed_plot,lssys%sn_hphi_plot,mesh%enod,1)
   call elm2D4_nodmat_to_gpmat(lssys%sn_hphi_gp_plot, lssys%sn_hphi_ed_plot, mesh%nelm)
 
@@ -468,6 +469,9 @@ subroutine update_ls_system(lssys,mesh,i_IMC,input_location, omp_run, pq, diffsy
 
   return
 end subroutine update_ls_system
+
+
+
 
 
 

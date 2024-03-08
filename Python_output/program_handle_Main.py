@@ -77,7 +77,7 @@ class MainClass(object):
         self.input_data.mfc                    = False
         
         # IMC volume transformation
-        self.input_data.imc_vol_transf         = 1.45
+        self.input_data.imc_vol_transf         = 1.20
         
         # Load loop
         self.input_data.imc_steps              = 1

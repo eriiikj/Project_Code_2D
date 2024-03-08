@@ -67,13 +67,20 @@ subroutine interaction_correction(a,ngrains)
     integer                :: ngrains
     
     ! Subroutine variables
-    integer                :: grain_idx(ngrains), k, ierr, g
+    integer                :: grain_idx(ngrains), k, ierr, g, i, zero_row, zero_grains(2)
+    integer, allocatable   :: zero_rows(:)
+    logical, allocatable   :: zero_nodes(:,:)
     real(dp)               :: mysign=-1d0, other_grains(ngrains-1)
     real(dp), allocatable  :: a_copy(:,:)
     
+
     ! Allocate a_copy    
     allocate(a_copy(size(a,1),size(a,2)),stat=ierr)
     a_copy = a
+
+    ! Allocate zero nodes
+    allocate(zero_nodes(size(a,1),size(a,2)), stat=ierr)
+    zero_nodes = .false.
     
     ! Define grain idx
     do k=1,ngrains
@@ -90,16 +97,36 @@ subroutine interaction_correction(a,ngrains)
         a(:,g) = 0.5d0 * (a_copy(:,g) - minval(a_copy(:,other_grains), dim=2))
     
         ! Ensure that no ls intersect exactly at a node
-        if (any(abs(a(:,g)) .lt. 1d-13)) then
+        if (any(abs(a(:,g)) .lt. 1d-14)) then
             print *, 'LS is intersecting exactly at a node'
-            where (abs(a(:,g)) .lt. 1d-13) a(:,g) = mysign*1d-12            
-            mysign = -1d0*mysign
+            print *, 'Lowest LS value: ', minval(abs(a(:,g)))
+            ! where (abs(a(:,g)) .lt. 1d-14) a(:,g) = mysign*1d-12
+            ! mysign = -1d0*mysign
+            zero_nodes(:,g) = abs(a(:,g)) .lt. 1d-14
         end if
     
     enddo
+
+
+    if (any(count(zero_nodes,2)==3)) then
+        print *, '3 LS exactly zero at a node. Node: ', pack([(i, i=1,size(a,1))], count(zero_nodes,2)==3)
+    endif
+
+    ! Fix zero nodes
+    zero_rows = pack([(i, i=1,size(a,1))], count(zero_nodes,2)==2)
+
+    do i=1,size(zero_rows)
+        print *, '2 LS exactly zero at a node'
+        zero_row    = zero_rows(i)
+        zero_grains = pack(grain_idx,zero_nodes(zero_row,:))
+        a(zero_row,zero_grains) = [-1d-10, 1d-10]        
+    enddo
+
     
     ! Deallocate subroutine variables
     deallocate(a_copy)
+    deallocate(zero_nodes)
+    deallocate(zero_rows)
     
     return
 end subroutine interaction_correction
