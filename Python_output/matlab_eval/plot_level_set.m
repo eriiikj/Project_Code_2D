@@ -27,7 +27,7 @@ my_colors2 = [[255,58,58]; [255,165,41]; [8,81,156]; [136,86,167]
 mm_to_um  = 1e3;
 
 % IMC steps
-IMC_steps = 300;
+IMC_steps = 230;
 
 
 %% Level set evolution
@@ -39,7 +39,7 @@ tvec             = zeros(niterations,1);
 IMC_vol_per_area = zeros(niterations,1);
 
 k = 1;
-for i_IMC=1:step_size:IMC_steps
+for i_IMC=140%1:step_size:IMC_steps
     
     disp('--------')
     disp(['IMC step ', num2str(i_IMC)])
@@ -54,7 +54,7 @@ for i_IMC=1:step_size:IMC_steps
     % Plot level set contour 
     f1 = figure(1);
     clf;
-    plot_mesh(ex,ey,'black')    
+%     plot_mesh(ex,ey,'black')    
     plot_mesh(newex,newey,'green')
     hold on
     plot_speed_gp(newex,newey,vp)

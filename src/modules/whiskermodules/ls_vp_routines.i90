@@ -226,7 +226,7 @@ subroutine lvlset2D4_global_vp2(vp_e, coord, ed_e_gr, jgp_e_gr, agp_e_gr, Igrain
 ! Subroutine variables
     real(dp)                    :: JT(8,2), JTinv(2,2), DNX(2,4), B(2,4), nj(2), normn, jdiff, cdiff, vel_cont, f_j, ni(2)
     real(dp)                    :: DetJ, inside_material, other_material, Vmi, Vmj
-    integer                     :: GP_NR, indx(2), inside_grain, grain_idx(lssys%ngrains), k, other_grain
+    integer                     :: GP_NR, indx(2), inside_grain, grain_idx(lssys%ngrains), k, other_grain, Ograin(1)
     integer, allocatable        :: other_grains(:)
     integer, parameter          :: NGP=4
     real(dp)                    :: xi, xj, ci, cj
@@ -253,13 +253,19 @@ subroutine lvlset2D4_global_vp2(vp_e, coord, ed_e_gr, jgp_e_gr, agp_e_gr, Igrain
 ! Material of inside grain
         inside_material = lssys%material(inside_grain)
 
-! Normal direction at gp for grain
+! Normal direction at gp for inside grain
         ni    = matmul(B,ed_e_gr(:,inside_grain))
         normn = norm2(ni)
         ni    = ni/normn
 
 ! Grains to sum over at current gp
         other_grains = pack(grain_idx, (grain_idx-inside_grain).ne.0)
+
+! ! Closest other grain
+! Ograin = minloc(agp_e_gr(GP_NR,other_grains))
+! other_grain = other_grains(Ograin(1))
+
+
 
         do k = 1,size(other_grains)
 

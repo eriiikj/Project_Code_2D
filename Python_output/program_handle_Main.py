@@ -77,17 +77,17 @@ class MainClass(object):
         self.input_data.mfc                    = False
         
         # IMC volume transformation
-        self.input_data.imc_vol_transf         = 1.20
+        self.input_data.imc_vol_transf         = 1.45
         
         # Load loop
         self.input_data.imc_steps              = 1
         
         # Level set function parameters
         self.input_data.lsrho_bulk             = 1.0
-        self.input_data.lsrho_snsn             = 40.0
-        self.input_data.lsrho_lambda           = 8e3
+        self.input_data.lsrho_snsn             = 40.0  # 40
+        self.input_data.lsrho_lambda           = 8e3   # 8e3
         self.input_data.ls_gamma               = 0.625*1e-6
-        self.input_data.ls_m                   = 2*1e-19*(1e3)**3/(1/3600)
+        self.input_data.ls_m                   = 5e-19*(1e3)**3/(1/3600) # 1e-19
         self.input_data.lskappa                = 2*self.input_data.ls_gamma*self.input_data.ls_m
         self.input_data.ls_phiw                = 25e-5
         self.input_data.d_DIMC                 = (4.575e-20)*(1e3)**2*3600

@@ -471,6 +471,9 @@ subroutine lines_to_coord(line_ex, line_ey, nseg, unique_coord)
   end subroutine lines_to_coord
   
 
+
+
+
   subroutine find_unique_coordinates(coords, N, unique_coords)
 ! Finding unique coords in Nx2 array
     implicit none
@@ -891,7 +894,7 @@ subroutine compute_common_vp_spatial2(lssys, mesh, diffsys)
 
 ! Find local position of grain_nod in indNodBd
             minIdx = minloc(abs(diffsys%grain_meshes(g)%indNodBd - grain_nod))
-            jint_nod = minIdx(1)            
+            jint_nod = minIdx(1)
             lssys%jnod(inod,g)  = diffsys%grain_meshes(g)%jint(jint_nod)
 
 ! if (abs((xnod-0.001d0)).lt.1d-5 .and.  abs((ynod-0.00065d0)).lt.1d-5) then

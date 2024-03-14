@@ -23,8 +23,8 @@ t] = load_level_set(i_IMC,edof_1D);
 
 
 %% Load loop
-IMC_steps   = 30;
-step_size   = 11;
+IMC_steps   = 100;
+step_size   = 5;
 niterations = floor((IMC_steps - 1) / step_size);
 
 % Storing all times
@@ -32,7 +32,7 @@ tvec             = zeros(niterations,1);
 IMC_vol_per_area = zeros(niterations,1);
 
 k = 1;
-for i_IMC=250%1:step_size:IMC_steps
+for i_IMC=1:step_size:IMC_steps
 
     disp('--------')
     disp(['IMC step ', num2str(i_IMC)])  
@@ -113,7 +113,7 @@ for i_IMC=250%1:step_size:IMC_steps
 %  --- Biaxial stress in Sn 2 ---
     f4 = figure(4);
     cla;    
-    cc = plot_2D_stress(newex,newey,biax_Sn2,tvec(k),axisbc,'Biaxial','Sn');
+    cc = plot_2D_stress(newex,newey,biax_Sn,tvec(k),axisbc,'Biaxial','Sn');
     hold on
     for g = 2:ngrains-1
         g_cols = [2*(g-1) + 1,2*(g-1) + 2];

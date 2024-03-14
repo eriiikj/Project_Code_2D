@@ -203,7 +203,7 @@ subroutine init_ls_system(lssys,mesh,IMC_steps, input_location)
   cu_height = 0.6d-3
   where (mesh%coord(2,:).lt.cu_height) lssys%a(:,1) = -1d0                                    ! Cu    
   call init_level_set_function_ellips(lssys%a(:,2), x0/3d0    , cu_height,r*5d0,r*0.5d0,mesh%coord) ! IMC 1
-  call init_level_set_function_ellips(lssys%a(:,3), x0        , cu_height,r*5d0,r*0.5d0,mesh%coord) ! IMC 2 
+  call init_level_set_function_ellips(lssys%a(:,3), x0        , cu_height,r*8d0,r*0.5d0,mesh%coord) ! IMC 2 
   call init_level_set_function_ellips(lssys%a(:,4), x0*5d0/3d0, cu_height,r*5d0,r*0.5d0,mesh%coord) ! IMC 3 
   lssys%a(:,5) = -minval(lssys%a(:,2:ngrains-1),dim=2) + 1e-2
   where (mesh%coord(2,:).lt.cu_height) lssys%a(:,5) = 1d0                                   ! Sn
@@ -439,8 +439,8 @@ subroutine update_ls_system(lssys,mesh,i_IMC,input_location, omp_run, pq, diffsy
 
   ! Compute sn_hphi_plot
   lssys%sn_a = lssys%a(:,5)
-  ! lssys%sn_hphi_plot = 0.5d0*(1d0 - tanh((lssys%sn_a+lssys%w*0.4d0)/(lssys%w/6d0)))
-  lssys%sn_hphi_plot = 0.5d0*(1d0 - tanh((lssys%sn_a)/(lssys%w/10d0)))
+  lssys%sn_hphi_plot = 0.5d0*(1d0 - tanh((lssys%sn_a+lssys%w*0.4d0)/(lssys%w/8d0)))
+  ! lssys%sn_hphi_plot = 0.5d0*(1d0 - tanh((lssys%sn_a)/(lssys%w/10d0)))
   call extract(lssys%sn_hphi_ed_plot,lssys%sn_hphi_plot,mesh%enod,1)
   call elm2D4_nodmat_to_gpmat(lssys%sn_hphi_gp_plot, lssys%sn_hphi_ed_plot, mesh%nelm)
 

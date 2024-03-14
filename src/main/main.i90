@@ -154,7 +154,7 @@ program main
             lssys   = lssys_old
             ls_h    = ls_h/2d0
             lssys%h = ls_h
-         elseif (ls_h.lt.3d0) then
+         elseif (ls_h.lt.4d0) then
             ls_h    = ls_h*1.2d0
             lssys%h = ls_h
          endif
