@@ -42,7 +42,7 @@ grainArr = repmat(grain, 1, ngrains);
 
 %% Diffusion equation
 step_size = 1;
-for i_IMC = 100%1:step_size:IMC_steps
+for i_IMC = 300%1:step_size:IMC_steps
 
     % Load level set
     [a,ed,line_ex,line_ey,line_seg,line_coord,line_coordN,ex,ey,coord,...
@@ -86,7 +86,6 @@ end
 
 
 
-
 % Short form
 coordTG       = grainArr(g).coord;
 enodTG        = grainArr(g).enod;
@@ -96,8 +95,7 @@ indLocalEdgBd = grainArr(g).indLocalEdgBd;
 nodel         = grainArr(g).nodel;
 
 
-figure()
-hold on
+% Compute jint
 nbnods = length(indNodBd);
 nbseg  = length(indLocalEdgBd);
 M2     = zeros(nbseg,nbseg);
@@ -120,6 +118,7 @@ for k=1:length(oldNods)
 end
 enod_m = enod_m';
 
+
 for i=1:nbseg
     nods = enodL(i,:); nod1 = nods(1); nod2 = nods(2);
     v1 = coordTG(nod1,:);
@@ -133,27 +132,42 @@ for i=1:nbseg
     Me(2,:) = [1, 2];
     Me      = Le/6*Me;
     M2(enod_m(:,i),enod_m(:,i)) = M2(enod_m(:,i),enod_m(:,i)) + Me;
-    X  = [v1(1); v2(1)];
-    Y  = [v1(2); v2(2)];
-    plot(X,Y,'ko-')
 end
-axis equal
-box on
+
 
 % Solve M*vnod = -r
 b2 = -grainArr(g).r(indNodBd);
 jint3 = M2\b2;
 
-
-% Plot boundary elements
+% Plot boundary flux R
 figure()
 hold on
-for i=1:length(indElemBd)
-    fill(coordTG(enodTG(indElemBd(i),:),1),coordTG(enodTG(indElemBd(i),:),2),'y')
-end
-plot(coordTG(indNodBd,1), coordTG(indNodBd,2),'rs');
-axis equal
+bccoords = coordTG(indNodBd,:);
+rr       = grainArr(g).r(indNodBd);
+scatter(bccoords(:,1),bccoords(:,2),100*abs(rr)/max(abs(rr))+0.01,'k')
 box on
+axis equal
+title('Boundary flux R')
+
+% Plot copmuted jint
+figure()
+hold on
+bccoords = coordTG(indNodBd,:);
+scatter(bccoords(:,1),bccoords(:,2),100*abs(jint3)/max(abs(jint3))+0.01,'k')
+box on
+axis equal
+title('Computed jint')
+
+
+% % Plot boundary elements
+% figure()
+% hold on
+% for i=1:length(indElemBd)
+%     fill(coordTG(enodTG(indElemBd(i),:),1),coordTG(enodTG(indElemBd(i),:),2),'y')
+% end
+% plot(coordTG(indNodBd,1), coordTG(indNodBd,2),'rs');
+% axis equal
+% box on
 
 
 

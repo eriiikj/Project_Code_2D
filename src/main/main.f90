@@ -126,17 +126,13 @@ program main
       write(*,*)
       write(*,'(A79)') '------------------------------ New IMC interface ------------------------------'
       write(*,"(A9,I3,A4,I3)") 'IMC step ', i_IMC, ' of ', IMC_steps      
+      write(*,"(A24,G10.3)") 'Volume transformation : ', IMC_vol_transf
+      write(*,"(A6,G15.6)") 'Time: ', lssys%time
       
       ! Save old level set state
       lssys_old        = lssys
       newton_loop_conv = .false.
-      
-      ! --- Solve mechanical problem for the current IMC boundary ---
-      write(*,*)
-      write(*,'(A39)') '-------------- Load loop --------------'
-      write(*,"(A24,G10.3)") 'Volume transformation : ', IMC_vol_transf
-      write(*,"(A6,G15.6)") 'Time: ', lssys%time
-      write(*,"(A12,G10.3)") 'Time step : ', lssys%h
+         
       
       ! Evolve interface and solve mechanical problem
       do while (newton_loop_conv .eqv. .false.)         
@@ -144,7 +140,13 @@ program main
          ! --- Update level set functions ---
          call update_ls_system(lssys, mesh, i_IMC, input_location, omp_run, pq, diffsys, ls_spatial)
          
-         ! --- Solve mechanical problem ---
+         ! --- Save ls state ---
+         call write_level_set_iter_to_matlab(lssys, mesh, i_IMC, input_location)
+
+         ! --- Solve mechanical problem for the current IMC boundary ---
+         write(*,*)
+         write(*,'(A39)') '-------------- Load loop --------------'
+         write(*,"(A11,G10.3)") 'Time step: ', lssys%h
          call loadloop(mesh, lssys, IMC_eps_star, pq, i_IMC, omp_run, input_location, newton_loop_conv)
          ! newton_loop_conv = .true.
          
@@ -165,7 +167,7 @@ program main
          endif
       enddo
       
-      ! --- Obtain level set positions in new configuration ---
+      ! --- Obtain level set positions in new configuration. OBS does not change any level set node values ---
       call get_ls_positions(lssys,mesh,i_IMC,input_location, omp_run, pq, ls_spatial)
 
       ! --- Save ls state ---

@@ -808,6 +808,7 @@ subroutine tp_reconstruction_spatial(lssys,mesh)
     integer                :: idx4(4) = [1,2,3,4], nedges, npoints, incompatible_edge, idx6(6)=[1,2,3,4,5,6], steps, ival(1), ie
     integer                :: nkeep, lsa_rm_lines(2), lsb_rm_lines(2), lsc_rm_lines(2)
     logical                :: short_tpline
+    real(dp)               :: lsegmin
         
     ! Zero out
     lssys%rm_lines     = 0
@@ -928,6 +929,12 @@ subroutine tp_reconstruction_spatial(lssys,mesh)
                 !     step_junc    = .true.
                 !     short_tpline = .true.
                 ! endif
+
+                ! Add condition - if length of line segment too small - step
+                lsegmin = minval([norm2(F-A),norm2(F-B),norm2(F-C)])        
+                if (lsegmin.lt.1d-6) then
+                    step_junc=.true.
+                endif
 
             endif
             
@@ -1186,7 +1193,7 @@ subroutine tp_reconstruction_spatial(lssys,mesh)
         Bprev = 0d0
         Cprev = 0d0
         steps = 1
-        do while (step_junc)
+        do while (step_junc .and. steps.le.1)
 
             ! Find next point along line in lsa
             call get_connecting_lines(line_elm_idx, tp_ie, lssys%int_elms, lsa_rm_lines, mesh, line_exa, line_eya, &
