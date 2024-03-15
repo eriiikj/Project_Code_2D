@@ -299,8 +299,28 @@ subroutine update_ls_system(lssys,mesh,i_IMC,input_location, omp_run, pq, diffsy
 
   allocate(indecies2(size(lssys%a(:,g))))  
 
+
+  ! --- Reinitialize level set function ---
+  if (i_IMC .ge. 2) then
+    do g = 1,lssys%ngrains
+      g_cols = [2*(g-1) + 1, 2*(g-1) + 2]
+      if (ls_spatial) then
+        call reinit_level_set_spatial(lssys%a(:,g),lssys%a(:,g),lssys%line_ex(:,g_cols(1):g_cols(2)), &
+        lssys%line_ey(:,g_cols(1):g_cols(2)), lssys%closest_line(:,g),lssys%line_seg(g),mesh)
+      else
+        call reinit_level_set(lssys%a(:,g),lssys%line_ex(:,g_cols(1):g_cols(2)),lssys%line_ey(:,g_cols(1):g_cols(2)), &
+        lssys%closest_line(:,g),lssys%line_seg(g),mesh)
+      endif
+      
+      ! Update ed
+      call extract(lssys%ed(:,:,g),lssys%a(:,g),mesh%enod,1)
+      call elm2D4_nodmat_to_gpmat(lssys%a_gp(:,:,g), lssys%ed(:,:,g), mesh%nelm)
+    enddo
+  endif
+
+
   ! 1) --- Update level set functions ---
-  if (i_IMC .ne. 1) then
+  if (i_IMC .ge. 2) then
     do g=1,lssys%ngrains
       if (ls_spatial) then
         call update_level_set_function_spatial(lssys, mesh, g)
@@ -323,12 +343,7 @@ subroutine update_ls_system(lssys,mesh,i_IMC,input_location, omp_run, pq, diffsy
   call remove_ls(lssys)
 
   ! 3) --- Interaction-correction step ---
-  call interaction_correction(lssys%a, lssys%ngrains)
-
-  ! Update ed
-  do g=1,lssys%ngrains
-    call extract(lssys%ed(:,:,g),lssys%a(:,g),mesh%enod,1)
-  enddo
+  call interaction_correction(lssys%a, lssys%ngrains, lssys%ed, mesh%enod)
   
   ! 4) --- Interpolate interfaces ---
   lssys%line_ex     = 0d0
@@ -368,24 +383,25 @@ subroutine update_ls_system(lssys,mesh,i_IMC,input_location, omp_run, pq, diffsy
   endif
 
 
-  ! 6) --- Reinitialize level set function ---
-  do g = 1,lssys%ngrains
-    g_cols = [2*(g-1) + 1, 2*(g-1) + 2]
-    if (ls_spatial) then
-      call reinit_level_set_spatial(lssys%a(:,g),lssys%a(:,g),lssys%line_ex(:,g_cols(1):g_cols(2)), &
-      lssys%line_ey(:,g_cols(1):g_cols(2)), lssys%closest_line(:,g),lssys%line_seg(g),mesh)
-    else
-      call reinit_level_set(lssys%a(:,g),lssys%line_ex(:,g_cols(1):g_cols(2)),lssys%line_ey(:,g_cols(1):g_cols(2)), &
-      lssys%closest_line(:,g),lssys%line_seg(g),mesh)
-    endif
-    
-    ! Update ed
-    call extract(lssys%ed(:,:,g),lssys%a(:,g),mesh%enod,1)
-    call elm2D4_nodmat_to_gpmat(lssys%a_gp(:,:,g), lssys%ed(:,:,g), mesh%nelm)
-  enddo
+  ! --- Reinitialize level set function for first step ---
+  if (i_IMC.eq.1) then
+    do g = 1,lssys%ngrains
+      g_cols = [2*(g-1) + 1, 2*(g-1) + 2]
+      if (ls_spatial) then
+        call reinit_level_set_spatial(lssys%a(:,g),lssys%a(:,g),lssys%line_ex(:,g_cols(1):g_cols(2)), &
+        lssys%line_ey(:,g_cols(1):g_cols(2)), lssys%closest_line(:,g),lssys%line_seg(g),mesh)
+      else
+        call reinit_level_set(lssys%a(:,g),lssys%line_ex(:,g_cols(1):g_cols(2)),lssys%line_ey(:,g_cols(1):g_cols(2)), &
+        lssys%closest_line(:,g),lssys%line_seg(g),mesh)
+      endif
+      
+      ! Update ed
+      call extract(lssys%ed(:,:,g),lssys%a(:,g),mesh%enod,1)
+      call elm2D4_nodmat_to_gpmat(lssys%a_gp(:,:,g), lssys%ed(:,:,g), mesh%nelm)
+    enddo
+  endif
 
-  ! 8) --- Output data ---
-
+  
   ! Velocity field acc to Brown
   ! x0     = (mesh%axisbc(1) + mesh%axisbc(2))/2d0
   ! y0     = (mesh%axisbc(3) + mesh%axisbc(4))/2d0
@@ -443,12 +459,9 @@ subroutine update_ls_system(lssys,mesh,i_IMC,input_location, omp_run, pq, diffsy
 
   ! Save state
   lssys%a_prev = lssys%a
+
   return
 end subroutine update_ls_system
-
-
-
-
 
 
 
@@ -473,20 +486,17 @@ subroutine get_ls_positions(lssys,mesh,i_IMC,input_location, omp_run, pq, ls_spa
   real(dp)                                  :: lseg
   real(dp), allocatable                     :: unique_coord(:,:)
 
-  ! 1) --- Interaction-correction step ---
-  call interaction_correction(lssys%a, lssys%ngrains)
-
   ! 1) --- Interpolate interfaces ---
   lssys%line_ex     = 0d0
   lssys%line_ey     = 0d0
   lssys%line_seg    = 0
   lssys%line_coord  = 0d0
   lssys%line_coordN = 0
-  lssys%line_elms   = 0  
+  lssys%line_elms   = 0
   lssys%line_seg_cc = .false.
   lssys%int_elms    = .false.
   lssys%sep_lines   = 0
-  lssys%jnod        = 0d0  
+  lssys%jnod        = 0d0
   lssys%vp          = 0d0
   lssys%vpm         = 0d0
   lssys%tp_points   = 0d0

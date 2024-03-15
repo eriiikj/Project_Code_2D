@@ -56,15 +56,15 @@ subroutine init_level_set_function_ellips(a,x,y,h1,h2,coord)
 end subroutine init_level_set_function_ellips
 
 
-subroutine interaction_correction(a,ngrains)
+subroutine interaction_correction(a,ngrains,ed,enod)
     ! --- Interaction-correction step to make level set functions compatible ---
     implicit none
     
     ! Intent inout
-    real(dp),intent(inout) :: a(:,:)
+    real(dp),intent(inout) :: a(:,:), ed(:,:,:)
     
     ! Intent in
-    integer                :: ngrains
+    integer,intent(in)     :: ngrains, enod(:,:)
     
     ! Subroutine variables
     integer                :: grain_idx(ngrains), k, ierr, g, i, zero_row, zero_grains(2)
@@ -127,6 +127,11 @@ subroutine interaction_correction(a,ngrains)
     deallocate(a_copy)
     deallocate(zero_nodes)
     deallocate(zero_rows)
+
+    ! Update ed
+    do g=1,ngrains
+        call extract(ed(:,:,g),a(:,g),enod,1)
+    enddo
     
     return
 end subroutine interaction_correction

@@ -168,10 +168,10 @@ program main
          endif
       enddo
       
-! --- Obtain level set positions in new configuration. OBS does not change any level set node values ---
+! --- Obtain level set positions in new configuration. OBS should not change ls values ---
       call get_ls_positions(lssys,mesh,i_IMC,input_location, omp_run, pq, ls_spatial)
 
-! --- Save ls state ---
+! --- Write ls state ---
       call write_level_set_iter_to_matlab(lssys, mesh, i_IMC, input_location)
 
 ! --- Solve diffusion problem for updated configuration ---
@@ -182,7 +182,7 @@ program main
       call compute_common_vp_spatial2(lssys,mesh,diffsys)
       print *, 'Leaving compute_common_vp'
 
-! --- Save ls state ---
+! --- Write ls state ---
       call write_level_set_iter_to_matlab(lssys, mesh, i_IMC, input_location)
       
 ! --- Plot ---
