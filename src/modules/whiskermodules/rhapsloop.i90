@@ -183,7 +183,7 @@ contains
       call neohooke_init(mp_IMC)
 
 ! Sn, von Mises
-      E_Sn     = 50d3
+      E_Sn     = 86d3
       v_Sn     = 0.36d0
       mp_Sn(1) = E_Sn/3d0/(1d0-2d0*v_Sn)     ! K_Sn
       mp_Sn(2) = E_Sn/2d0/(1d0+v_Sn)         ! G_Sn
@@ -350,8 +350,8 @@ contains
       dgeold           = dge
       aold             = a
 
-! a_hatold  = a_hat
-! lambdaold = lambda
+      a_hatold  = a_hat
+      lambdaold = lambda
       
 
 ! Define dg_ifstar for old imc
@@ -367,8 +367,8 @@ contains
       enddo
 
 ! Residual
-! res_hat = 0d0
-      res = 0d0
+      res_hat = 0d0
+! res = 0d0
    
 ! Define residual (to get into iteration loop)
       residual      = 1d0
@@ -461,27 +461,27 @@ contains
    
 ! Expand K, put new K%a in K_hat, T_map is already in K_hat
 ! call clock_time(t11, omp_run)
-! call spaputval(K_hat, Kcell, K%a)
+            call spaputval(K_hat, Kcell, K%a)
 ! call clock_time(t22, omp_run)
 ! spaputval_time = spaputval_time + (t22-t11)
    
 ! Solve K_hat*a_hat=res_hat
             call clock_time(t11, omp_run)
-! call solveq(K_hat,res_hat,mesh%bcnod,mesh%bcval,mesh%dofnod)
-            call solveq(K,res,mesh%bcnod,mesh%bcval,mesh%dofnod)
+            call solveq(K_hat,res_hat,mesh%bcnod,mesh%bcval,mesh%dofnod)
+! call solveq(K,res,mesh%bcnod,mesh%bcval,mesh%dofnod)
             call clock_time(t22, omp_run)
             solveq_time = solveq_time + (t22-t11)
          else
-            res = 0d0
-! res_hat = 0d0
+! res = 0d0
+            res_hat = 0d0
 
          endif
    
 ! Update a_hat and extract a and lambda
-         a = a + res
-! a_hat  = a_hat + res_hat
-! a      = a_hat(1:mesh%ndof)
-! lambda = a_hat(mesh%ndof+1:ndof_hat)
+! a = a + res
+         a_hat  = a_hat + res_hat
+         a      = a_hat(1:mesh%ndof)
+         lambda = a_hat(mesh%ndof+1:ndof_hat)
    
 ! Extract element displacements
          call extract(ed,a,mesh%enod,mesh%dofnod)
@@ -581,18 +581,18 @@ contains
          assem_force_time = assem_force_time + (t22-t11)
          
 ! Residual
-         res             = -fint
-         res(mesh%bcdof) = 0d0
+! res             = -fint
+! res(mesh%bcdof) = 0d0
    
 ! Define res_hat
-! res_hat                       = 0d0
-! res_hat(1:mesh%ndof)          = -(matmul(T_map_sparse_transpose, lambda) + fint)
-! res_hat(mesh%ndof+1:ndof_hat) = -(matmul(T_map_sparse,a) -  g)
-! res_hat(mesh%bcdof)           = 0d0
+         res_hat                       = 0d0
+         res_hat(1:mesh%ndof)          = -(matmul(T_map_sparse_transpose, lambda) + fint)
+         res_hat(mesh%ndof+1:ndof_hat) = -(matmul(T_map_sparse,a) -  g)
+         res_hat(mesh%bcdof)           = 0d0
    
 ! Norm of residual
-! residual=dot_product(res_hat,res_hat)
-         residual=dot_product(res,res)
+         residual=dot_product(res_hat,res_hat)
+! residual=dot_product(res,res)
          write(*,'(A20, E11.4)') 'Residual          : ', residual
    
 ! Check if residual is increasing
@@ -604,9 +604,8 @@ contains
             a      = aold
 
 ! call exit
-            
-! a_hat  = a_hatold
-! lambda = lambdaold
+            a_hat  = a_hatold
+            lambda = lambdaold
 
             newton_loop_conv = .false.
             return

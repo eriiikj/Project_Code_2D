@@ -71,7 +71,7 @@ class InputData(object):
         self.line_coord         = 0
         self.line_conn          = 0
         self.all_line_conn      = 0
-        self.boundary_coord    = 0
+        self.boundary_coord     = 0
         self.boundary_conn      = 0
         self.mesh_points        = 0
         self.indNodBd           = 0
@@ -95,6 +95,7 @@ class InputData(object):
         # tri_input     = dict(vertices=self.boundary_coord,segments=self.boundary_conn)
         # tri_input     = dict(vertices=self.line_coord,segments=self.line_conn) 
         tri_input     = dict(vertices=self.mesh_points,segments=self.all_line_conn) 
+        # tri_input     = dict(vertices=self.mesh_points,segments=self.boundary_conn + np.shape(self.line_coord)[0]) 
         print('Creating a constraint delanuay triangularization...')
         triangulation = triangle.triangulate(tri_input,opts='pqYY') #pcqa0.03 
         print('Finished delanuay triangularization')
@@ -136,10 +137,6 @@ class InputData(object):
         # Version
         input_data_file["version"]                = self.version
         
-        # Mesh
-        input_data_file["el_size_x"]              = self.el_size_x
-        input_data_file["el_size_y"]              = self.el_size_y
-        
         # Location
         input_data_file["location"]               = self.location  
         
@@ -160,15 +157,6 @@ class InputData(object):
         # Location
         self.location         = input_data_file["location"]
         
-        
-    def load_LsInit(self):
-        """Read indata from file."""
-        
-        cwd = os.getcwd()
-        path = self.python_location + '/single_study/mat_files'
-        
-        # Filename initial level set data
-        filename = path + '/level_setinit.mat'
         
         
 
@@ -307,11 +295,10 @@ class InputData(object):
         boundary_coord      = self.coord[self.indNodBd,:]
         self.boundary_coord = boundary_coord
         
-        
         # --- Extract boundary connectivity ---
-        boundary_segs = np.size(self.indElemBd)
-        boundary_conn = np.zeros([boundary_segs,2],dtype=int)
-        for iseg in range(boundary_segs):
+        nboundary_segs = np.size(self.indElemBd)
+        boundary_conn = np.zeros([nboundary_segs,2],dtype=int)
+        for iseg in range(nboundary_segs):
             k1=self.indLocalEdgBd[iseg]
             k2=k1+1
             if (k1==3):
@@ -319,6 +306,18 @@ class InputData(object):
             nod1 = self.enod[self.indElemBd[iseg],k1]
             nod2 = self.enod[self.indElemBd[iseg],k2]
             boundary_conn[iseg,:] = [nod1,nod2]
+            
+        
+        # Loop thorugh all line coords and find which are intersecting boundary
+        for line_coord1 in line_coord:
+            s = 1
+            for iseg in range(nboundary_segs):
+                inodA = boundary_conn[iseg,0]
+                inodB = boundary_conn[iseg,1]
+                coordA = boundary_coord[inodA,:]
+                coordB = boundary_coord[inodB,:]
+                s = 11
+                
         
         # All mesh_points (line_coord + boundary_coords). OBS order important
         self.mesh_points = np.vstack((self.line_coord, boundary_coord))
@@ -522,14 +521,14 @@ class Mesh(object):
         # Location
         print('Generating mesh in folder: ', os.getcwd())
         
-        # # Generate mesh
+        # Generate mesh
         # gmsh.model.mesh.generate(2)
         
         # # Graphical illustration of mesh
         # if 'close' not in sys.argv:
         #     gmsh.fltk.run()
         
-        # # Finalize Gmsh
+        # Finalize Gmsh
         # gmsh.finalize()
   
         # Extract coord and enod

@@ -259,7 +259,7 @@ subroutine generate_global_diffusion_mesh(input_location, diffsys, mesh, lssys, 
     do while (ch)
       ! print *, 'changing signs grain: ', g
       ch = .false.  
-      nodidx2 = pack(nodidx,diffsys%ls(:,g).lt.8d-6)    
+      nodidx2 = pack(nodidx,diffsys%ls(:,g).lt.8d-6)
       do i=1,size(nodidx2)
         inod = nodidx2(i)
         ! Find elements containing node
@@ -268,14 +268,17 @@ subroutine generate_global_diffusion_mesh(input_location, diffsys, mesh, lssys, 
         uniqueArr)
         ii = inod
         call setdiff_int_1D(uniqueArr, ii, uniqueArr)
-        ! if (abs(diffsys%coord(1,i)-0.334833d-3).lt.1d-7 .and. abs(diffsys%coord(2,i)-0.58539d-3).lt.1d-7) then
+        ! if (g.eq.2 .and. abs(diffsys%coord(1,inod)-0d0).lt.1d-7 .and. abs(diffsys%coord(2,inod)-0.575091d-3).lt.1d-7) then
+        !   print *, 'Inod: ', inod
+        !   print *, 'Neigb nelm: ', nelm
         !   print *, 'coord', diffsys%coord(:,i)
-        !   print *, 'as', diffsys%ls(uniqueArr,g)
+        !   print *, 'ls(uniqueArr): ', diffsys%ls(uniqueArr,g)
         ! endif
         if (count((diffsys%ls(uniqueArr,g)).lt.0d0).ge.count((diffsys%ls(uniqueArr,g)).gt.0d0) .and.diffsys%ls(inod,g).gt.0d0) then
           diffsys%ls(inod,g) = -1d0*abs(diffsys%ls(inod,g))
           ch = .true.
         endif
+
       enddo
     enddo
 
@@ -1457,7 +1460,7 @@ subroutine point_within_triangle(condition_satisfied,x,y,x1,x2,x3,y1,y2,y3)
   real(dp), intent(in)   :: x, y, x1, x2, x3, y1, y2, y3
 
   ! Subroutine variables
-  real(dp)               :: detT, c1, c2, c3, tol=1d-10
+  real(dp)               :: detT, c1, c2, c3, tol=1d-4
 
   ! Barycentric coordinates of (x,y) in the triangle
   detT = (x1-x3)*(y2-y3) - (x2-x3)*(y1-y3)

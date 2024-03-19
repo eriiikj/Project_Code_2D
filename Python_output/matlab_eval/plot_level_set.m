@@ -31,7 +31,7 @@ IMC_steps = 265;
 
 
 %% Level set evolution
-step_size   = 20;
+step_size   = 1;
 niterations = floor((IMC_steps - 1) / step_size);
 
 % Storing all times
@@ -39,7 +39,7 @@ tvec             = zeros(niterations,1);
 IMC_vol_per_area = zeros(niterations,1);
 
 k = 1;
-for i_IMC=1:step_size:IMC_steps
+for i_IMC=300%1:step_size:IMC_steps
     
     disp('--------')
     disp(['IMC step ', num2str(i_IMC)])

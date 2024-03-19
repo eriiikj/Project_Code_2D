@@ -384,7 +384,7 @@ subroutine update_ls_system(lssys,mesh,i_IMC,input_location, omp_run, pq, diffsy
 
 
   ! --- Reinitialize level set function for first step ---
-  if (i_IMC.eq.1) then
+  if (i_IMC.ge.1) then
     do g = 1,lssys%ngrains
       g_cols = [2*(g-1) + 1, 2*(g-1) + 2]
       if (ls_spatial) then

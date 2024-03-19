@@ -136,7 +136,7 @@ class InputData(object):
         # Round line coords to 6 decimals 
         self.line_ex_all = self.line_ex_all.round(decimals=6)
         self.line_ey_all = self.line_ey_all.round(decimals=6)
-        self.tppoints    = self.tppoints.round(decimals=6)
+        self.tppoints    = self.tppoints.round(decimals=8)
         
                 
     def get_line_conn(self, line_coord, line_ex, line_ey):
@@ -329,7 +329,6 @@ class Mesh(object):
         line_coord  = self.input_data.lines_to_coord(line_ex, line_ey)
         nline_coord = np.size(line_coord,0)
         
-        
 
         bnods_logical = np.full(nnod_g,False)
         for k in range(np.shape(line_coord)[0]):
@@ -516,6 +515,8 @@ class Mesh(object):
         # Extract mesh
         for g in range(self.input_data.ngrains):
             
+        # g = 1
+        
             # Reset output data
             self.output_data.reset()
             

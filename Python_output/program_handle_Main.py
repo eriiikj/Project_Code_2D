@@ -74,7 +74,7 @@ class MainClass(object):
         self.upperSupportMarker                = 30
         
         # MFC (remove lower right and left node from bc)
-        self.input_data.mfc                    = False
+        self.input_data.mfc                    = True
         
         # IMC volume transformation
         self.input_data.imc_vol_transf         = 1.45

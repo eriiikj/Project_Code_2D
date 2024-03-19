@@ -39,7 +39,7 @@ grainArr = repmat(grain, 1, ngrains);
 
 %% Diffusion equation
 step_size = 1;
-for i_IMC = 170%1:step_size:IMC_steps
+for i_IMC = 1%1:step_size:IMC_steps
 
 
     % Load level set
@@ -91,7 +91,7 @@ for i_IMC = 170%1:step_size:IMC_steps
     [exTG,eyTG] = coordxtr(edofTG,coordTG,dofsTG,nodelT);
 
     figure()
-    patch(exTG',eyTG','white')
+    patch(exTG'*1e3,eyTG'*1e3,'white')
     axis equal
     box on
 end

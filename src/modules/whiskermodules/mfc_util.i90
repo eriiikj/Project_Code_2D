@@ -55,12 +55,11 @@ contains
 ! Define Tcell, holding indecies of T. Also define g
     call init_MFC_T_ux_uy_equal(Tcell, Tcell_transpose, Tval, nMFC_nods, nMFC, nMFC_dofs_per_constraint, &
                                 right_boundary_nodes, left_boundary_nodes, mesh)
-    call init_MFC_g(g, nMFC)
+! call init_MFC_T_ux_right_equal(Tcell, Tcell_transpose, Tval, nMFC, mesh)
 
-    if (size(right_boundary_nodes).ne.nMFC_nods) then
-        print *, 'Size right_boundary_nodes not correct'
-        call exit()
-    endif
+    print *, 'Heja'
+
+    call init_MFC_g(g, nMFC)    
 
 ! Number of dofs in expanded format
     ndof_hat = mesh%ndof+nMFC
@@ -91,8 +90,8 @@ contains
     call spaadd(K_hat,K_exp,T_exp)
 
 ! Deallocate
-    deallocate(right_boundary_nodes)
-    deallocate(left_boundary_nodes)
+! deallocate(right_boundary_nodes)
+! deallocate(left_boundary_nodes)
     deallocate(Tcell)
     deallocate(Tcell_transpose)
     deallocate(Tval)
@@ -106,6 +105,8 @@ contains
     return
   end subroutine init_MFC  
     
+
+
 
   subroutine init_MFC_T_ux_uy_equal(Tcell, Tcell_transpose, Tval, nMFC_nods, nMFC, nMFC_dofs_per_constraint, &
                                     right_boundary_nodes, left_boundary_nodes, mesh)
@@ -243,10 +244,80 @@ contains
     deallocate(node_coord)
     deallocate(mask_vec)
 
+    if (size(right_boundary_nodes).ne.nMFC_nods) then
+      print *, 'Size right_boundary_nodes not correct'
+      call exit()
+    endif
 
     return
   end subroutine init_MFC_T_ux_uy_equal
 
+
+
+  subroutine init_MFC_T_ux_right_equal(Tcell, Tcell_transpose, Tval, nMFC, mesh)
+! Routine for defining mfc such that ux and uy displacement equal on both sides
+    implicit none
+
+! Intent inout
+    integer , allocatable, intent(inout) :: Tcell(:,:), Tcell_transpose(:,:)
+    real(dp), allocatable, intent(inout) :: Tval(:)
+    integer, intent(inout)               :: nMFC
+
+! Intent in
+    type(mesh_system), intent(in)        :: mesh
+
+    integer                              :: nTcell
+    integer                              :: counter, col, row, ierr, nnod, nMFC_dofs_per_constraint
+    integer , allocatable                :: right_boundary_dofs_x(:)
+
+    integer, allocatable                 :: Tdof(:,:)
+
+
+! Topology
+    nMFC_dofs_per_constraint = 1
+    nnod                     = size(mesh%coord,2)
+
+! Number of MFC
+    nMFC = size(mesh%bcnods_right_side)
+    write(*,'(A6,I3)') 'nMFC: ',nMFC
+
+! Allocate right side dofs
+    allocate(right_boundary_dofs_x(nMFC)       , stat=ierr)
+
+! --- Boundary dofs ---
+    right_boundary_dofs_x = (mesh%bcnods_right_side-1)*2+1
+
+! Tdof - topology of MFC collected. Each MFC dofs stored columnwise
+    allocate(Tdof(2,nMFC))
+    Tdof(1,:) = right_boundary_dofs_x
+    Tdof(2,:) = right_boundary_dofs_x(1)
+
+! Tcell
+    nTcell = nMFC*nMFC_dofs_per_constraint
+    allocate(Tcell(nTcell,2))
+    counter = 1
+    do col=1,nMFC
+      do row=1,nMFC_dofs_per_constraint
+        Tcell(counter,:) = [col,Tdof(row,col)]
+        counter = counter + 1
+      enddo
+    enddo
+
+    allocate(Tcell_transpose(nTcell,2))
+    Tcell_transpose(:,1) = Tcell(:,2)
+    Tcell_transpose(:,2) = Tcell(:,1)
+
+! Tval - constraint values. Defined for each element in Tcell
+    allocate(Tval(nMFC*2))
+    Tval(1:nMFC*2:2) =  1d0
+    Tval(2:nMFC*2:2) = -1d0
+
+! Deallocate
+    deallocate(Tdof)
+    deallocate(right_boundary_dofs_x)
+
+    return
+  end subroutine init_MFC_T_ux_right_equal
 
   subroutine init_MFC_g(g, nMFC)
 ! Compute vector g used in MFC

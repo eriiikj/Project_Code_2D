@@ -95,7 +95,7 @@ program main
 
    ! Initiate level set
    ngrains   = 5
-   IMC_steps = 300
+   IMC_steps = 1
    call allocate_ls_system(lssys,ngrains,mesh%nelm,mesh%nrgp,mesh%nnod,mesh%nodel,mesh%enod)
    call init_ls_system(lssys,mesh,IMC_steps,input_location)
 
@@ -119,7 +119,7 @@ program main
    init_time = t4-t3
 
    ! --- Move IMC boundary and thereafter solve mechanical problem ---
-   lssys%h = 0.2d0
+   lssys%h = 0.1d0
    ls_h    = lssys%h
    do i_IMC=1,IMC_steps
 
@@ -157,7 +157,7 @@ program main
             ls_h    = ls_h/2d0
             lssys%h = ls_h
             reinit = .false.
-         elseif (ls_h.lt.3d0) then
+         elseif (ls_h.lt.2d0) then
             ls_h    = ls_h*1.1d0
             lssys%h = ls_h
             reinit = .true.
