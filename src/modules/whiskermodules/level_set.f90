@@ -270,7 +270,7 @@ end subroutine init_ls_system
 
 
 
-subroutine update_ls_system(lssys,mesh,i_IMC,input_location, omp_run, pq, diffsys, ls_spatial)
+subroutine update_ls_system(lssys,mesh,i_IMC,input_location, omp_run, pq, diffsys, ls_spatial, reinit)
   ! --- Routine for updating all level set functions with the previously computed vp ---
   implicit none
 
@@ -285,7 +285,7 @@ subroutine update_ls_system(lssys,mesh,i_IMC,input_location, omp_run, pq, diffsy
   logical, intent(in)                       :: omp_run
   type(plot_system), intent(inout)          :: pq
   type(diffusion_system), intent(in)        :: diffsys
-  logical, intent(in)                       :: ls_spatial
+  logical, intent(in)                       :: ls_spatial, reinit
 
   ! Subroutine variables
   integer                                   :: g, g_cols(2), nindecies, counter, i, j, inod
@@ -457,9 +457,6 @@ subroutine update_ls_system(lssys,mesh,i_IMC,input_location, omp_run, pq, diffsy
   !   lssys%old_IMC_gp_flag = .true.
   ! endif
 
-  ! Save state
-  lssys%a_prev = lssys%a
-
   return
 end subroutine update_ls_system
 
@@ -485,6 +482,10 @@ subroutine get_ls_positions(lssys,mesh,i_IMC,input_location, omp_run, pq, ls_spa
   integer                                   :: g, g_cols(2)
   real(dp)                                  :: lseg
   real(dp), allocatable                     :: unique_coord(:,:)
+
+
+  ! Interaction correction
+  ! call interaction_correction(lssys%a, lssys%ngrains, lssys%ed, mesh%enod)
 
   ! 1) --- Interpolate interfaces ---
   lssys%line_ex     = 0d0
@@ -532,7 +533,7 @@ subroutine get_ls_positions(lssys,mesh,i_IMC,input_location, omp_run, pq, ls_spa
   enddo
 
   ! Extract line_coord
-  do g = 1,lssys%ngrains      
+  do g = 1,lssys%ngrains
     g_cols = [2*(g-1) + 1, 2*(g-1) + 2]
     call lines_to_coord(lssys%line_ex([1:lssys%line_seg(g)],g_cols(1):g_cols(2)), &
     lssys%line_ey([1:lssys%line_seg(g)],g_cols(1):g_cols(2)), lssys%line_seg(g), unique_coord)

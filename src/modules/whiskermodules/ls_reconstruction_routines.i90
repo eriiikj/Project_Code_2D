@@ -201,6 +201,7 @@ subroutine get_single_line(line_exeg,line_eyeg,ex_e,ey_e,ed_e)
         print *, 'Error: A single level set function has two line segments in a grain boundary element'
     else
         print *, 'Error in get_single_line in gb_reconstruction'
+        call exit(0)
     endif
 
     return

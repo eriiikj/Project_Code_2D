@@ -49,8 +49,6 @@ contains
     integer , allocatable                :: Tcell_exp(:,:)
     real(dp), allocatable                :: Tval_exp(:)
 
-
-
 ! MFC dofs
     nMFC_dofs_per_constraint = 2
 

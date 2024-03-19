@@ -175,7 +175,7 @@ contains
       call J2iso_Cu_init(mp_Cu, mesh%nelm, mesh%nrgp)
 
       ! IMC, Neo-Hookean
-      E_IMC     = 86d3
+      E_IMC     = 50d3!86d3
       v_IMC     = 0.30d0
       mp_IMC(1) = E_IMC/3d0/(1d0-2d0*v_IMC)  ! K_Cu
       mp_IMC(2) = E_IMC/2d0/(1d0+v_IMC)      ! G_Cu

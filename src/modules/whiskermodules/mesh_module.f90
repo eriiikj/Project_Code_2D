@@ -16,6 +16,7 @@ module mesh_module
 
   type mesh_system
     integer,  allocatable :: enod(:,:),  bcnod1(:,:), bcdof1(:), bcnod(:,:), bcdof(:), bcnod_all(:)
+    integer, allocatable  :: bcnods_left_side(:), bcnods_right_side(:)
     real(dp), allocatable :: coord(:,:), newcoord(:,:), bcval1(:), bcval(:)
     real(dp), allocatable :: ex(:,:), ey(:,:), newex(:,:), newey(:,:)
     integer               :: dofnod, nelm, enlmx, nelmx, nelmy, nrgp, nodel, nnod, ndof, dofel, nnodgp

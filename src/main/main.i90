@@ -44,7 +44,7 @@ program main
    type(diffusion_system)       :: diffsys  
    integer                      :: IMC_steps, i_IMC
    real(dp)                     :: ls_h
-   logical                      :: ls_spatial=.True.
+   logical                      :: ls_spatial=.True., reinit=.true.
 
 ! Plot quantities
    type(plot_system)            :: pq
@@ -78,7 +78,8 @@ program main
 
 ! --- Read input data from json ---
    call read_json_input_location(input_location)                                                                     ! Loc input files
-   call read_json_mesh(input_location, mesh%coord, mesh%newcoord, mesh%enod, mesh%bcnod, mesh%bcval, mesh%bcnod_all) ! Mesh data
+   call read_json_mesh(input_location, mesh%coord, mesh%newcoord, mesh%enod, mesh%bcnod, mesh%bcval, mesh%bcnod_all, &
+   mesh%bcnods_left_side, mesh%bcnods_right_side) ! Mesh data
    call read_json_input(input_location, IMC_vol_transf, IMC_steps, lssys, diffsys)                                   ! Input data
 
 ! --- Create VTK and Matlab and Python folder in input location. Erase old if exists. Go back. ---
@@ -139,7 +140,7 @@ program main
       do while (newton_loop_conv .eqv. .false.)         
          
 ! --- Update level set functions ---
-         call update_ls_system(lssys, mesh, i_IMC, input_location, omp_run, pq, diffsys, ls_spatial)
+         call update_ls_system(lssys, mesh, i_IMC, input_location, omp_run, pq, diffsys, ls_spatial, reinit)
          
 ! --- Save ls state ---
          call write_level_set_iter_to_matlab(lssys, mesh, i_IMC, input_location)
@@ -156,14 +157,15 @@ program main
             lssys   = lssys_old
             ls_h    = ls_h/2d0
             lssys%h = ls_h
-         elseif (ls_h.lt.4d0) then
-            ls_h    = ls_h*1.2d0
+            reinit = .false.
+         elseif (ls_h.lt.3d0) then
+            ls_h    = ls_h*1.1d0
             lssys%h = ls_h
+            reinit = .true.
          endif
          
-         if (lssys%h.lt.1d-6) then
-            print *, 'Time step is zero'
-! ls_h = 0d0
+         if (lssys%h.lt.1d-3) then
+            print *, 'Time step is zero. Exiting'
             call exit()
          endif
       enddo

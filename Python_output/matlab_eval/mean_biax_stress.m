@@ -13,8 +13,8 @@ close all; clc; clear
     ngrains] = load_level_set_init();
 
 %% Biax stress in Sn
-IMC_steps   = 220;
-step_size   = 15;
+IMC_steps   = 265;
+step_size   = 20;
 niterations = floor((IMC_steps - 1) / step_size);
 biax_Sn_avg = zeros(niterations,1);
 tvec        = zeros(niterations,1);
@@ -67,6 +67,18 @@ legend boxoff
 
 % Save mean biaxial stress
 save('mat_eval_files/biax_stressMC1.mat','biax_Sn_avg','tvec')
+
+%% Save plot
+
+% Create plot dir in single_study if not exist
+plotfolder= '../single_study/plots';
+if ~exist(plotfolder,"dir")
+    mkdir(plotfolder)
+    disp(['Created new directory: ', plotfolder])
+end
+
+filename = 'biax_Sn_avg.png';
+saveas(gcf, fullfile(plotfolder,filename));
 
 %% Functions
 

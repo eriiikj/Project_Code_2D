@@ -75,9 +75,10 @@ class InputData(object):
         
         
         # Markers
-        self.lowerSupportMarker    = 10
-        self.sideSupportMarker     = 20
-        self.upperSupportMarker    = 30
+        self.lowerSupportMarker     = 10
+        self.leftSideSupportMarker  = 20
+        self.rightSideSupportMarker = 30
+        self.upperSupportMarker     = 40
   
     
      # --- Define the geometry ---
@@ -93,9 +94,10 @@ class InputData(object):
         w  = self.geom_w
         h  = self.geom_h
         
-        lowerSupportMarker = self.lowerSupportMarker
-        sideSupportMarker  = self.sideSupportMarker
-        upperSupportMarker = self.upperSupportMarker
+        lowerSupportMarker     = self.lowerSupportMarker
+        leftSideSupportMarker  = self.leftSideSupportMarker
+        rightSideSupportMarker = self.rightSideSupportMarker
+        upperSupportMarker     = self.upperSupportMarker
         
         
         # Define coordinates 
@@ -134,18 +136,18 @@ class InputData(object):
         el_distrb = self.mesh_el_distrib_val
         g.spline([1 , 2] , 1 , el_on_curve=nelmx, marker=lowerSupportMarker, \
                  el_distrib_type="bump", el_distrib_val=el_distrb)
-        g.spline([2 , 3] , 2 , el_on_curve=nelmy_coarse_lower,marker=sideSupportMarker)
-        g.spline([3 , 4] , 3 , el_on_curve=nelmy_finest_lower,marker=sideSupportMarker)
-        g.spline([4 , 5] , 4 , el_on_curve=nelmy_finest_upper,marker=sideSupportMarker)
-        g.spline([5 , 6] , 5 , el_on_curve=nelmy_fine_upper,marker=sideSupportMarker)
-        g.spline([6 , 7] , 6 , el_on_curve=nelmy_coarse_upper,marker=sideSupportMarker)
+        g.spline([2 , 3] , 2 , el_on_curve=nelmy_coarse_lower,marker=rightSideSupportMarker)
+        g.spline([3 , 4] , 3 , el_on_curve=nelmy_finest_lower,marker=rightSideSupportMarker)
+        g.spline([4 , 5] , 4 , el_on_curve=nelmy_finest_upper,marker=rightSideSupportMarker)
+        g.spline([5 , 6] , 5 , el_on_curve=nelmy_fine_upper,marker=rightSideSupportMarker)
+        g.spline([6 , 7] , 6 , el_on_curve=nelmy_coarse_upper,marker=rightSideSupportMarker)
         g.spline([7 , 8] , 7 , el_on_curve=nelmx,el_distrib_type="bump", \
                  el_distrib_val=el_distrb,marker=upperSupportMarker)
-        g.spline([8 , 9] , 8 , el_on_curve=nelmy_coarse_upper,marker=sideSupportMarker)
-        g.spline([9 , 10], 9 , el_on_curve=nelmy_fine_upper,marker=sideSupportMarker)
-        g.spline([10, 11], 10, el_on_curve=nelmy_finest_upper,marker=sideSupportMarker)
-        g.spline([11, 12], 11, el_on_curve=nelmy_finest_lower,marker=sideSupportMarker)
-        g.spline([12, 1] , 12, el_on_curve=nelmy_coarse_lower,marker=sideSupportMarker)
+        g.spline([8 , 9] , 8 , el_on_curve=nelmy_coarse_upper,marker=leftSideSupportMarker)
+        g.spline([9 , 10], 9 , el_on_curve=nelmy_fine_upper,marker=leftSideSupportMarker)
+        g.spline([10, 11], 10, el_on_curve=nelmy_finest_upper,marker=leftSideSupportMarker)
+        g.spline([11, 12], 11, el_on_curve=nelmy_finest_lower,marker=leftSideSupportMarker)
+        g.spline([12, 1] , 12, el_on_curve=nelmy_coarse_lower,marker=leftSideSupportMarker)
         g.spline([12, 3] , 13, el_on_curve=nelmx,el_distrib_type="bump", \
                  el_distrib_val=el_distrb)
         g.spline([11, 4] , 14, el_on_curve=nelmx,el_distrib_type="bump", \
@@ -176,18 +178,18 @@ class InputData(object):
         input_data_file["version"]                = self.version
         
         # Geometry
-        input_data_file["geom_w"]                      = self.geom_w
-        input_data_file["geom_h"]                      = self.geom_h
-        input_data_file["geom_y2"]                     = self.geom_y2
-        input_data_file["geom_y3"]                     = self.geom_y3
-        input_data_file["geom_y4"]                     = self.geom_y4
-        input_data_file["geom_y5"]                     = self.geom_y5
+        input_data_file["geom_w"]                 = self.geom_w
+        input_data_file["geom_h"]                 = self.geom_h
+        input_data_file["geom_y2"]                = self.geom_y2
+        input_data_file["geom_y3"]                = self.geom_y3
+        input_data_file["geom_y4"]                = self.geom_y4
+        input_data_file["geom_y5"]                = self.geom_y5
         
         # Mesh
-        input_data_file["mesh_el_size_x"]              = self.mesh_el_size_x
-        input_data_file["mesh_el_size_y_coarse"]       = self.mesh_el_size_y_coarse
-        input_data_file["mesh_el_size_y_fine"]         = self.mesh_el_size_y_fine
-        input_data_file["mesh_el_size_y_finest"]       = self.mesh_el_size_y_finest
+        input_data_file["mesh_el_size_x"]         = self.mesh_el_size_x
+        input_data_file["mesh_el_size_y_coarse"]  = self.mesh_el_size_y_coarse
+        input_data_file["mesh_el_size_y_fine"]    = self.mesh_el_size_y_fine
+        input_data_file["mesh_el_size_y_finest"]  = self.mesh_el_size_y_finest
         
         # MFC
         input_data_file["mfc"]                    = self.mfc
@@ -222,28 +224,28 @@ class InputData(object):
             input_data_file = json.load(ifile)
 
         # Version
-        self.version          = input_data_file["version"]
+        self.version                = input_data_file["version"]
         
         # Geometry
-        self.w                = input_data_file["w"]
-        self.h                = input_data_file["h"]
-        self.y2               = input_data_file["y2"]
-        self.y3               = input_data_file["y3"]
-        self.y4               = input_data_file["y4"]
-        self.y5               = input_data_file["y5"]
+        self.w                      = input_data_file["w"]
+        self.h                      = input_data_file["h"]
+        self.y2                     = input_data_file["y2"]
+        self.y3                     = input_data_file["y3"]
+        self.y4                     = input_data_file["y4"]
+        self.y5                     = input_data_file["y5"]
         
         # Level set region
-        self.lvlsety0         = input_data_file["lvlsety0"]
-        self.lvlsety1         = input_data_file["lvlsety1"]
+        self.lvlsety0               = input_data_file["lvlsety0"]
+        self.lvlsety1               = input_data_file["lvlsety1"]
         
         # Mesh
-        self.mesh_el_size_x        = input_data_file["mesh_el_size_x"]
-        self.mesh_el_size_y_coarse = input_data_file["mesh_el_size_y_coarse"]
-        self.mesh_el_size_y_fine   = input_data_file["mesh_el_size_y_fine"]
-        self.mesh_el_size_y_finest = input_data_file["mesh_el_size_y_finest"]
+        self.mesh_el_size_x         = input_data_file["mesh_el_size_x"]
+        self.mesh_el_size_y_coarse  = input_data_file["mesh_el_size_y_coarse"]
+        self.mesh_el_size_y_fine    = input_data_file["mesh_el_size_y_fine"]
+        self.mesh_el_size_y_finest  = input_data_file["mesh_el_size_y_finest"]
         
         # MFC
-        self.mfc              = input_data_file["mfc"]
+        self.mfc                    = input_data_file["mfc"]
         
         # IMC boundary
         self.imc_side_height_start  = input_data_file["imc_side_height_start"]
@@ -256,12 +258,12 @@ class InputData(object):
         self.imc_vol_transf         = input_data_file["imc_vol_transf"]
         
         # Load loop
-        self.imc_steps        = input_data_file["imc_steps"]
-        self.load_steps       = input_data_file["load_steps"]
-        self.load_steps_init  = input_data_file["load_steps_init"]
+        self.imc_steps              = input_data_file["imc_steps"]
+        self.load_steps             = input_data_file["load_steps"]
+        self.load_steps_init        = input_data_file["load_steps_init"]
         
         # Location
-        self.location         = input_data_file["location"]
+        self.location               = input_data_file["location"]
         
 class OutputData(object):
     """Class for storing output data from calculation."""
@@ -300,22 +302,23 @@ class OutputData(object):
         """Saving output data to dictionary."""
         
         output_data_file = {}
-        output_data_file["coord"]           = np.transpose(self.coord).tolist()
-        output_data_file["enod"]            = np.transpose(self.enod).tolist()
-        output_data_file["edof"]            = self.edof.tolist()
-        output_data_file["bcnod"]           = self.bcnod.tolist()
-        output_data_file["bcval"]           = self.bcval.tolist()
-        output_data_file["dofs"]            = self.dofs.tolist()
-        output_data_file["dofs_per_node"]   = self.dofs_per_node
-        output_data_file["el_type"]         = self.el_type
-        output_data_file["nelm"]            = self.nelm
-        output_data_file["nnod"]            = self.nnod
-        output_data_file["ndof"]            = self.ndof
-        output_data_file["nodel"]           = self.nodel
-        output_data_file["dofel"]           = self.dofel
-        output_data_file["bcnod_all"]      = self.bcnod_all.tolist()
-        output_data_file["input_location"]  = self.input_location
-        
+        output_data_file["coord"]             = np.transpose(self.coord).tolist()
+        output_data_file["enod"]              = np.transpose(self.enod).tolist()
+        output_data_file["edof"]              = self.edof.tolist()
+        output_data_file["bcnod"]             = self.bcnod.tolist()
+        output_data_file["bcval"]             = self.bcval.tolist()
+        output_data_file["dofs"]              = self.dofs.tolist()
+        output_data_file["dofs_per_node"]     = self.dofs_per_node
+        output_data_file["el_type"]           = self.el_type
+        output_data_file["nelm"]              = self.nelm
+        output_data_file["nnod"]              = self.nnod
+        output_data_file["ndof"]              = self.ndof
+        output_data_file["nodel"]             = self.nodel
+        output_data_file["dofel"]             = self.dofel
+        output_data_file["bcnod_all"]         = self.bcnod_all.tolist()
+        output_data_file["input_location"]    = self.input_location
+        output_data_file["bcnods_right_side"] = self.bcnods_right_side.tolist()
+        output_data_file["bcnods_left_side"]  = self.bcnods_left_side.tolist()
         
         with open(filename, "w") as ofile:
             json.dump(output_data_file, ofile, sort_keys = True, indent = 4)
@@ -402,20 +405,30 @@ class Solver(object):
         print('Size enod:', np.shape(enod))
         print('nnods:', np.shape(coord))
         
+        
+        
+        
+        
+        
+        
+        
+        
         # --- Extract bcnod ---
         
         # -- Lower bc nods
         bcnods_lower = np.asarray(bdofs[self.input_data.lowerSupportMarker])\
-            [0:-1:2]
+            [0::2]
         bcnods_lower = (bcnods_lower+1)/2
         bcnods_lower = bcnods_lower.astype('int')
         
         
         # -- Upper bc nods
         bcnods_upper = np.asarray(bdofs[self.input_data.upperSupportMarker])\
-            [0:-1:2]
+            [0::2]
         bcnods_upper = (bcnods_upper+1)/2
         bcnods_upper = bcnods_upper.astype('int')
+        
+        
         
         # Remove nods of lower left and right corner from bcnods 
         # (included in MFC)
@@ -431,88 +444,58 @@ class Solver(object):
         
         nbc_upper     = np.size(bcnods_upper)
         bcdofsy_upper = 2*np.ones(nbc_upper)
-        
         nbc_lower     = np.size(bcnods_lower)
         bcdofsy_lower = 2*np.ones(nbc_lower)
         bcdofsx_lower = 1*np.ones(nbc_lower)
-        
-        bcnods_lower = bcnods_lower.astype(int)
+        bcnods_lower  = bcnods_lower.astype(int)
         
         
         # Side bc nods
-        bcnods_sides = np.asarray(bdofs[self.input_data.sideSupportMarker])\
-            [0:-1:2]
-        bcnods_sides = bcnods_sides[2:] # Dont include corners again
-        bcnods_sides = (bcnods_sides+1)/2
-        bcnods_sides = bcnods_sides.astype('int')
+        bcnods_left_side  = np.asarray(bdofs[self.input_data.leftSideSupportMarker])\
+            [0::2]
+        bcnods_left_side = (bcnods_left_side+1)/2
+        bcnods_left_side = bcnods_left_side.astype('int')
+        bcnods_right_side = np.asarray(bdofs[self.input_data.rightSideSupportMarker])\
+            [0::2]
+        bcnods_right_side = (bcnods_right_side+1)/2
+        bcnods_right_side = bcnods_right_side.astype('int')
+            
         
-        
-        bcnod_all = np.unique(np.concatenate([bcnods_lower,bcnods_upper,bcnods_sides]))
+        # All bc nods
+        bcnod_all = np.unique(np.concatenate([bcnods_lower,bcnods_upper,bcnods_left_side,bcnods_right_side]))
         bcnod_all = bcnod_all.astype('int')
-        
-        
-        # Create a boolean matrix indicating the presence of each bcnod in enod
-        presence_matrix = np.isin(enod, bcnod_all)
-     
-        # Find the row and column indices where True values occur
-        edge_elms = np.where(np.sum(presence_matrix,1)>1)
                                        
+                    
                                        
+                    
+                    
         s = 9
         
-        
-        
-        # # -- Side bc nods
-        # if (self.input_data.mfc==False):
-        #     bcnods_sides = np.asarray(bdofs[self.input_data.sideSupportMarker])\
-        #         [0:-1:2]
-        #     bcnods_sides = bcnods_sides[2:] # Dont include corners again
-        #     bcnods_sides = (bcnods_sides+1)/2
-        #     bcnods_sides = bcnods_sides.astype('int')
-     
-        #     nbc_sides    = np.size(bcnods_sides)
-        #     bcdofs_sides = 1*np.ones(nbc_sides)
             
-        #     bcnods_sides = bcnods_sides.astype(int)
-            
-        #     # Concatenate bcnods and bcdofs
-        #     bcnods = np.concatenate([bcnods_lower,bcnods_lower,bcnods_sides])
-        #     bcdofs = np.concatenate([bcdofsx_lower,bcdofsy_lower,bcdofs_sides])
-        # else:
-        #     bcnods_sides = []
-            
-        #     # Concatenate bcnods and bcdofs
-        #     bcnods = np.concatenate([bcnods_lower,bcnods_lower])
-        #     bcdofs = np.concatenate([bcdofsx_lower,bcdofsy_lower])
-            
-            
-        # -- Side bc nods
+        # --- Side bc nods ---
         if (self.input_data.mfc==False):
-            bcnods_sides = np.asarray(bdofs[self.input_data.sideSupportMarker])\
-                [0:-1:2]
-            bcnods_sides = bcnods_sides[2:] # Dont include corners again
-            bcnods_sides = (bcnods_sides+1)/2
-            bcnods_sides = bcnods_sides.astype('int')
+            bcnods_sides = np.unique(np.concatenate([bcnods_left_side,bcnods_right_side]))
+            # bcnods_sides = np.asarray(bdofs[self.input_data.leftSideSupportMarker])\
+            #     [0:-1:2]
+            # bcnods_sides = bcnods_sides[2:] # Dont include corners again
+            # bcnods_sides = (bcnods_sides+1)/2
+            # bcnods_sides = bcnods_sides.astype('int')
      
             nbc_sides    = np.size(bcnods_sides)
             bcdofs_sides = 1*np.ones(nbc_sides)
-            
-            bcnods_sides = bcnods_sides.astype(int)
             
             # Concatenate bcnods and bcdofs
             bcnods = np.concatenate([bcnods_lower,bcnods_sides])
             bcdofs = np.concatenate([bcdofsy_lower,bcdofs_sides])
         else:
-            bcnods_sides = []
             
             # Concatenate bcnods and bcdofs
             bcnods = np.concatenate([bcnods_lower])
             bcdofs = np.concatenate([bcdofsy_lower])
-                
     
             # Constraint x in middle node
             bcnod_xcoord = coord[bcnods-1,0]                # x coord of bcnod
-            mw           = self.input_data.geom_w/2              # xmiddle
+            mw           = self.input_data.geom_w/2         # xmiddle
             bcnod_x_idx  = np.abs(bcnod_xcoord-mw).argmin() # idx of closest node
             bcnod_x      = bcnods[bcnod_x_idx]              # node
             bcdof_x      = 1                                # x-dir
@@ -546,20 +529,22 @@ class Solver(object):
         
         
         # --- Transfer model variables to output data ---
-        self.output_data.coord         = coord
-        self.output_data.enod          = enod
-        self.output_data.edof          = edof
-        self.output_data.bcnod         = bcnod
-        self.output_data.bcval         = bcval
-        self.output_data.dofs          = dofs
-        self.output_data.dofs_per_node = dofs_per_node
-        self.output_data.el_type       = el_type
-        self.output_data.nelm          = nelm
-        self.output_data.nnod          = nnod
-        self.output_data.ndof          = ndof
-        self.output_data.nodel         = nodel
-        self.output_data.dofel         = dofel
-        self.output_data.bcnod_all    = bcnod_all
+        self.output_data.coord             = coord
+        self.output_data.enod              = enod
+        self.output_data.edof              = edof
+        self.output_data.bcnod             = bcnod
+        self.output_data.bcval             = bcval
+        self.output_data.dofs              = dofs
+        self.output_data.dofs_per_node     = dofs_per_node
+        self.output_data.el_type           = el_type
+        self.output_data.nelm              = nelm
+        self.output_data.nnod              = nnod
+        self.output_data.ndof              = ndof
+        self.output_data.nodel             = nodel
+        self.output_data.dofel             = dofel
+        self.output_data.bcnod_all         = bcnod_all
+        self.output_data.bcnods_left_side  = bcnods_left_side
+        self.output_data.bcnods_right_side = bcnods_right_side
         
   
     def reorder_enod(self, coord,enod):

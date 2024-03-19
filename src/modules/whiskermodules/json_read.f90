@@ -137,7 +137,7 @@ end subroutine read_json_input
 
 
 
-subroutine read_json_mesh(input_location, coord, newcoord, enod, bcnod, bcval, bcnod_all)
+subroutine read_json_mesh(input_location, coord, newcoord, enod, bcnod, bcval, bcnod_all, bcnods_left_side, bcnods_right_side)
   implicit none
 
   ! Input location
@@ -161,7 +161,7 @@ subroutine read_json_mesh(input_location, coord, newcoord, enod, bcnod, bcval, b
 
   ! Out
   real(dp), allocatable, intent(inout)     :: coord(:,:), newcoord(:,:), bcval(:)
-  integer , allocatable, intent(inout)     :: enod(:,:), bcnod(:,:), bcnod_all(:)
+  integer , allocatable, intent(inout)     :: enod(:,:), bcnod(:,:), bcnod_all(:), bcnods_left_side(:), bcnods_right_side(:)
 
   filename = 'python_mesh.json'
   
@@ -240,6 +240,12 @@ subroutine read_json_mesh(input_location, coord, newcoord, enod, bcnod, bcval, b
   
   ! ----- bcnod_all -----
   call my_json_file%get('bcnod_all', bcnod_all, found); if (.not. found) call exit(0)
+
+  ! ----- bcnods_left_side -----
+  call my_json_file%get('bcnods_left_side', bcnods_left_side, found); if (.not. found) call exit(0)
+
+  ! ----- bcnods_right_side -----
+  call my_json_file%get('bcnods_right_side', bcnods_right_side, found); if (.not. found) call exit(0)
 
   ! ----- Destroy -----
   call my_json_file%destroy()

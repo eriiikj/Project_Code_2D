@@ -27,7 +27,7 @@ my_colors2 = [[255,58,58]; [255,165,41]; [8,81,156]; [136,86,167]
 mm_to_um  = 1e3;
 
 % IMC steps
-IMC_steps = 220;
+IMC_steps = 265;
 
 
 %% Level set evolution
