@@ -94,16 +94,18 @@ class InputData(object):
         # --- Constraint Delanuay triangularization using triangle ---
         # tri_input     = dict(vertices=self.boundary_coord,segments=self.boundary_conn)
         # tri_input     = dict(vertices=self.line_coord,segments=self.line_conn) 
+        # tri_input     = dict(vertices=self.mesh_points,segments=self.boundary_conn) 
         tri_input     = dict(vertices=self.mesh_points,segments=self.all_line_conn) 
-        # tri_input     = dict(vertices=self.boundary_coord,segments=self.boundary_conn) 
         print('Creating a constraint delanuay triangularization...')
-        triangulation = triangle.triangulate(tri_input,opts='pq') #pqYY 
+        triangulation = triangle.triangulate(tri_input,opts='pqYY') #pqYY
         print('Finished delanuay triangularization')
         tris          = triangulation['triangles']
         tris          = tris.flatten()
         tris          = tris + 1
         vertices      = triangulation['vertices']
         N             = np.shape(vertices)[0]
+        
+        print('Triangle mesh created!!!')
         
         
         
@@ -316,7 +318,7 @@ class InputData(object):
             inodB  = boundary_conn[iBseg,1]
             A      = boundary_coord[inodA,:]
             B      = boundary_coord[inodB,:]
-            tol = 1e-8
+            tol = 1e-6
             xmin = np.min([A[0],B[0]]) - tol
             xmax = np.max([A[0],B[0]]) + tol
             ymin = np.min([A[1],B[1]]) - tol
@@ -332,30 +334,23 @@ class InputData(object):
                 
         s= 9
         
-        # Split line segments
+        
+        # Split line segments. OBS now all mesh points must be included
+        boundary_conn = boundary_conn + np.shape(self.line_coord)[0]
         iBseg = iBcrosseg[0]
         # for iBseg in iBcrosseg:
         inodA  = boundary_conn[iBseg,0]
         inodB  = boundary_conn[iBseg,1]
-        A      = boundary_coord[inodA,:]
-        B      = boundary_coord[inodB,:]
-        addLineCoordIdx = iBcross[iBseg]
-        P      = line_coord[addLineCoordIdx,:]
-        
-        # Add point
-        boundary_coord = np.vstack([boundary_coord,P])
-        inodP          = nboundary_segs
+        inodP  = iBcross[iBseg]
         
         # Change boundary_conn[iBseg,:] from AB to AP
         boundary_conn[iBseg,1] = inodP
         
         # Add a new connection from P to B
         boundary_conn = np.vstack([boundary_conn,np.array([inodP,inodB],dtype=int)])
+       
         
-        # Update number of boundary segs
-        nboundary_segs = nboundary_segs + 1
-            
-     
+       
         # All mesh_points (line_coord + boundary_coords). OBS order important
         self.mesh_points = np.vstack((self.line_coord, boundary_coord))
         
@@ -363,7 +358,7 @@ class InputData(object):
         self.line_conn      = np.unique(line_conn, axis=0)
         self.boundary_conn  = boundary_conn
         self.boundary_coord = boundary_coord
-        self.all_line_conn  = np.vstack((self.line_conn, boundary_conn + np.shape(self.line_coord)[0]))
+        self.all_line_conn  = np.vstack((self.line_conn, boundary_conn))
         
    
                 
