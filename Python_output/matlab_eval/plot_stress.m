@@ -32,7 +32,7 @@ tvec             = zeros(niterations,1);
 IMC_vol_per_area = zeros(niterations,1);
 
 k = 1;
-for i_IMC=220%1:step_size:IMC_steps
+for i_IMC=150%1:step_size:IMC_steps
 
     disp('--------')
     disp(['IMC step ', num2str(i_IMC)])  
@@ -130,7 +130,8 @@ for i_IMC=220%1:step_size:IMC_steps
 
     % --- Volume expansion ---
     figure()
-    hp = max(max(hphi_ed(:,:,2),hphi_ed(:,:,3)),hphi_ed(:,:,4));
+%     hp = max(max(hphi_ed(:,:,2),hphi_ed(:,:,3)),hphi_ed(:,:,4));
+    hp = max(hphi_ed(:,:,2),hphi_ed(:,:,3));
     p           =  patch(newex'*1e3,newey'*1e3,hp');
     p.EdgeColor = 'interp';
     colorbar 

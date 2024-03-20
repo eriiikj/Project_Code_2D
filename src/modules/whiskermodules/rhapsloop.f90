@@ -182,7 +182,7 @@ contains
       call neohooke_init(mp_IMC)
 
       ! Sn, von Mises
-      E_Sn     = 19d3!50d3
+      E_Sn     = 50d3 !19d3
       v_Sn     = 0.36d0
       mp_Sn(1) = E_Sn/3d0/(1d0-2d0*v_Sn)     ! K_Sn
       mp_Sn(2) = E_Sn/2d0/(1d0+v_Sn)         ! G_Sn

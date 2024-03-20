@@ -118,8 +118,8 @@ subroutine allocate_ls_system(lssys,ngrains,nelm,nrgp,nnod,nodel,enod)
   lssys%material(1) = 1
   lssys%material(2) = 2
   lssys%material(3) = 2
-  lssys%material(4) = 2
-  lssys%material(5) = 3
+  lssys%material(4) = 3
+! lssys%material(5) = 3
 ! lssys%material(6) = 3
 ! lssys%material(7) = 3
 ! lssys%material(8) = 3
@@ -187,7 +187,7 @@ subroutine init_ls_system(lssys,mesh,IMC_steps, input_location)
 ! where (mesh%coord(2,:).gt.y0/3d0 .and. mesh%coord(2,:).lt.1.07d0*y0/3d0) lssys%a(:,2) = -1d0 ! IMC
 ! where (mesh%coord(2,:).gt.1.07d0*y0/3d0) lssys%a(:,3) = -1d0                                 ! Sn
 
-! Simulation 2 ngrains = 4
+! ! Simulation 2 ngrains = 4
 ! lssys%a = 1d0
 ! r       = 0.1d-3
 ! cu_height = 0.6d-3!y0/3d0
@@ -198,16 +198,16 @@ subroutine init_ls_system(lssys,mesh,IMC_steps, input_location)
 ! where (mesh%coord(2,:).lt.cu_height+r) lssys%a(:,4) = 1d0                                   ! Sn
 
 
-! ! Simulation 2 ngrains = 5 (Good - article!)
-  lssys%a = 1d0
-  r       = 0.1d-3
-  cu_height = 0.6d-3
-  where (mesh%coord(2,:).lt.cu_height) lssys%a(:,1) = -1d0                                    ! Cu
-  call init_level_set_function_ellips(lssys%a(:,2), x0/3d0    , cu_height,r*5d0,r*0.5d0,mesh%coord) ! IMC 1
-  call init_level_set_function_ellips(lssys%a(:,3), x0        , cu_height,r*6d0,r*0.5d0,mesh%coord) ! IMC 2
-  call init_level_set_function_ellips(lssys%a(:,4), x0*5d0/3d0, cu_height,r*5d0,r*0.5d0,mesh%coord) ! IMC 3
-  lssys%a(:,5) = -minval(lssys%a(:,2:ngrains-1),dim=2) + 1e-2
-  where (mesh%coord(2,:).lt.cu_height) lssys%a(:,5) = 1d0                                   ! Sn
+! ! ! Simulation 2 ngrains = 5 (Good - article!)
+! lssys%a = 1d0
+! r       = 0.1d-3
+! cu_height = 0.6d-3
+! where (mesh%coord(2,:).lt.cu_height) lssys%a(:,1) = -1d0                                    ! Cu
+! call init_level_set_function_ellips(lssys%a(:,2), x0/3d0    , cu_height,r*5d0,r*0.5d0,mesh%coord) ! IMC 1
+! call init_level_set_function_ellips(lssys%a(:,3), x0        , cu_height,r*6d0,r*0.5d0,mesh%coord) ! IMC 2
+! call init_level_set_function_ellips(lssys%a(:,4), x0*5d0/3d0, cu_height,r*5d0,r*0.5d0,mesh%coord) ! IMC 3
+! lssys%a(:,5) = -minval(lssys%a(:,2:ngrains-1),dim=2) + 1e-2
+! where (mesh%coord(2,:).lt.cu_height) lssys%a(:,5) = 1d0                                   ! Sn
 
 ! ! Simulation 3: ngrains = 6 (Good - from pp)
 ! lssys%a   = 1d0
@@ -240,15 +240,15 @@ subroutine init_ls_system(lssys,mesh,IMC_steps, input_location)
 ! lssys%sn_a = -minval(lssys%a(:,1:5),dim=2)
 
 
-! Simulation 6 (Brown) ngrains = 4
-! lssys%a   = 1d0
-! r         = 0.1d-3
-! cu_height = 0.601d-3
-! where (mesh%coord(2,:).lt.cu_height) lssys%a(:,1) = -1d0                                  ! Cu
-! call init_level_set_function_ellips(lssys%a(:,2), 0d0  ,cu_height,r*1d0,r*1d0,mesh%coord) ! IMC 1
-! call init_level_set_function_ellips(lssys%a(:,3),x0*2d0,cu_height,r*1d0,r*1d0,mesh%coord) ! IMC 2
-! lssys%a(:,4) = -minval(lssys%a(:,2:ngrains-1),dim=2) + 1e-2
-! where (mesh%coord(2,:).lt.cu_height) lssys%a(:,4) = 1d0                                   ! Sn
+! ! Simulation 6 (Brown) ngrains = 4
+  lssys%a   = 1d0
+  r         = 0.05d-3
+  cu_height = 0.601d-3
+  where (mesh%coord(2,:).lt.cu_height) lssys%a(:,1) = -1d0                                  ! Cu
+  call init_level_set_function_ellips(lssys%a(:,2), 0d0  ,cu_height,r*1d0,r*1d0,mesh%coord) ! IMC 1
+  call init_level_set_function_ellips(lssys%a(:,3),x0*2d0,cu_height,r*1d0,r*1d0,mesh%coord) ! IMC 2
+  lssys%a(:,4) = -minval(lssys%a(:,2:ngrains-1),dim=2) + 1e-2
+  where (mesh%coord(2,:).lt.cu_height) lssys%a(:,4) = 1d0                                   ! Sn
 
 
 ! ! Initialize all level set functions except the last one
@@ -294,9 +294,9 @@ subroutine update_ls_system(lssys,mesh,i_IMC,input_location, omp_run, pq, diffsy
   real(dp)                                  :: lseg
   real(dp), allocatable                     :: unique_coord(:,:)
 
-! !
-! integer  :: ie
-! real(dp) :: vpvec1(2,4), vpvec2(2,4), x0, y0, cu_height, r, P1(2), P2(2)
+! Brown
+  integer  :: ie
+  real(dp) :: vpvec1(2,4), vpvec2(2,4), x0, y0, cu_height, r, P1(2), P2(2)
 
   allocate(indecies2(size(lssys%a(:,g))))  
 
@@ -383,7 +383,6 @@ subroutine update_ls_system(lssys,mesh,i_IMC,input_location, omp_run, pq, diffsy
     call interface_reconstruction(lssys, mesh)
   endif
 
-
 ! --- Reinitialize level set function for first step ---
   if (i_IMC.eq.1) then
     do g = 1,lssys%ngrains
@@ -404,17 +403,17 @@ subroutine update_ls_system(lssys,mesh,i_IMC,input_location, omp_run, pq, diffsy
 
   
 ! Velocity field acc to Brown
-! x0     = (mesh%axisbc(1) + mesh%axisbc(2))/2d0
-! y0     = (mesh%axisbc(3) + mesh%axisbc(4))/2d0
-! r         = 0.1d-3
-! cu_height = 0.601d-3
-! P1 = [0d0   ,cu_height]
-! P2 = [x0*2d0,cu_height]
-! do ie=1,mesh%nelm
-!   call lvlset2D4vp_exp_brown(vpvec1,mesh%coord(:,mesh%enod(:,ie)),lssys%ed(:,ie,2),P1, 2*x0, cu_height)
-!   call lvlset2D4vp_exp_brown(vpvec2,mesh%coord(:,mesh%enod(:,ie)),lssys%ed(:,ie,3),P2, 2*x0, cu_height)
-!   lssys%vp(:,:,ie) = vpvec1 + vpvec2
-! enddo
+  x0     = (mesh%axisbc(1) + mesh%axisbc(2))/2d0
+  y0     = (mesh%axisbc(3) + mesh%axisbc(4))/2d0
+  r         = 0.1d-3
+  cu_height = 0.601d-3  
+  P1 = [0d0   ,cu_height]
+  P2 = [x0*2d0,cu_height]
+  do ie=1,mesh%nelm
+    call lvlset2D4vp_exp_brown(vpvec1,mesh%coord(:,mesh%enod(:,ie)),lssys%ed(:,ie,2),P1, 2*x0, cu_height)    
+    call lvlset2D4vp_exp_brown(vpvec2,mesh%coord(:,mesh%enod(:,ie)),lssys%ed(:,ie,3),P2, 2*x0, cu_height)    
+    lssys%vp(:,:,ie) = vpvec1 + vpvec2
+  enddo
 
 ! Compute phi in nods and gauss points
   do g=1,lssys%ngrains
@@ -432,9 +431,8 @@ subroutine update_ls_system(lssys,mesh,i_IMC,input_location, omp_run, pq, diffsy
   enddo
 
 ! Compute sn_hphi_plot
-  lssys%sn_a = lssys%a(:,5)
-  lssys%sn_hphi_plot = 0.5d0*(1d0 - tanh((lssys%sn_a+lssys%w*0.4d0)/(lssys%w/8d0)))
-! lssys%sn_hphi_plot = 0.5d0*(1d0 - tanh((lssys%sn_a)/(lssys%w/10d0)))
+  lssys%sn_a = lssys%a(:,4)
+  lssys%sn_hphi_plot = 0.5d0*(1d0 - tanh((lssys%sn_a+lssys%w*0.4d0)/(lssys%w/8d0)))  
   call extract(lssys%sn_hphi_ed_plot,lssys%sn_hphi_plot,mesh%enod,1)
   call elm2D4_nodmat_to_gpmat(lssys%sn_hphi_gp_plot, lssys%sn_hphi_ed_plot, mesh%nelm)
 
@@ -443,11 +441,17 @@ subroutine update_ls_system(lssys,mesh,i_IMC,input_location, omp_run, pq, diffsy
   call extract(lssys%sn_hphi_ed_plot,lssys%sn_hphi_plot,mesh%enod,1)
   call elm2D4_nodmat_to_gpmat(lssys%sn_hphi_gp_plot2, lssys%sn_hphi_ed_plot, mesh%nelm)
 
-! Define old IMC gps at first IMC step (3 IMC grains)
+! ! Define old IMC gps at first IMC step (3 IMC grains)
+! if (i_IMC.eq.1) then
+!   lssys%old_IMC_gp_flag = .false.
+!   where (lssys%hphi_gp(:,:,2).gt.0.15d0 .or. lssys%hphi_gp(:,:,3).gt.0.15d0 .or. lssys%hphi_gp(:,:,4).gt.0.15d0) &
+!    lssys%old_IMC_gp_flag = .true.
+! endif
+
+! Define old IMC gps at first IMC step (2 IMC grains)
   if (i_IMC.eq.1) then
     lssys%old_IMC_gp_flag = .false.
-    where (lssys%hphi_gp(:,:,2).gt.0.04d0 .or. lssys%hphi_gp(:,:,3).gt.0.04d0 .or. lssys%hphi_gp(:,:,4).gt.0.04d0) &
-     lssys%old_IMC_gp_flag = .true.
+    where (lssys%hphi_gp(:,:,2).gt.0.15d0 .or. lssys%hphi_gp(:,:,3).gt.0.15d0) lssys%old_IMC_gp_flag = .true.
   endif
 
 ! Define initial IMC (4 IMC grains)
@@ -499,8 +503,6 @@ subroutine get_ls_positions(lssys,mesh,i_IMC,input_location, omp_run, pq, ls_spa
   lssys%int_elms    = .false.
   lssys%sep_lines   = 0
   lssys%jnod        = 0d0
-  lssys%vp          = 0d0
-  lssys%vpm         = 0d0
   lssys%tp_points   = 0d0
   lssys%ntp_points  = 0  
 
