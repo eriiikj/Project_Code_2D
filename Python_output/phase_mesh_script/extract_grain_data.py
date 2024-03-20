@@ -133,10 +133,10 @@ class InputData(object):
             self.tppoints       = data['tppoints']*1e3
     
             
-        # Round line coords to 6 decimals 
+        # Round line coords to 10 decimals 
         self.line_ex_all = self.line_ex_all.round(decimals=6)
         self.line_ey_all = self.line_ey_all.round(decimals=6)
-        self.tppoints    = self.tppoints.round(decimals=8)
+        self.tppoints    = self.tppoints.round(decimals=6)
         
                 
     def get_line_conn(self, line_coord, line_ex, line_ey):

@@ -305,7 +305,15 @@ subroutine lvlset2D4_global_vp2(vp_e, coord, ed_e_gr, jgp_e_gr, agp_e_gr, Igrain
             vel_cont = (1/cdiff)*jdiff
 
             if (isnan(vel_cont)) then
-                print *, 'vel_cont is NAN'
+                print *, 'vel_cont is NAN'                
+                print *, 'coord: '          , coord
+                print *, 'inside_grain: '   , inside_grain
+                print *, 'inside material: ', inside_material
+                print *, 'other_grain: '    , other_grain
+                print *, 'other material: ' , other_material
+                print *, 'cdiff: '          , cdiff
+                print *, 'jdiff: '          , jdiff
+                call exit(0)
             endif
 
             ! if (abs((coord(1,1)-0.000975d0)).lt.1d-5 .and. abs((coord(2,1)-0.000625d0)).lt.1d-5) then

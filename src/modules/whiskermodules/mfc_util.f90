@@ -56,8 +56,6 @@ contains
                                 right_boundary_nodes, left_boundary_nodes, mesh)
     ! call init_MFC_T_ux_right_equal(Tcell, Tcell_transpose, Tval, nMFC, mesh)
 
-    print *, 'Heja'
-
     call init_MFC_g(g, nMFC)    
 
     ! Number of dofs in expanded format

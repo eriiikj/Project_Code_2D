@@ -23,7 +23,7 @@ import pyvtk as vtk
 
 import subprocess
 
-# import gmsh
+import gmsh
 import triangle
 
 # Calfem
@@ -95,9 +95,9 @@ class InputData(object):
         # tri_input     = dict(vertices=self.boundary_coord,segments=self.boundary_conn)
         # tri_input     = dict(vertices=self.line_coord,segments=self.line_conn) 
         tri_input     = dict(vertices=self.mesh_points,segments=self.all_line_conn) 
-        # tri_input     = dict(vertices=self.mesh_points,segments=self.boundary_conn + np.shape(self.line_coord)[0]) 
+        # tri_input     = dict(vertices=self.boundary_coord,segments=self.boundary_conn) 
         print('Creating a constraint delanuay triangularization...')
-        triangulation = triangle.triangulate(tri_input,opts='pqYY') #pcqa0.03 
+        triangulation = triangle.triangulate(tri_input,opts='pq') #pqYY 
         print('Finished delanuay triangularization')
         tris          = triangulation['triangles']
         tris          = tris.flatten()
@@ -107,16 +107,16 @@ class InputData(object):
         
         
         
-        # # Extract xyz data
-        # xyz = self.xyz_from_coord(vertices)
+        # Extract xyz data
+        xyz = self.xyz_from_coord(vertices)
             
-        # # Add triangles to gmsh
-        # surf = gmsh.model.addDiscreteEntity(2)
-        # gmsh.model.mesh.addNodes(2, surf, range(1, N + 1), xyz)
-        # gmsh.model.mesh.addElementsByType(surf, 2, [], tris)
+        # Add triangles to gmsh
+        surf = gmsh.model.addDiscreteEntity(2)
+        gmsh.model.mesh.addNodes(2, surf, range(1, N + 1), xyz)
+        gmsh.model.mesh.addElementsByType(surf, 2, [], tris)
         
-        # # Create the relevant Gmsh data structures from gmsh model
-        # gmsh.model.geo.synchronize()
+        # Create the relevant Gmsh data structures from gmsh model
+        gmsh.model.geo.synchronize()
         
         return triangulation
     
@@ -237,10 +237,10 @@ class InputData(object):
             self.enod           = np.transpose(data['enod']) - 1
         
             
-        # Round line coords to 6 decimals 
+        # Round line coords to 8 decimals 
         self.line_ex_all = self.line_ex_all.round(decimals=6)
         self.line_ey_all = self.line_ey_all.round(decimals=6)
-        # self.coord = self.coord.round(decimals=6)
+        self.coord       = self.coord.round(decimals=6)
             
         # # Domain corners
         # self.P1 = self.coord[self.P1nod]
@@ -269,7 +269,8 @@ class InputData(object):
             
             
         # Unique line coords
-        self.line_coord = np.unique(line_coord, axis=0)
+        line_coord      = np.unique(line_coord, axis=0)
+        self.line_coord = line_coord
             
     
         # --- Extract line connectivity matrix line_conn connecting the 
@@ -293,7 +294,6 @@ class InputData(object):
         
         # Domain nodes
         boundary_coord      = self.coord[self.indNodBd,:]
-        self.boundary_coord = boundary_coord
         
         # --- Extract boundary connectivity ---
         nboundary_segs = np.size(self.indElemBd)
@@ -308,28 +308,64 @@ class InputData(object):
             boundary_conn[iseg,:] = [nod1,nod2]
             
         
-        # Loop thorugh all line coords and find which are intersecting boundary
-        for line_coord1 in line_coord:
-            s = 1
-            for iseg in range(nboundary_segs):
-                inodA = boundary_conn[iseg,0]
-                inodB = boundary_conn[iseg,1]
-                coordA = boundary_coord[inodA,:]
-                coordB = boundary_coord[inodB,:]
-                s = 11
+        # Loop thorugh all boundary segs and find which line_coord intersect boundary
+        iBcross = -1*np.ones(nboundary_segs,dtype=int)
+        iBcrosseg = []
+        for iBseg in range(nboundary_segs):
+            inodA  = boundary_conn[iBseg,0]
+            inodB  = boundary_conn[iBseg,1]
+            A      = boundary_coord[inodA,:]
+            B      = boundary_coord[inodB,:]
+            tol = 1e-8
+            xmin = np.min([A[0],B[0]]) - tol
+            xmax = np.max([A[0],B[0]]) + tol
+            ymin = np.min([A[1],B[1]]) - tol
+            ymax = np.max([A[1],B[1]]) + tol
+            c1 = xmin < line_coord[:,0]
+            c2 = line_coord[:,0] < xmax
+            c3 = ymin < line_coord[:,1]
+            c4 = line_coord[:,1] < ymax
+            a = np.where(np.logical_and(np.logical_and(c1,c2),np.logical_and(c3,c4)))
+            if (np.size(a)>0):
+                iBcross[iBseg] = a[0]
+                iBcrosseg.append(iBseg)
                 
+        s= 9
         
+        # Split line segments
+        iBseg = iBcrosseg[0]
+        # for iBseg in iBcrosseg:
+        inodA  = boundary_conn[iBseg,0]
+        inodB  = boundary_conn[iBseg,1]
+        A      = boundary_coord[inodA,:]
+        B      = boundary_coord[inodB,:]
+        addLineCoordIdx = iBcross[iBseg]
+        P      = line_coord[addLineCoordIdx,:]
+        
+        # Add point
+        boundary_coord = np.vstack([boundary_coord,P])
+        inodP          = nboundary_segs
+        
+        # Change boundary_conn[iBseg,:] from AB to AP
+        boundary_conn[iBseg,1] = inodP
+        
+        # Add a new connection from P to B
+        boundary_conn = np.vstack([boundary_conn,np.array([inodP,inodB],dtype=int)])
+        
+        # Update number of boundary segs
+        nboundary_segs = nboundary_segs + 1
+            
+     
         # All mesh_points (line_coord + boundary_coords). OBS order important
         self.mesh_points = np.vstack((self.line_coord, boundary_coord))
         
         # All line connectivity
-        self.line_conn     = np.unique(line_conn, axis=0)
-        self.boundary_conn = boundary_conn
-        self.all_line_conn = np.vstack((self.line_conn, boundary_conn + np.shape(self.line_coord)[0]))
+        self.line_conn      = np.unique(line_conn, axis=0)
+        self.boundary_conn  = boundary_conn
+        self.boundary_coord = boundary_coord
+        self.all_line_conn  = np.vstack((self.line_conn, boundary_conn + np.shape(self.line_coord)[0]))
         
-        
-        s = 0
-                
+   
                 
     def get_line_conn(self, line_coord, line_ex, line_ey):
         
@@ -512,24 +548,24 @@ class Mesh(object):
         
         # --- gmsh mesh generation ---
         
-        # Initialize gmsh
-        # gmsh.initialize()
+        # # Initialize gmsh
+        gmsh.initialize()
    
-        # Create gmsh geometry
+        # Create geometry
         triangulation = self.input_data.geometry()
         
-        # Location
-        print('Generating mesh in folder: ', os.getcwd())
+        # # Location
+        # print('Generating mesh in folder: ', os.getcwd())
         
         # Generate mesh
-        # gmsh.model.mesh.generate(2)
+        gmsh.model.mesh.generate(2)
         
-        # # Graphical illustration of mesh
-        # if 'close' not in sys.argv:
-        #     gmsh.fltk.run()
+        # Graphical illustration of mesh
+        if 'close' not in sys.argv:
+            gmsh.fltk.run()
         
         # Finalize Gmsh
-        # gmsh.finalize()
+        gmsh.finalize()
   
         # Extract coord and enod
         coord = triangulation['vertices']
@@ -590,8 +626,8 @@ class Mesh(object):
         for i in range(ndof):
             # For each coord, compute distance to all line_coords.
             # If distance smaller than tol, add node to upper b nodes
-            d = np.sqrt(np.sum((coord[i,:]-line_coord)**2,1));
-            tol = 1e-12
+            d    = np.sqrt(np.sum((coord[i,:]-line_coord)**2,1));
+            tol  = 1e-12
             dsum = np.sum(d<tol)
             if (dsum==1):
                 boundary_nodes[k] = i+1

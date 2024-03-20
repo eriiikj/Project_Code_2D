@@ -236,6 +236,7 @@ subroutine get_interface(line_ex, line_ey, line_elms, line_seg, ed, mesh)
             line_elms(iseg) = ie
         else
             print *, 'Error: Level set cutting neither 2 or 4 edges'
+            call exit(0)
         endif
     enddo
 
@@ -345,6 +346,7 @@ subroutine get_interface_spatial(line_ex_s, line_ey_s, line_elms, line_seg, ed, 
             line_elms(iseg) = ie
         else
             print *, 'Error in ls interpolate interface: Level set cutting neither 2 nor 4 edges'
+            call exit(0)
         endif
     enddo
 
