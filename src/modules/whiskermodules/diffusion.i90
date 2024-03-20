@@ -270,12 +270,12 @@ subroutine generate_global_diffusion_mesh(input_location, diffsys, mesh, lssys, 
         ii = inod
         call setdiff_int_1D(uniqueArr, ii, uniqueArr)
         
-        if (g.eq.2 .and.  abs(diffsys%coord(2,inod) - 0.575098d-3).lt.1d-9) then
-          print *, 'Inod: ', inod
-          print *, 'Neigb nelm: ', nelm
-          print *, 'coord', diffsys%coord(:,inod)
-          print *, 'ls(uniqueArr): ', diffsys%ls(uniqueArr,g)
-        endif
+! if (g.eq.2 .and.  abs(diffsys%coord(2,inod) - 0.575098d-3).lt.1d-9) then
+!   print *, 'Inod: ', inod
+!   print *, 'Neigb nelm: ', nelm
+!   print *, 'coord', diffsys%coord(:,inod)
+!   print *, 'ls(uniqueArr): ', diffsys%ls(uniqueArr,g)
+! endif
         if (count((diffsys%ls(uniqueArr,g)).lt.0d0).ge.count((diffsys%ls(uniqueArr,g)).gt.0d0) .and.diffsys%ls(inod,g).gt.0d0) then
           diffsys%ls(inod,g) = -1d0*abs(diffsys%ls(inod,g))
           ch = .true.

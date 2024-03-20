@@ -175,14 +175,14 @@ contains
       call J2iso_Cu_init(mp_Cu, mesh%nelm, mesh%nrgp)
 
       ! IMC, Neo-Hookean
-      E_IMC     = 50d3!86d3
+      E_IMC     = 86d3
       v_IMC     = 0.30d0
       mp_IMC(1) = E_IMC/3d0/(1d0-2d0*v_IMC)  ! K_Cu
       mp_IMC(2) = E_IMC/2d0/(1d0+v_IMC)      ! G_Cu
       call neohooke_init(mp_IMC)
 
       ! Sn, von Mises
-      E_Sn     = 86d3
+      E_Sn     = 19d3!50d3
       v_Sn     = 0.36d0
       mp_Sn(1) = E_Sn/3d0/(1d0-2d0*v_Sn)     ! K_Sn
       mp_Sn(2) = E_Sn/2d0/(1d0+v_Sn)         ! G_Sn
@@ -465,7 +465,7 @@ contains
             ! spaputval_time = spaputval_time + (t22-t11)
    
             ! Solve K_hat*a_hat=res_hat
-            call clock_time(t11, omp_run)
+            ! call clock_time(t11, omp_run)
             call solveq(K_hat,res_hat,mesh%bcnod,mesh%bcval,mesh%dofnod)
             ! call solveq(K,res,mesh%bcnod,mesh%bcval,mesh%dofnod)
             call clock_time(t22, omp_run)

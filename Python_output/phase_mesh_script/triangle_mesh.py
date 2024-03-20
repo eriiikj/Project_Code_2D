@@ -105,9 +105,6 @@ class InputData(object):
         vertices      = triangulation['vertices']
         N             = np.shape(vertices)[0]
         
-        print('Triangle mesh created!!!')
-        
-        
         
         # Extract xyz data
         xyz = self.xyz_from_coord(vertices)
@@ -337,17 +334,17 @@ class InputData(object):
         
         # Split line segments. OBS now all mesh points must be included
         boundary_conn = boundary_conn + np.shape(self.line_coord)[0]
-        iBseg = iBcrosseg[0]
-        # for iBseg in iBcrosseg:
-        inodA  = boundary_conn[iBseg,0]
-        inodB  = boundary_conn[iBseg,1]
-        inodP  = iBcross[iBseg]
-        
-        # Change boundary_conn[iBseg,:] from AB to AP
-        boundary_conn[iBseg,1] = inodP
-        
-        # Add a new connection from P to B
-        boundary_conn = np.vstack([boundary_conn,np.array([inodP,inodB],dtype=int)])
+        # iBseg = iBcrosseg[0]
+        for iBseg in iBcrosseg:
+            inodA  = boundary_conn[iBseg,0]
+            inodB  = boundary_conn[iBseg,1]
+            inodP  = iBcross[iBseg]
+            
+            # Change boundary_conn[iBseg,:] from AB to AP
+            boundary_conn[iBseg,1] = inodP
+            
+            # Add a new connection from P to B
+            boundary_conn = np.vstack([boundary_conn,np.array([inodP,inodB],dtype=int)])
        
         
        
@@ -555,9 +552,9 @@ class Mesh(object):
         # Generate mesh
         gmsh.model.mesh.generate(2)
         
-        # Graphical illustration of mesh
-        if 'close' not in sys.argv:
-            gmsh.fltk.run()
+        # # Graphical illustration of mesh
+        # if 'close' not in sys.argv:
+        #     gmsh.fltk.run()
         
         # Finalize Gmsh
         gmsh.finalize()

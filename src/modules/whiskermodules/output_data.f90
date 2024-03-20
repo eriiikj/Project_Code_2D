@@ -454,7 +454,7 @@ contains
 
     call matWrt2f(trim(matfilename), mesh%newex      , 'newex'        , 'u')
     call matWrt2f(trim(matfilename), mesh%newey      , 'newey'        , 'u')
-    call matWrt2f(trim(matfilename), mesh%newcoord   , 'newcoord'     , 'u')
+    call matWrt2f(trim(matfilename), mesh%newcoord   , 'newcoord'     , 'u')    
 
 
     ! call integ2nod(pq%nodplot,pq%vm_Cu,'qu4',mesh%enod)
@@ -561,6 +561,7 @@ contains
     call matWrt2f(trim(matfilename), mesh%newcoord                          , 'newcoord'     , 'u')
     call matWrt2f(trim(matfilename), mesh%enod                              , 'enod'         , 'u')
     call matWrt2f(trim(matfilename), lssys%tp_points([1:lssys%ntp_points],:), 'tppoints'     , 'u')
+    call matWrt2f(trim(matfilename), lssys%hphi                             , 'hphi'     , 'u')
     
 
     return

@@ -32,18 +32,18 @@ tvec             = zeros(niterations,1);
 IMC_vol_per_area = zeros(niterations,1);
 
 k = 1;
-for i_IMC=220%1:step_size:IMC_steps
+for i_IMC=250%1:step_size:IMC_steps
 
     disp('--------')
     disp(['IMC step ', num2str(i_IMC)])  
     
     % Load time from level set
-    [~,~,~,~,~,~,~,~,~,~,time] = load_level_set(i_IMC,edof_1D);
+    [~,~,~,~,~,~,~,~,~,time] = load_level_set(i_IMC,edof_1D);
 
 
     % Load level set
     [a,ed,vp,line_ex,line_ey,line_seg,sep_lines,ngrains,IMC_area,...
-    hphi_ed,tvec(k)] = load_level_set(i_IMC,edof_1D);
+    tvec(k),hphi_ed] = load_level_set(i_IMC,edof_1D);
 
     % Store IMC vol/area
     IMC_vol_per_area(k) = IMC_area/L;
@@ -126,17 +126,6 @@ for i_IMC=220%1:step_size:IMC_steps
                        line_ey(1:line_seg(g),g_cols),'w','-')        
     end
     clim([-25 15])
-
-
-    % --- Volume expansion ---
-    figure()
-    hp = max(max(hphi_ed(:,:,2),hphi_ed(:,:,3)),hphi_ed(:,:,4));
-    p           =  patch(newex'*1e3,newey'*1e3,hp');
-    p.EdgeColor = 'interp';
-    colorbar 
-    axis equal
-    box on
-    title('Volume expansion')
 
     % Update counter
     k = k + 1;
@@ -263,7 +252,7 @@ end
 
 
 function [a,ed,vp,line_ex,line_ey,line_seg,sep_lines,ngrains,...
-    IMC_area,hphi_ed,time] = load_level_set(i_IMC,edof)
+    IMC_area,time] = load_level_set(i_IMC,edof)
 % --- Function for loading quantities from a level set step ---
 
 % Filename
@@ -281,7 +270,6 @@ load(filename,'line_ey')
 load(filename,'line_seg')
 load(filename,'sep_lines')
 load(filename,'IMC_area')
-load(filename,'hphi')
 load(filename,'time')
 
 % Rearrange arrays
@@ -311,10 +299,6 @@ for ie=1:nelm
 end
 vp = vp1;
 
-hphi_ed  = zeros(nelm,4,ngrains);
-for g=1:ngrains
-    hphi_ed(:,:,g) = extract(edof,hphi(:,g));
-end
 end
 
 
