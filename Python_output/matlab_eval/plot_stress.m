@@ -32,7 +32,7 @@ tvec             = zeros(niterations,1);
 IMC_vol_per_area = zeros(niterations,1);
 
 k = 1;
-for i_IMC=150%1:step_size:IMC_steps
+for i_IMC=119%1:step_size:IMC_steps
 
     disp('--------')
     disp(['IMC step ', num2str(i_IMC)])  
@@ -57,7 +57,8 @@ for i_IMC=150%1:step_size:IMC_steps
     %  --- von Mises stress ---
     f1 = figure(1);
     cla;    
-    plot_2D_stress(newex,newey,vm,tvec(k),axisbc,'von Mises','Total');
+    plot_2D_stress(newex,newey,vm,axisbc,...
+        'von Mises stress (MPa)');
     hold on
     for g = 2:ngrains-1
         g_cols = [2*(g-1) + 1,2*(g-1) + 2];
@@ -76,7 +77,8 @@ for i_IMC=150%1:step_size:IMC_steps
     %  --- von Mises stress in Sn ---
     f2 = figure(2);
     cla;    
-    cc = plot_2D_stress(newex,newey,vm_Sn,tvec(k),axisbc,'von Mises','Sn');
+    cc = plot_2D_stress(newex,newey,vm_Sn,axisbc,...
+        'von Mises stress (MPa)');
     hold on
     for g = 2:ngrains-1
         g_cols = [2*(g-1) + 1,2*(g-1) + 2];
@@ -113,7 +115,8 @@ for i_IMC=150%1:step_size:IMC_steps
 %  --- Biaxial stress in Sn 2 ---
     f4 = figure(4);
     cla;    
-    cc = plot_2D_stress(newex,newey,biax_Sn,tvec(k),axisbc,'Biaxial','Sn');
+    cc = plot_2D_stress(newex,newey,biax_Sn,axisbc,...
+        'Biaxial stress (MPa)');
     hold on
     for g = 2:ngrains-1
         g_cols = [2*(g-1) + 1,2*(g-1) + 2];
@@ -130,14 +133,10 @@ for i_IMC=150%1:step_size:IMC_steps
 
     % --- Volume expansion ---
     figure()
-%     hp = max(max(hphi_ed(:,:,2),hphi_ed(:,:,3)),hphi_ed(:,:,4));
-    hp = max(hphi_ed(:,:,2),hphi_ed(:,:,3));
-    p           =  patch(newex'*1e3,newey'*1e3,hp');
-    p.EdgeColor = 'interp';
-    colorbar 
-    axis equal
-    box on
-    title('Volume expansion')
+    hp = 0.45*max(max(hphi_ed(:,:,2),hphi_ed(:,:,3)),hphi_ed(:,:,4));
+%     hp = 0.45*max(hphi_ed(:,:,2),hphi_ed(:,:,3));
+    plot_2D_stress(newex,newey,hp,axisbc,...
+        'Volume expansion');
 
     % Update counter
     k = k + 1;
@@ -228,7 +227,7 @@ biax_Sn2 = extract(edof_1D,biax_Sn2_nodplot);
 p_ed     = extract(edof_1D,p_nod);
 end
 
-function [cc] = plot_2D_stress(ex,ey,ed,i_IMC,axisbc,stress_str, mat_str)
+function [cc] = plot_2D_stress(ex,ey,ed,axisbc,stress_str)
 mm_to_um = 1e3;
 
 p           = patch(ex'*mm_to_um,ey'*mm_to_um,ed');
@@ -237,7 +236,7 @@ p.EdgeColor = 'interp';
 % Colormap
 colormap("parula");
 cc                      = colorbar;
-cctitle                 = [stress_str, ' stress (MPa)'];
+cctitle                 = stress_str;
 cc.Label.String         = ['\bf ', cctitle];
 cc.Label.Interpreter    = 'latex';
 cc.Ruler.Exponent       = 0;

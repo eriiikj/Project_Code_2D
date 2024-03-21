@@ -906,15 +906,6 @@ subroutine compute_common_vp_spatial2(lssys, mesh, diffsys)
             ! if (abs((xnod-0.001d0)).lt.1d-5 .and.  abs((ynod-0.00065d0)).lt.1d-5) then
             !     print *, 'as'
             ! endif
-
-            ! ! Find coordinates of closest point on interface
-            ! minIdx = minloc(sqrt((xnod-diffsys%grain_meshes(g)%coord(1,diffsys%grain_meshes(g)%indNodBd))**2 + &
-            ! (ynod-diffsys%grain_meshes(g)%coord(2,diffsys%grain_meshes(g)%indNodBd))**2))
-            ! grain_nod = minIdx(1)
-            ! xint = diffsys%grain_meshes(g)%coord(1,grain_nod)
-            ! yint = diffsys%grain_meshes(g)%coord(2,grain_nod)
-
-            
             
         enddo
     enddo
@@ -954,7 +945,7 @@ subroutine compute_common_vp_spatial2(lssys, mesh, diffsys)
                     
         ! Sn/Sn gb positions
         numsnsngb = 4
-        mgbpos(1) = 0d0
+        mgbpos(1) = minval(mesh%newcoord(1,:))
 
         ! g = 6
         ! g_cols = [2*(g-1) + 1, 2*(g-1) + 2]
@@ -965,7 +956,7 @@ subroutine compute_common_vp_spatial2(lssys, mesh, diffsys)
         ! mgbpos(3) = maxval(lssys%line_ex(:,g_cols))
 
         ! mgbpos(4) = mesh%model_width      
-        mgbpos(2) = mesh%model_width
+        mgbpos(2) = maxval(mesh%newcoord(1,:))
 
         ! Closest distance to Sn/Sn gb
         snsn_gb_distance = minval(abs(mgbpos - mean_x))
@@ -974,7 +965,7 @@ subroutine compute_common_vp_spatial2(lssys, mesh, diffsys)
         ! Sn/Sn gb mobility
         mapply = lssys%lsrho_bulk + (lssys%lsrho_snsn - lssys%lsrho_bulk)*exp(-lssys%lsrho_lambda*snsn_gb_distance)
 
-        ! If distance to Sn less than threshold -> apply Sn/IMC mobility
+        ! If distance to Sn less than threshold -> apply Sn/Sn mobility
         if (abs(sum(lssys%ed(:,ie,5))/4d0).lt.5d-5) then
             lssys%vp(:,:,ie) = lssys%vp(:,:,ie)*mapply
         else

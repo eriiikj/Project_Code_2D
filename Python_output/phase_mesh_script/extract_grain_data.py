@@ -409,7 +409,6 @@ class Mesh(object):
         
         
         # Create a boolean mask and remove sn_sn values from bc
-        # mask  = np.abs(bcval - self.input_data.imc_imc)>1e-12
         mask  = np.abs(bcval - mu_sn_sn)>1e-12
         bcval = bcval[mask]
         bcnod = bcnod[mask]        
@@ -420,8 +419,6 @@ class Mesh(object):
             tp_loc = np.logical_and(np.abs(coord_g[bcnod[:,0]-1,0]-xtp)<1e-7, \
                                       np.abs(coord_g[bcnod[:,0]-1,1]-ytp)<1e-7)
             mask = np.logical_and(mask, tp_loc==False)    
-
-        # Update bcnod and bcval
         bcval = bcval[mask]
         bcnod = bcnod[mask]
         

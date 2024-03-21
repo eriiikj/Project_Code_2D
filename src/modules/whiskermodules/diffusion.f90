@@ -144,7 +144,7 @@ subroutine solve_diffusion_problem_global(diffsys,i_IMC,lssys,mesh,pq,input_loca
   ! Obtain global diffusion mesh
   call generate_global_diffusion_mesh(input_location, diffsys, mesh, lssys, i_IMC)
 
-  ! Solve diffusion problem for all grains seperately
+  ! Solve diffusion problem for all grains seperately  
   do g=1,lssys%ngrains
     call diffusion_grain(diffsys,i_IMC, diffsys%grain_meshes(g), g, input_location, lssys, omp_run)
   enddo
@@ -179,7 +179,7 @@ subroutine generate_global_diffusion_mesh(input_location, diffsys, mesh, lssys, 
   character(len=80)                     :: diffusion_mesh_script_location 
   character(len=:),allocatable          :: diffusion_mesh_location  
   integer                               :: g, ierr, i, g_cols(2), nelm, ii(1), inod
-  integer, allocatable :: elmidx(:), nodidx(:), nodidx2(:), uniqueArr(:)
+  integer, allocatable :: elmidx(:), nodidx(:), nodidx2(:), uniqueArr(:), uniqueArr2(:)
   logical :: ch
 
   diffusion_mesh_script_location = '/home/er7128ja/Nextcloud/Projekt/Project_Code_2D/Python_output/phase_mesh_script'  
@@ -203,9 +203,8 @@ subroutine generate_global_diffusion_mesh(input_location, diffsys, mesh, lssys, 
     deallocate(diffsys%enod)
   endif  
 
-  ! Read in new diffusion mesh
-  call read_json_diffusion_mesh(diffusion_mesh_location, i_IMC, diffsys%coord, diffsys%enod)  
-
+  ! Read in new diffusion mesh  
+  call read_json_diffusion_mesh(diffusion_mesh_location, i_IMC, diffsys%coord, diffsys%enod)    
   diffsys%nnod  = size(diffsys%coord,2)
   diffsys%nelm  = size(diffsys%enod,2)
   diffsys%nodel = size(diffsys%enod,1)
@@ -226,7 +225,7 @@ subroutine generate_global_diffusion_mesh(input_location, diffsys, mesh, lssys, 
   diffsys%ls    = 0d0
   diffsys%ls_ed = 0d0
 
-  ! Interpolate old level set values to new mesh
+  ! Interpolate old level set values to new mesh  
   do g=1,lssys%ngrains
     call interpolate_scalar_mesh1_to_mesh2(mesh%enod, mesh%newcoord, lssys%ed(:,:,g), diffsys%enod, diffsys%coord, diffsys%ls(:,g))
   enddo
@@ -247,7 +246,7 @@ subroutine generate_global_diffusion_mesh(input_location, diffsys, mesh, lssys, 
     nodidx(i)=i
   enddo
 
-  ! --- Reinitialize triangle mesh ---
+  ! --- Reinitialize triangle mesh ---  
   do g = 1,lssys%ngrains
     g_cols = [2*(g-1) + 1, 2*(g-1) + 2]
     call reinit_level_set_spatial2(diffsys%ls(:,g),lssys%line_ex(:,g_cols(1):g_cols(2)),&
@@ -267,7 +266,7 @@ subroutine generate_global_diffusion_mesh(input_location, diffsys, mesh, lssys, 
         call FindUniqueIntegers(reshape(diffsys%enod(:,pack(elmidx, count(diffsys%enod.eq.inod,1).gt.0)),[nelm*diffsys%nodel]), &
         uniqueArr)
         ii = inod
-        call setdiff_int_1D(uniqueArr, ii, uniqueArr)
+        call setdiff_int_1D(uniqueArr, ii, uniqueArr2)
         
         ! if (g.eq.2 .and.  abs(diffsys%coord(2,inod) - 0.575098d-3).lt.1d-9) then
         !   print *, 'Inod: ', inod
@@ -275,7 +274,8 @@ subroutine generate_global_diffusion_mesh(input_location, diffsys, mesh, lssys, 
         !   print *, 'coord', diffsys%coord(:,inod)
         !   print *, 'ls(uniqueArr): ', diffsys%ls(uniqueArr,g)
         ! endif
-        if (count((diffsys%ls(uniqueArr,g)).lt.0d0).ge.count((diffsys%ls(uniqueArr,g)).gt.0d0) .and.diffsys%ls(inod,g).gt.0d0) then
+        if (count((diffsys%ls(uniqueArr2,g)).lt.0d0).ge.count((diffsys%ls(uniqueArr2,g)).gt.0d0) &
+        .and.diffsys%ls(inod,g).gt.0d0) then
           diffsys%ls(inod,g) = -1d0*abs(diffsys%ls(inod,g))
           ch = .true.
         endif
@@ -286,7 +286,7 @@ subroutine generate_global_diffusion_mesh(input_location, diffsys, mesh, lssys, 
     ! Update ed
     call extract(diffsys%ls_ed(:,:,g),diffsys%ls(:,g),diffsys%enod,1)
   enddo
-
+  
   ! Write interpolated ls data to file
   call write_diffusion_glob_iter_to_matlab(input_location, i_IMC, diffsys%ls)
 
@@ -1540,23 +1540,12 @@ subroutine reinit_level_set_spatial2(a_g,line_ex,line_ey,closest_line,nseg,coord
 
           if (isnan(norm2(E - P))) then
               print *, 'distance is nan'
-              ! call exit(0)
+              call exit(0)
           endif
       enddo
 
-
       ! Signed distance function
       a_g(inod) = sign(1d0,a_g(inod))*abs(minval(seg_dists))
-
-      ! if (abs(a_g(inod)).lt.1d-9) then
-      !   iIntElm = 1
-      !   A = [line_ex(iIntElm,1), line_ey(iIntElm,1)]
-      !   B = [line_ex(iIntElm,2), line_ey(iIntElm,2)]
-      !   v = B - A
-      !   u = A - P
-      !   t = -dot_product(v, u)/dot_product(v, v)
-      !   ! print *, 'as'
-      ! endif
 
       ! Store closest line
       closest_line(inod) = minloc(seg_dists, 1)

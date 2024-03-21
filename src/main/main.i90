@@ -95,8 +95,8 @@ program main
    call init_mesh_system(mesh)
 
 ! Initiate level set
-   ngrains   = 4
-   IMC_steps = 400
+   ngrains   = 5
+   IMC_steps = 300
    call allocate_ls_system(lssys,ngrains,mesh%nelm,mesh%nrgp,mesh%nnod,mesh%nodel,mesh%enod)
    call init_ls_system(lssys,mesh,IMC_steps,input_location)
 
@@ -120,7 +120,7 @@ program main
    init_time = t4-t3
 
 ! --- Move IMC boundary and thereafter solve mechanical problem ---
-   lssys%h = 0.4d0
+   lssys%h = 0.2d0
    ls_h    = lssys%h
    do i_IMC=1,IMC_steps
 
@@ -158,7 +158,7 @@ program main
             ls_h    = ls_h/2d0
             lssys%h = ls_h
             reinit = .false.
-         elseif (ls_h.lt.3d0) then
+         elseif (ls_h.lt.2d0) then
             ls_h    = ls_h*1.1d0
             lssys%h = ls_h
             reinit = .true.
@@ -177,19 +177,19 @@ program main
 ! ! --- Write ls state ---
       call write_level_set_iter_to_matlab(lssys, mesh, i_IMC, input_location)
 
-! ! --- Solve diffusion problem for updated configuration ---
-! call solve_diffusion_problem_global(diffsys, i_IMC, lssys, mesh, pq, input_location, omp_run)
+! --- Solve diffusion problem for updated configuration ---
+      call solve_diffusion_problem_global(diffsys, i_IMC, lssys, mesh, pq, input_location, omp_run)
 
 ! ! --- Compute velocity field from diffusion ---
 ! print *, 'Entering compute_common_vp'
-! call compute_common_vp_spatial2(lssys,mesh,diffsys)
+      call compute_common_vp_spatial2(lssys,mesh,diffsys)
 ! print *, 'Leaving compute_common_vp'
 
 ! ! --- Write ls state ---
-! call write_level_set_iter_to_matlab(lssys, mesh, i_IMC, input_location)
+      call write_level_set_iter_to_matlab(lssys, mesh, i_IMC, input_location)
       
-! ! --- Plot ---
-! call plot_vtk(pq, input_location, mesh%nnodgp, mesh, lssys, i_IMC)
+! --- Plot ---
+      call plot_vtk(pq, input_location, mesh%nnodgp, mesh, lssys, i_IMC)
 
 ! Update time
       lssys%time = lssys%time + lssys%h

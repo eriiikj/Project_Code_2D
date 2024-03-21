@@ -272,22 +272,22 @@ contains
 
 
 ! Topology
-    nMFC_dofs_per_constraint = 1
+    nMFC_dofs_per_constraint = 2
     nnod                     = size(mesh%coord,2)
 
 ! Number of MFC
-    nMFC = size(mesh%bcnods_right_side)
+    nMFC = size(mesh%bcnods_right_side) - 1
     write(*,'(A6,I3)') 'nMFC: ',nMFC
 
 ! Allocate right side dofs
-    allocate(right_boundary_dofs_x(nMFC)       , stat=ierr)
+    allocate(right_boundary_dofs_x(size(mesh%bcnods_right_side)), stat=ierr)
 
 ! --- Boundary dofs ---
     right_boundary_dofs_x = (mesh%bcnods_right_side-1)*2+1
 
 ! Tdof - topology of MFC collected. Each MFC dofs stored columnwise
     allocate(Tdof(2,nMFC))
-    Tdof(1,:) = right_boundary_dofs_x
+    Tdof(1,:) = right_boundary_dofs_x(2:)
     Tdof(2,:) = right_boundary_dofs_x(1)
 
 ! Tcell

@@ -7,6 +7,7 @@ set(CMAKE_Fortran_COMPILER "ifort")
 
 # OpenMP
 set(omp_run FALSE)
+#set(omp_run TRUE)
 
 # Get compiler name
 get_filename_component (Fortran_COMPILER_NAME ${CMAKE_Fortran_COMPILER} NAME)

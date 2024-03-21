@@ -1,5 +1,5 @@
 # 1 "/home/er7128ja/Nextcloud/Projekt/Project_Code_2D/other/templintermods/specimen__genmod.f90"
-!COMPILER-GENERATED INTERFACE MODULE: Wed Mar 20 11:10:12 2024
+!COMPILER-GENERATED INTERFACE MODULE: Thu Mar 21 09:25:24 2024
 ! This source file is for reference only and may not completely
 ! represent the generated interface used by the compiler.
         MODULE SPECIMEN__genmod

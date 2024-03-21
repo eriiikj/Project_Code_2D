@@ -27,11 +27,11 @@ my_colors2 = [[255,58,58]; [255,165,41]; [8,81,156]; [136,86,167]
 mm_to_um  = 1e3;
 
 % IMC steps
-IMC_steps = 235;
+IMC_steps = 260;
 
 
 %% Level set evolution
-step_size   = 1;
+step_size   = 10;
 niterations = floor((IMC_steps - 1) / step_size);
 
 % Storing all times
@@ -39,14 +39,14 @@ tvec             = zeros(niterations,1);
 IMC_vol_per_area = zeros(niterations,1);
 
 k = 1;
-for i_IMC=1:step_size:IMC_steps
+for i_IMC=75%1:step_size:IMC_steps
     
     disp('--------')
     disp(['IMC step ', num2str(i_IMC)])
 
     % Load level set
     [a,ed,vp,line_ex,line_ey,line_seg,sep_lines,ngrains,IMC_area,...
-    tvec(k),newex,newey,newcoord] = load_level_set(i_IMC,edof_1D); 
+    tvec(k),newex,newey,newcoord,hphi_ed] = load_level_set(i_IMC,edof_1D); 
 
     % Store IMC vol/area
     IMC_vol_per_area(k) = IMC_area/L;
@@ -56,16 +56,16 @@ for i_IMC=1:step_size:IMC_steps
     clf;
 %     plot_mesh(ex,ey,'black')    
     plot_mesh(newex,newey,'green')
+%     plot_field(newex,newey,ed(:,:,2),'k')
     hold on
     plot_speed_gp(newex,newey,vp)
     for g = 1:ngrains
         g_cols = [2*(g-1) + 1,2*(g-1) + 2];
         plot_interface(line_ex(1:line_seg(g),g_cols),...
                        line_ey(1:line_seg(g),g_cols),my_colors(g,:),g)
-    end
+    end    
 
     % Axis and title
-    axis(axisbc*mm_to_um)
     axis equal
     box on
     title(['Time: ', num2str(tvec(k)), ' (h)'])
@@ -129,7 +129,7 @@ axisbc           = [min(ex(:)) max(ex(:)) min(ey(:)) max(ey(:))]';
 end
 
 function [a,ed,vp,line_ex,line_ey,line_seg,sep_lines,ngrains,...
-    IMC_area,time,newex,newey,newcoord] ...
+    IMC_area,time,newex,newey,newcoord,hphi_ed] ...
     = load_level_set(i_IMC,edof)
 % --- Function for loading quantities from a level set step ---
 
@@ -152,6 +152,7 @@ load(filename,'time')
 load(filename,'newex')
 load(filename,'newey')
 load(filename,'newcoord')
+load(filename,'hphi')
 
 
 % Rearrange arrays
@@ -182,6 +183,11 @@ for ie=1:nelm
     vp1{ie} = vp(:,:,ie)';
 end
 vp = vp1;
+
+hphi_ed  = zeros(nelm,4,ngrains);
+for g=1:ngrains
+    hphi_ed(:,:,g) = extract(edof,hphi(:,g));
+end
 
 end
 
@@ -373,4 +379,17 @@ if ~exist(plotfolder,"dir")
     disp(['Created new directory: ', plotfolder])
 end    
 saveas(fh, fullfile(plotfolder,filename));
+end
+
+function plot_field(ex,ey,ed,color)
+nm_to_um  = 1e3;
+
+% Plot mesh
+patch(ex'*nm_to_um,ey'*nm_to_um,ed',ed','EdgeColor',color,...
+    'HandleVisibility','off')
+
+cc                = colorbar;
+cc.Label.String   = '\bf Value';
+cc.Label.FontSize = 10;
+
 end

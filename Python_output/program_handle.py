@@ -453,8 +453,9 @@ class Solver(object):
         # Side bc nods
         bcnods_left_side  = np.asarray(bdofs[self.input_data.leftSideSupportMarker])\
             [0::2]
-        bcnods_left_side = (bcnods_left_side+1)/2
-        bcnods_left_side = bcnods_left_side.astype('int')
+        bcnods_left_side  = (bcnods_left_side+1)/2
+        bcnods_left_side  = bcnods_left_side.astype('int')
+        bcdof_left_side   = 1*np.ones(np.shape(bcnods_left_side)[0])
         bcnods_right_side = np.asarray(bdofs[self.input_data.rightSideSupportMarker])\
             [0::2]
         bcnods_right_side = (bcnods_right_side+1)/2
@@ -489,26 +490,26 @@ class Solver(object):
             bcdofs = np.concatenate([bcdofsy_lower,bcdofs_sides])
         else:
             
-            # Concatenate bcnods and bcdofs
-            bcnods = np.concatenate([bcnods_lower])
-            bcdofs = np.concatenate([bcdofsy_lower])
+            # # Concatenate bcnods and bcdofs
+            # bcnods = np.concatenate([bcnods_lower])
+            # bcdofs = np.concatenate([bcdofsy_lower])
     
-            # Constraint x in middle node
-            bcnod_xcoord = coord[bcnods-1,0]                # x coord of bcnod
-            mw           = self.input_data.geom_w/2         # xmiddle
-            bcnod_x_idx  = np.abs(bcnod_xcoord-mw).argmin() # idx of closest node
-            bcnod_x      = bcnods[bcnod_x_idx]              # node
-            bcdof_x      = 1                                # x-dir
+            # # Constraint x in middle node
+            # bcnod_xcoord = coord[bcnods-1,0]                # x coord of bcnod
+            # mw           = self.input_data.geom_w/2         # xmiddle
+            # bcnod_x_idx  = np.abs(bcnod_xcoord-mw).argmin() # idx of closest node
+            # bcnod_x      = bcnods[bcnod_x_idx]              # node
+            # bcdof_x      = 1                                # x-dir
             
-            # Append x constraint
-            bcnods = np.append(bcnods,bcnod_x)
-            bcdofs = np.append(bcdofs,bcdof_x)
-        
-        
-        
-        
-        
-        
+            # # Append x constraint
+            # bcnods = np.append(bcnods,bcnod_x)
+            # bcdofs = np.append(bcdofs,bcdof_x)
+            
+            # Concatenate bcnods and bcdofs
+            bcnods = np.concatenate([bcnods_lower,bcnods_left_side])
+            bcdofs = np.concatenate([bcdofsy_lower,bcdof_left_side])
+
+
         nbc    = np.size(bcnods)
         
         bcnod      = np.zeros((nbc,2), dtype=np.int32)

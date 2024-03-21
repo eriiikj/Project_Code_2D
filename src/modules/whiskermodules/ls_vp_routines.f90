@@ -264,68 +264,74 @@ subroutine lvlset2D4_global_vp2(vp_e, coord, ed_e_gr, jgp_e_gr, agp_e_gr, Igrain
         Ograin = minloc(agp_e_gr(GP_NR,other_grains))
         other_grain = other_grains(Ograin(1))
 
-
-
         ! do k = 1,size(other_grains)
 
-        ! ! Grain number
-        ! other_grain = other_grains(k)
+            ! Grain number
+            ! other_grain = other_grains(k)
 
-        ! Material other grain            
-        other_material  = lssys%material(other_grain) 
+            ! Material other grain            
+            other_material  = lssys%material(other_grain) 
 
-        if (inside_material.ne.other_material) then
-        
-            ! Normal direction at gp for other grain
-            nj    = matmul(B,ed_e_gr(:,other_grain))
-            normn = norm2(nj)
+            if (inside_material.ne.other_material) then
             
-            if (normn.gt.1d-13) then
-                nj = nj/normn
-            else
-                print *, 'Level set normal is zero'
+                ! Normal direction at gp for other grain
+                nj    = matmul(B,ed_e_gr(:,other_grain))
+                normn = norm2(nj)
+                
+                if (normn.gt.1d-13) then
+                    nj = nj/normn
+                else
+                    print *, 'Level set normal is zero'
+                endif
+                
+                ! Equilibrium concentrations for inside grain and other grain for the inside/other phase interface
+                xi = diffsys%eq_x(inside_material, other_material)
+                ci = xi/diffsys%molar_volumes(inside_material)
+                xj = diffsys%eq_x(other_material, inside_material)
+                cj = xj/diffsys%molar_volumes(other_material)
+
+                ! Jdiff in Gauss point
+                jdiff = (jgp_e_gr(GP_NR,other_grain) + jgp_e_gr(GP_NR,inside_grain))
+
+                ! Cdiff in Gauss point            
+                cdiff = cj - ci
+                if (cdiff.eq.0d0) then
+                    print *, 'cdiff is 0'
+                    print *, 'coord: '          , coord
+                    print *, 'inside_grain: '   , inside_grain
+                    print *, 'inside material: ', inside_material
+                    print *, 'other_grain: '    , other_grain
+                    print *, 'other material: ' , other_material
+                    print *, 'cdiff: '          , cdiff
+                    print *, 'jdiff: '          , jdiff
+                    call exit(0)
+                endif
+                
+                ! Velocity contribution ij
+                vel_cont = (1/cdiff)*jdiff
+
+                if (isnan(vel_cont)) then
+                    print *, 'vel_cont is NAN'                
+                    print *, 'coord: '          , coord
+                    print *, 'inside_grain: '   , inside_grain
+                    print *, 'inside material: ', inside_material
+                    print *, 'other_grain: '    , other_grain
+                    print *, 'other material: ' , other_material
+                    print *, 'cdiff: '          , cdiff
+                    print *, 'jdiff: '          , jdiff
+                    call exit(0)
+                endif
+
+                ! if (abs((coord(1,1)-0.000975d0)).lt.1d-5 .and. abs((coord(2,1)-0.000625d0)).lt.1d-5) then
+                !     print *, 'as'
+                ! endif
+
+                ! Decaying function       
+                f_j = exp(-lssys%alpha*abs(agp_e_gr(GP_NR,other_grain)))
+
+                ! Define vector vpvec  
+                vp_e(:,GP_NR) = vp_e(:,GP_NR) + f_j*vel_cont*nj
             endif
-            
-            ! Equilibrium concentrations for inside grain and other grain for the inside/other phase interface
-            xi = diffsys%eq_x(inside_material, other_material)
-            ci = xi/diffsys%molar_volumes(inside_material)
-            xj = diffsys%eq_x(other_material, inside_material)
-            cj = xj/diffsys%molar_volumes(other_material)
-
-            ! Jdiff in Gauss point
-            jdiff = (jgp_e_gr(GP_NR,other_grain) + jgp_e_gr(GP_NR,inside_grain))
-
-            ! Cdiff in Gauss point            
-            cdiff = cj - ci
-            if (cdiff.eq.0d0) then
-                print *, 'cdiff is 0'
-            endif
-            
-            ! Velocity contribution ij
-            vel_cont = (1/cdiff)*jdiff
-
-            if (isnan(vel_cont)) then
-                print *, 'vel_cont is NAN'                
-                print *, 'coord: '          , coord
-                print *, 'inside_grain: '   , inside_grain
-                print *, 'inside material: ', inside_material
-                print *, 'other_grain: '    , other_grain
-                print *, 'other material: ' , other_material
-                print *, 'cdiff: '          , cdiff
-                print *, 'jdiff: '          , jdiff
-                call exit(0)
-            endif
-
-            ! if (abs((coord(1,1)-0.000975d0)).lt.1d-5 .and. abs((coord(2,1)-0.000625d0)).lt.1d-5) then
-            !     print *, 'as'
-            ! endif
-
-            ! Decaying function       
-            f_j = exp(-lssys%alpha*abs(agp_e_gr(GP_NR,other_grain)))
-
-            ! Define vector vpvec  
-            vp_e(:,GP_NR) = vp_e(:,GP_NR) + f_j*vel_cont*nj
-        endif
     
         ! enddo
 

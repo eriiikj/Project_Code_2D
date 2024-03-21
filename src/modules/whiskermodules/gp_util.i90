@@ -436,10 +436,10 @@ subroutine setdiff_int_1D(arr1, arr2, diff)
    implicit none
    
 ! Intent inout
-   integer, allocatable, intent(out) :: diff(:)
+   integer, allocatable, intent(inout) :: diff(:)
 
 ! Intent in
-   integer, intent(in)               :: arr1(:), arr2(:)
+   integer, intent(in)                 :: arr1(:), arr2(:)
    
 ! Subroutine variables
    integer :: i, j, count, n1, n2

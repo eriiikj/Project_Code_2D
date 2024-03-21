@@ -32,18 +32,18 @@ tvec             = zeros(niterations,1);
 IMC_vol_per_area = zeros(niterations,1);
 
 k = 1;
-for i_IMC=250%1:step_size:IMC_steps
+for i_IMC=110%1:step_size:IMC_steps
 
     disp('--------')
     disp(['IMC step ', num2str(i_IMC)])  
     
     % Load time from level set
-    [~,~,~,~,~,~,~,~,~,time] = load_level_set(i_IMC,edof_1D);
+    [~,~,~,~,~,~,~,~,~,~,time] = load_level_set(i_IMC,edof_1D);
 
 
     % Load level set
     [a,ed,vp,line_ex,line_ey,line_seg,sep_lines,ngrains,IMC_area,...
-    tvec(k),hphi_ed] = load_level_set(i_IMC,edof_1D);
+    hphi_ed,tvec(k)] = load_level_set(i_IMC,edof_1D);
 
     % Store IMC vol/area
     IMC_vol_per_area(k) = IMC_area/L;
@@ -57,7 +57,8 @@ for i_IMC=250%1:step_size:IMC_steps
     %  --- von Mises stress ---
     f1 = figure(1);
     cla;    
-    plot_2D_stress(newex,newey,vm,tvec(k),axisbc,'von Mises','Total');
+    plot_2D_stress(newex,newey,vm,tvec(k),axisbc,...
+        'von Mises stress (MPa)','Total');
     hold on
     for g = 2:ngrains-1
         g_cols = [2*(g-1) + 1,2*(g-1) + 2];
@@ -76,7 +77,8 @@ for i_IMC=250%1:step_size:IMC_steps
     %  --- von Mises stress in Sn ---
     f2 = figure(2);
     cla;    
-    cc = plot_2D_stress(newex,newey,vm_Sn,tvec(k),axisbc,'von Mises','Sn');
+    cc = plot_2D_stress(newex,newey,vm_Sn,tvec(k),axisbc,...
+        'von Mises stress (MPa)','Sn');
     hold on
     for g = 2:ngrains-1
         g_cols = [2*(g-1) + 1,2*(g-1) + 2];
@@ -113,7 +115,8 @@ for i_IMC=250%1:step_size:IMC_steps
 %  --- Biaxial stress in Sn 2 ---
     f4 = figure(4);
     cla;    
-    cc = plot_2D_stress(newex,newey,biax_Sn,tvec(k),axisbc,'Biaxial','Sn');
+    cc = plot_2D_stress(newex,newey,biax_Sn,tvec(k),axisbc,...
+        'Biaxial stress (MPa)','Sn');
     hold on
     for g = 2:ngrains-1
         g_cols = [2*(g-1) + 1,2*(g-1) + 2];
@@ -126,6 +129,20 @@ for i_IMC=250%1:step_size:IMC_steps
                        line_ey(1:line_seg(g),g_cols),'w','-')        
     end
     clim([-25 15])
+
+
+    % --- Volume expansion ---
+    figure()
+    hp = max(max(hphi_ed(:,:,2),hphi_ed(:,:,3)),hphi_ed(:,:,4));
+%     hp = 0.45*max(hphi_ed(:,:,2),hphi_ed(:,:,3));
+    plot_2D_stress(newex,newey,hp,tvec(k),axisbc,...
+        'Biaxial stress (MPa)','Sn');
+    p           =  patch(newex'*1e3,newey'*1e3,hp');
+    p.EdgeColor = 'interp';
+    colorbar 
+    axis equal
+    box on
+    title('Volume expansion')
 
     % Update counter
     k = k + 1;
@@ -225,7 +242,7 @@ p.EdgeColor = 'interp';
 % Colormap
 colormap("parula");
 cc                      = colorbar;
-cctitle                 = [stress_str, ' stress (MPa)'];
+cctitle                 = stress_str;
 cc.Label.String         = ['\bf ', cctitle];
 cc.Label.Interpreter    = 'latex';
 cc.Ruler.Exponent       = 0;
@@ -252,7 +269,7 @@ end
 
 
 function [a,ed,vp,line_ex,line_ey,line_seg,sep_lines,ngrains,...
-    IMC_area,time] = load_level_set(i_IMC,edof)
+    IMC_area,hphi_ed,time] = load_level_set(i_IMC,edof)
 % --- Function for loading quantities from a level set step ---
 
 % Filename
@@ -270,6 +287,7 @@ load(filename,'line_ey')
 load(filename,'line_seg')
 load(filename,'sep_lines')
 load(filename,'IMC_area')
+load(filename,'hphi')
 load(filename,'time')
 
 % Rearrange arrays
@@ -299,6 +317,10 @@ for ie=1:nelm
 end
 vp = vp1;
 
+hphi_ed  = zeros(nelm,4,ngrains);
+for g=1:ngrains
+    hphi_ed(:,:,g) = extract(edof,hphi(:,g));
+end
 end
 
 
