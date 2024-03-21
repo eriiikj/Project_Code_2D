@@ -27,7 +27,7 @@ my_colors2 = [[255,58,58]; [255,165,41]; [8,81,156]; [136,86,167]
 mm_to_um  = 1e3;
 
 % IMC steps
-IMC_steps = 260;
+IMC_steps = 300;
 
 
 %% Level set evolution
@@ -39,7 +39,7 @@ tvec             = zeros(niterations,1);
 IMC_vol_per_area = zeros(niterations,1);
 
 k = 1;
-for i_IMC=75%1:step_size:IMC_steps
+for i_IMC=1%1:step_size:IMC_steps
     
     disp('--------')
     disp(['IMC step ', num2str(i_IMC)])

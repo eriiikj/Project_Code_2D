@@ -53,9 +53,9 @@ contains
     nMFC_dofs_per_constraint = 2
 
 ! Define Tcell, holding indecies of T. Also define g
-    call init_MFC_T_ux_uy_equal(Tcell, Tcell_transpose, Tval, nMFC_nods, nMFC, nMFC_dofs_per_constraint, &
-                                right_boundary_nodes, left_boundary_nodes, mesh)
-! call init_MFC_T_ux_right_equal(Tcell, Tcell_transpose, Tval, nMFC, mesh)
+! call init_MFC_T_ux_uy_equal(Tcell, Tcell_transpose, Tval, nMFC_nods, nMFC, nMFC_dofs_per_constraint, &
+!                             right_boundary_nodes, left_boundary_nodes, mesh)
+    call init_MFC_T_ux_right_equal(Tcell, Tcell_transpose, Tval, nMFC, mesh)
 
     call init_MFC_g(g, nMFC)    
 

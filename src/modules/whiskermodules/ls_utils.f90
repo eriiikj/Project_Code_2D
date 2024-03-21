@@ -888,6 +888,12 @@ subroutine compute_common_vp_spatial2(lssys, mesh, diffsys)
             xnod = mesh%newcoord(1,inod)
             ynod = mesh%newcoord(2,inod)
 
+            if (abs(xnod-0.300016d-3)<1e-5 .and. abs(ynod-0.650276d-3)<1e-5) then
+                print *, 'inod: ', inod
+                print*, 'a(inod,g): ', lssys%a(inod,g)
+                print *, 'as'
+            endif
+
             ! Find coordinates of closest point on interface
             minIdx =  minloc(sqrt((xnod - lssys%line_coord(1:lssys%line_coordN(g),g_cols(1)))**2 + &
             (ynod - lssys%line_coord(1:lssys%line_coordN(g),g_cols(2)))**2))
