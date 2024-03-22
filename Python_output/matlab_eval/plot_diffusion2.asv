@@ -42,7 +42,7 @@ grainArr = repmat(grain, 1, ngrains);
 
 %% Diffusion equation
 step_size = 1;
-for i_IMC = 8%1:step_size:IMC_steps
+for i_IMC = 1%1:step_size:IMC_steps
 
     % Load level set
     [a,ed,line_ex,line_ey,line_seg,line_coord,line_coordN,ex,ey,coord,...
@@ -68,7 +68,7 @@ for i_IMC = 8%1:step_size:IMC_steps
     % Plot grain mesh with concentration
     f1 = figure(1);
     cla;
-    for g=4%1:ngrains
+    for g=2%1:ngrains
 %         plot_mesh(grainArr(g).ex,grainArr(g).ey,'k')
         plot_2D_conc(grainArr(g).ex,grainArr(g).ey,grainArr(g).ed,i_IMC)
         hold on
@@ -129,6 +129,11 @@ for i=1:nbseg
     Me(2,:) = [1, 2];
     Me      = Le/6*Me;
     M2(enod_m(:,i),enod_m(:,i)) = M2(enod_m(:,i),enod_m(:,i)) + Me;
+    next = i+1;
+    if (i==nbseg)
+        next = 1;
+    end
+    M2(i,i+1) = M2(i,i+1) + Me;
 end
 
 
@@ -147,7 +152,7 @@ figure()
 hold on
 bccoords = coordTG(indNodBd,:);
 rr       = grainArr(g).r(indNodBd);
-scatter(bccoords(:,1),bccoords(:,2),1e18*abs(rr)+0.01,1e17*rr+0.01,'filled')
+scatter(bccoords(:,1),bccoords(:,2),200*abs(rr)/max(abs(rr))+0.01, 200*(rr)/max(abs(rr)),'filled')
 colorbar
 box on
 axis equal
@@ -166,25 +171,12 @@ title('Computed jint3')
 % Plot computed jint4
 figure()
 hold on
-s = find(abs(jint4)>mean(abs(jint4))*2);
-jint4(s) = 0;
 bccoords = coordTG(indNodBd,:);
 scatter(bccoords(:,1),bccoords(:,2),1e13*abs(jint4)+0.01,1e13*(jint4),'filled')
 colorbar
 box on
 axis equal
 title('Computed jint4')
-
-
-% Plot computed jint
-figure()
-hold on
-bccoords = coordTG(indNodBd,:);
-scatter(bccoords(:,1),bccoords(:,2),1e13*abs(grainArr(g).jint)+0.01,1e13*(grainArr(g).jint),'filled')
-colorbar
-box on
-axis equal
-title('Computed jint')
 
 % % Plot boundary elements
 % figure()

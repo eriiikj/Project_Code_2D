@@ -96,7 +96,7 @@ program main
 
 ! Initiate level set
    ngrains   = 5
-   IMC_steps = 1
+   IMC_steps = 2
    call allocate_ls_system(lssys,ngrains,mesh%nelm,mesh%nrgp,mesh%nnod,mesh%nodel,mesh%enod)
    call init_ls_system(lssys,mesh,IMC_steps,input_location)
 
@@ -120,7 +120,7 @@ program main
    init_time = t4-t3
 
 ! --- Move IMC boundary and thereafter solve mechanical problem ---
-   lssys%h = 0.2d0
+   lssys%h = 1d0!0.2d0
    ls_h    = lssys%h
    do i_IMC=1,IMC_steps
 
@@ -149,8 +149,8 @@ program main
          write(*,*)
          write(*,'(A39)') '-------------- Load loop --------------'
          write(*,"(A11,G10.3)") 'Time step: ', lssys%h
-         call loadloop(mesh, lssys, IMC_eps_star, pq, i_IMC, omp_run, input_location, newton_loop_conv)
-! newton_loop_conv = .true.
+! call loadloop(mesh, lssys, IMC_eps_star, pq, i_IMC, omp_run, input_location, newton_loop_conv)
+         newton_loop_conv = .true.
          
 ! If Newton loop fail - take shorter time step
          if (newton_loop_conv .eqv. .false.) then
@@ -158,7 +158,7 @@ program main
             ls_h    = ls_h/2d0
             lssys%h = ls_h
             reinit = .false.
-         elseif (ls_h.lt.2d0) then
+         elseif (ls_h.lt.1.5d0) then
             ls_h    = ls_h*1.1d0
             lssys%h = ls_h
             reinit = .true.
@@ -171,10 +171,10 @@ program main
       enddo
       
       
-! ! --- Obtain level set positions in new configuration. OBS should not change ls values ---
+! --- Obtain level set positions in new configuration. OBS should not change ls values ---
       call get_ls_positions(lssys,mesh,i_IMC,input_location, omp_run, pq, ls_spatial)
 
-! ! --- Write ls state ---
+! --- Write ls state ---
       call write_level_set_iter_to_matlab(lssys, mesh, i_IMC, input_location)
 
 ! --- Solve diffusion problem for updated configuration ---

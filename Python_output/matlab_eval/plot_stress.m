@@ -32,7 +32,7 @@ tvec             = zeros(niterations,1);
 IMC_vol_per_area = zeros(niterations,1);
 
 k = 1;
-for i_IMC=300%1:step_size:IMC_steps
+for i_IMC=385%1:step_size:IMC_steps
 
     disp('--------')
     disp(['IMC step ', num2str(i_IMC)])  
@@ -52,6 +52,7 @@ for i_IMC=300%1:step_size:IMC_steps
     [vm,vm_Cu,vm_IMC,vm_Sn,biax,biax_Cu,biax_IMC,biax_Sn,biax_Sn2,p_ed,...
      newcoord,newex,newey] = load_stress(i_IMC,edof_1D);    
 
+    axisbc = [min(newcoord(:,1)),max(newcoord(:,1)),min(newcoord(:,2)),max(newcoord(:,2))];
     disp(['Time: ', num2str(tvec(k))])
 
     %  --- von Mises stress ---

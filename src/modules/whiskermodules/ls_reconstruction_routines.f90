@@ -1194,7 +1194,7 @@ subroutine tp_reconstruction_spatial(lssys,mesh)
         Bprev = 0d0
         Cprev = 0d0
         steps = 1
-        do while (step_junc .and. steps.le.1)
+        do while (step_junc .and. steps.le.1) ! (step_junc .or. steps.lt.2)
 
             ! Find next point along line in lsa
             call get_connecting_lines(line_elm_idx, tp_ie, lssys%int_elms, lsa_rm_lines, mesh, line_exa, line_eya, &

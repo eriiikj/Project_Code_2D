@@ -208,6 +208,8 @@ subroutine init_ls_system(lssys,mesh,IMC_steps, input_location)
   lssys%a(:,5) = -minval(lssys%a(:,2:ngrains-1),dim=2) + 1e-2
   where (mesh%coord(2,:).lt.cu_height) lssys%a(:,5) = 1d0                                   ! Sn
 
+
+
   ! ! Simulation 3: ngrains = 6 (Good - from pp)
   ! lssys%a   = 1d0
   ! r         = 0.1d-3
@@ -530,13 +532,13 @@ subroutine get_ls_positions(lssys,mesh,i_IMC,input_location, omp_run, pq, ls_spa
     call interface_reconstruction(lssys, mesh)
   endif
 
-  ! 3) --- Adaptive mesh refinement with refinement length lseg ---
-  lseg = 1.5d-5
-  do g = 1,lssys%ngrains
-    g_cols = [2*(g-1) + 1, 2*(g-1) + 2]
-    call interface_lseg_adjustment(lssys%line_ex(:,g_cols(1):g_cols(2)), lssys%line_ey(:,g_cols(1):g_cols(2)), &
-    lssys%line_seg(g), lssys%tp_points([1:lssys%ntp_points],:), mesh%bcnod_all, mesh%newcoord, lseg)
-  enddo
+  ! ! 3) --- Adaptive mesh refinement with refinement length lseg ---
+  ! lseg = 1.8d-5
+  ! do g = 1,lssys%ngrains
+  !   g_cols = [2*(g-1) + 1, 2*(g-1) + 2]
+  !   call interface_lseg_adjustment(lssys%line_ex(:,g_cols(1):g_cols(2)), lssys%line_ey(:,g_cols(1):g_cols(2)), &
+  !   lssys%line_seg(g), lssys%tp_points([1:lssys%ntp_points],:), mesh%bcnod_all, mesh%newcoord, lseg)
+  ! enddo
 
   ! Extract line_coord
   do g = 1,lssys%ngrains

@@ -421,6 +421,8 @@ subroutine compute_jint4(grain_mesh)
   real(dp), dimension(:)                :: b(size(grain_mesh%indLocalEdgBd))
   integer, allocatable                  :: oldNods(:)
   type(sparse)                          :: M
+  integer, allocatable                  :: bcnod(:)
+  real(dp), allocatable                 :: bcval(:)
 
   ! Number of boundary segments
   nbseg = size(grain_mesh%indLocalEdgBd)
@@ -471,11 +473,22 @@ subroutine compute_jint4(grain_mesh)
       call assem(M,Me,enod_m(:,i),1)
   end do
 
-  allocate(grain_mesh%jint(nbseg), stat=ierr)    
   b = -grain_mesh%r(grain_mesh%indNodBd)
-  call solveq(M, b)
+  allocate(grain_mesh%jint(nbseg), stat=ierr)
+  bcnod = pack([(/(i, i=1, size(b))/)], abs(b).lt.1d-20)
+  allocate(bcval(size(bcnod)),stat=ierr)
+  bcval = 0d0
+  print *, 'size(bcnod): ', size(bcnod)
+  print *, 'size(bcval): ', size(bcval)
+  ! call solveq(M, b)
+  call solveq(M, b, bcnod, bcval)
   grain_mesh%jint = b
-  
+
+  where(abs(grain_mesh%jint) .gt. 3d0*sum(abs(grain_mesh%jint))/size(grain_mesh%jint)) grain_mesh%jint=0d0
+
+  ! Deallocate  
+  deallocate(bcnod)
+  deallocate(bcval)
   return
 end subroutine compute_jint4
 
