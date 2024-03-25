@@ -334,7 +334,7 @@ subroutine diffusion_grain(diffsys, i_IMC, grain_mesh, g, input_location, lssys,
     real(dp)                                   :: t1, t2, tmp(2) = 1d0
     
     write(*,*) 
-    write(*,'(A40,I1,A4)') '--- Solving diffusion problem for grain ', g, ' ---'
+    write(*,'(A40,I2,A4)') '--- Solving diffusion problem for grain ', g, ' ---'
 
     
     g_cols = [2*(g-1) + 1, 2*(g-1) + 2]

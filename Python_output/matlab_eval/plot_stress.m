@@ -23,7 +23,7 @@ t] = load_level_set(i_IMC,edof_1D);
 
 
 %% Load loop
-IMC_steps   = 100;
+IMC_steps   = 190;
 step_size   = 5;
 niterations = floor((IMC_steps - 1) / step_size);
 
@@ -32,7 +32,7 @@ tvec             = zeros(niterations,1);
 IMC_vol_per_area = zeros(niterations,1);
 
 k = 1;
-for i_IMC=385%1:step_size:IMC_steps
+for i_IMC=1%1:step_size:IMC_steps
 
     disp('--------')
     disp(['IMC step ', num2str(i_IMC)])  
@@ -61,7 +61,7 @@ for i_IMC=385%1:step_size:IMC_steps
     plot_2D_stress(newex,newey,vm,axisbc,...
         'von Mises stress (MPa)');
     hold on
-    for g = 2:ngrains-1
+    for g = 2:ngrains-3
         g_cols = [2*(g-1) + 1,2*(g-1) + 2];
         plot_interface(line_ex_1(1:line_seg(g),g_cols),...
                        line_ey_1(1:line_seg(g),g_cols),'w',':')      
@@ -81,7 +81,7 @@ for i_IMC=385%1:step_size:IMC_steps
     cc = plot_2D_stress(newex,newey,vm_Sn,axisbc,...
         'von Mises stress (MPa)');
     hold on
-    for g = 2:ngrains-1
+    for g = 2:ngrains-3
         g_cols = [2*(g-1) + 1,2*(g-1) + 2];
         plot_interface(line_ex_1(1:line_seg(g),g_cols),...
                        line_ey_1(1:line_seg(g),g_cols),'w',':')      
@@ -96,30 +96,14 @@ for i_IMC=385%1:step_size:IMC_steps
 %     filename = '/home/er7128ja/Nextcloud/Projekt/Project_Code/articel_final/results/result_figs/plots_3g/vmSn2.eps';
 %     exportgraphics(gca,filename,'Resolution',300)
 
-%     %  --- Biaxial stress in Sn ---
-%     f3 = figure(3);
-%     cla;    
-%     plot_2D_stress(ex,ey,biax_Sn,tvec(k),axisbc,'Biaxial','Sn')
-%     hold on
-%     for g = 2:ngrains-1
-%         g_cols = [2*(g-1) + 1,2*(g-1) + 2];
-%         plot_interface(line_ex_1(1:line_seg(g),g_cols),...
-%                        line_ey_1(1:line_seg(g),g_cols),'w',':')      
-%     end
-%     for g = 1:ngrains
-%         g_cols = [2*(g-1) + 1,2*(g-1) + 2];
-%         plot_interface(line_ex(1:line_seg(g),g_cols),...
-%                        line_ey(1:line_seg(g),g_cols),'w','-')        
-%     end
-%     clim([-25 15])
-% 
+
 %  --- Biaxial stress in Sn 2 ---
     f4 = figure(4);
     cla;    
-    cc = plot_2D_stress(newex,newey,biax_Sn,axisbc,...
+    cc = plot_2D_stress(newex,newey,biax_Sn2,axisbc,...
         'Biaxial stress (MPa)');
     hold on
-    for g = 2:ngrains-1
+    for g = 2:ngrains-3
         g_cols = [2*(g-1) + 1,2*(g-1) + 2];
         plot_interface(line_ex_1(1:line_seg(g),g_cols),...
                        line_ey_1(1:line_seg(g),g_cols),'w',':')      
@@ -133,11 +117,12 @@ for i_IMC=385%1:step_size:IMC_steps
 
 
     % --- Volume expansion ---
-    figure()
-    hp = 0.45*max(max(hphi_ed(:,:,2),hphi_ed(:,:,3)),hphi_ed(:,:,4));
-%     hp = 0.45*max(hphi_ed(:,:,2),hphi_ed(:,:,3));
-    plot_2D_stress(newex,newey,hp,axisbc,...
-        'Volume expansion');
+%     figure()
+% %     hp = 0.45*max(max(hphi_ed(:,:,2),hphi_ed(:,:,3)),hphi_ed(:,:,4));
+% %     hp = 0.45*max(hphi_ed(:,:,2),hphi_ed(:,:,3));
+%     hp = 0.45*max(max(max(hphi_ed(:,:,2),hphi_ed(:,:,3)),hphi_ed(:,:,4)),hphi_ed(:,:,5));
+%     plot_2D_stress(newex,newey,hp,axisbc,...
+%         'Volume expansion');
 
     % Update counter
     k = k + 1;

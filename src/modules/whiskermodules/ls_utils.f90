@@ -404,7 +404,7 @@ subroutine interface_reconstruction(lssys,mesh)
 end subroutine interface_reconstruction
 
 
-subroutine interface_reconstruction_spatial(lssys,mesh)
+subroutine interface_reconstruction_spatial(lssys,mesh, i_IMC)
     ! --- Routine for making an interface reconstruction, a post-processing step to ensure that interfaces are compatibel. 
     !     Note that void regions exist even after the interaction-correction step. In this routine, all void regions are
     !     eliminated ---
@@ -415,6 +415,8 @@ subroutine interface_reconstruction_spatial(lssys,mesh)
     
     ! Intent in
     type(mesh_system), intent(in)  :: mesh
+
+    integer, intent(in) :: i_IMC
 
 
     ! Subroutine variables    
@@ -431,7 +433,7 @@ subroutine interface_reconstruction_spatial(lssys,mesh)
     call gb_reconstruction_spatial(lssys,mesh)
 
     ! Fix triple junctions
-    call tp_reconstruction_spatial(lssys,mesh)
+    call tp_reconstruction_spatial(lssys,mesh, i_IMC)
 
     
     ! Make sure that all nods in the non interface elements have the same sign, i.e. make sign of a_gr more accurate        
@@ -576,7 +578,7 @@ subroutine interface_lseg_adjustment(line_ex,line_ey, nseg, tppoints, bcnod_all,
 
 
     ! Remove line segments shorter than lseg
-    call remove_line_segments_noSorting(line_ex, line_ey, nseg, tppoints, bcnod_all, meshcoord, lseg/4d0)
+    call remove_line_segments_noSorting(line_ex, line_ey, nseg, tppoints, bcnod_all, meshcoord, lseg/8d0)
 
     ! Add line segments at segments longer than lseg
     call add_line_segments_noSorting(line_ex, line_ey, nseg, lseg)
@@ -875,7 +877,7 @@ subroutine compute_common_vp_spatial2(lssys, mesh, diffsys)
    integer  :: g_cols(2), minIdx(1), snsn_closest(1)
    real(dp) :: xnod, ynod, xint, yint, grain_nod, jint_nod
    real(dp) :: mean_x, mapply, mzetagbapply
-   real(dp) :: mgbpos(2), numsnsngb, snsn_gb_distance
+   real(dp) :: mgbpos(4), numsnsngb, snsn_gb_distance
 
    ! New closest interface point
    do g=1,lssys%ngrains
@@ -953,26 +955,41 @@ subroutine compute_common_vp_spatial2(lssys, mesh, diffsys)
         numsnsngb = 4
         mgbpos(1) = minval(mesh%newcoord(1,:))
 
-        ! g = 6
-        ! g_cols = [2*(g-1) + 1, 2*(g-1) + 2]
-        ! mgbpos(2) = maxval(lssys%line_ex(:,g_cols))
+        !g = 6
+        g = 8
+        g_cols = [2*(g-1) + 1, 2*(g-1) + 2]
+        mgbpos(2) = maxval(lssys%line_ex(:,g_cols))
 
-        ! g = 7
-        ! g_cols = [2*(g-1) + 1, 2*(g-1) + 2]
-        ! mgbpos(3) = maxval(lssys%line_ex(:,g_cols))
+        !g = 7
+        g = 9
+        g_cols = [2*(g-1) + 1, 2*(g-1) + 2]
+        mgbpos(3) = maxval(lssys%line_ex(:,g_cols))
 
-        ! mgbpos(4) = mesh%model_width      
-        mgbpos(2) = maxval(mesh%newcoord(1,:))
+        mgbpos(4) = mesh%model_width      
+        ! mgbpos(2) = maxval(mesh%newcoord(1,:))
 
         ! Closest distance to Sn/Sn gb
         snsn_gb_distance = minval(abs(mgbpos - mean_x))
-        snsn_closest     = minloc(abs(mgbpos - mean_x))        
+        snsn_closest     = minloc(abs(mgbpos - mean_x))  
+
 
         ! Sn/Sn gb mobility
         mapply = lssys%lsrho_bulk + (lssys%lsrho_snsn - lssys%lsrho_bulk)*exp(-lssys%lsrho_lambda*snsn_gb_distance)
 
+        if (snsn_closest(1).eq.2) then
+            snsn_closest(1) = 3
+        endif
+        if (snsn_closest(1).eq.3) then
+            snsn_closest(1) = 2
+        endif
+        mapply = mapply * snsn_closest(1)/4d0
+
         ! If distance to Sn less than threshold -> apply Sn/Sn mobility
-        if (abs(sum(lssys%ed(:,ie,5))/4d0).lt.5d-5) then
+        ! if (abs(sum(lssys%ed(:,ie,5))/4d0).lt.5d-5) then
+        ! if (abs(sum(lssys%ed(:,ie,6))/4d0).lt.5d-5 .or. abs(sum(lssys%ed(:,ie,7))/4d0).lt.5d-5 .or. &
+        ! abs(sum(lssys%ed(:,ie,8))/4d0).lt.5d-5) then       
+        if (abs(sum(lssys%ed(:,ie,8))/4d0).lt.5d-5 .or. abs(sum(lssys%ed(:,ie,9))/4d0).lt.5d-5 .or. &
+        abs(sum(lssys%ed(:,ie,10))/4d0).lt.5d-5) then     
             lssys%vp(:,:,ie) = lssys%vp(:,:,ie)*mapply
         else
             lssys%vp(:,:,ie) = lssys%vp(:,:,ie)*lssys%lsrho_bulk

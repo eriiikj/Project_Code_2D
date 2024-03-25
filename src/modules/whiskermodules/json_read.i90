@@ -641,12 +641,22 @@ subroutine read_json_phase_mesh3(input_location, i_IMC, coord, enod, bcnod, bcva
   integer, allocatable, intent(inout)      :: enod(:,:), bcnod(:,:), indNodBd(:), indElemBd(:), indLocalEdgBd(:)
 
 ! Filename phase mesh file
-  if (i_IMC.lt.10) then
-    write(filename, '(A,I1,A,I1,A)' ), 'phase_mesh_', i_IMC, '_g', grain,  '.json'
-  elseif (i_IMC.ge.10 .and. i_IMC.lt.100) then
-    write(filename, '(A,I2,A,I1,A)' ), 'phase_mesh_', i_IMC, '_g', grain, '.json'
-  elseif (i_IMC.ge.100 .and. i_IMC.lt.1000) then
-    write(filename, '(A,I3,A,I1,A)' ), 'phase_mesh_', i_IMC, '_g', grain, '.json'
+  if (grain.lt.10) then
+    if (i_IMC.lt.10) then
+      write(filename, '(A,I1,A,I1,A)' ), 'phase_mesh_', i_IMC, '_g', grain,  '.json'
+    elseif (i_IMC.ge.10 .and. i_IMC.lt.100) then
+      write(filename, '(A,I2,A,I1,A)' ), 'phase_mesh_', i_IMC, '_g', grain, '.json'
+    elseif (i_IMC.ge.100 .and. i_IMC.lt.1000) then
+      write(filename, '(A,I3,A,I1,A)' ), 'phase_mesh_', i_IMC, '_g', grain, '.json'
+    endif    
+  else if (grain.lt.100) then
+    if (i_IMC.lt.10) then
+      write(filename, '(A,I1,A,I2,A)' ), 'phase_mesh_', i_IMC, '_g', grain,  '.json'
+    elseif (i_IMC.ge.10 .and. i_IMC.lt.100) then
+      write(filename, '(A,I2,A,I2,A)' ), 'phase_mesh_', i_IMC, '_g', grain, '.json'
+    elseif (i_IMC.ge.100 .and. i_IMC.lt.1000) then
+      write(filename, '(A,I3,A,I2,A)' ), 'phase_mesh_', i_IMC, '_g', grain, '.json'
+    endif
   endif
 
 ! ----- Locate file -----

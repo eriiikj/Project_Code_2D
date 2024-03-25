@@ -771,7 +771,7 @@ subroutine tp_reconstruction(lssys,mesh,critical_length)
     return
 end subroutine tp_reconstruction
 
-subroutine tp_reconstruction_spatial(lssys,mesh)
+subroutine tp_reconstruction_spatial(lssys,mesh,i_IMC)
     ! --- Routine for fixing triple junctions s.t they are compatible (check elements containing three ls isocontours) ---
     implicit none
 
@@ -780,6 +780,8 @@ subroutine tp_reconstruction_spatial(lssys,mesh)
 
     ! Intent in
     type(mesh_system), intent(in)  :: mesh
+
+    integer, intent(in) :: i_IMC
 
     ! Subroutine variables    
     integer, allocatable   :: tp_elms(:), fp_elms(:), tp_elms_reordered(:), tmp(:), ls_at_tp(:)
@@ -924,6 +926,24 @@ subroutine tp_reconstruction_spatial(lssys,mesh)
                 ! Compute isogonic point
                 call get_isogonic(F,step_junc,A,B,C)
 
+                ! if (step_junc.eq..true.) then
+                !     print *, 'A: ', A
+                !     print *, 'B: ', B
+                !     print *, 'C: ', C
+                ! endif
+                if (step_junc.eq..true.) then
+                    F         = (A + B + C)/3d0
+                    step_junc = .false.
+                endif
+
+                ! if (step_junc.eq..true.) then
+                !     print *, 'Point A: ', A
+                !     print *, 'Point B: ', B
+                !     print *, 'Point C: ', C   
+                !     F         = (A + B + C)/3d0
+                !     step_junc = .false.
+                ! endif
+
                 ! if ((step_junc.eqv..false.) .and. ((norm2(A-F).lt.critical_length) .or. (norm2(B-F).lt.critical_length) .or. &
                 ! (norm2(C-F).lt.critical_length))) then
                 !     print *, 'Too short line in tp elm'
@@ -931,11 +951,11 @@ subroutine tp_reconstruction_spatial(lssys,mesh)
                 !     short_tpline = .true.
                 ! endif
 
-                ! Add condition - if length of line segment too small - step
-                lsegmin = minval([norm2(F-A),norm2(F-B),norm2(F-C)])        
-                if (lsegmin.lt.1d-6) then
-                    step_junc=.true.
-                endif
+                ! ! Add condition - if length of line segment too small - step
+                ! lsegmin = minval([norm2(F-A),norm2(F-B),norm2(F-C)])        
+                ! if (lsegmin.lt.1d-6) then
+                !     step_junc=.true.
+                ! endif
 
             endif
             
@@ -1234,27 +1254,39 @@ subroutine tp_reconstruction_spatial(lssys,mesh)
                 
             ! Find unique points A, B, and C
             if (nunique.eq.3) then
+
                 A = points(unique_points_idx(1),:)
                 B = points(unique_points_idx(2),:)
                 C = points(unique_points_idx(3),:)
 
-                
-                if (short_tpline) then
-                    step_junc    = .false.
-                    short_tpline = .false.
-                else
-                    if ((norm2(A-Aprev).lt.1d-14 .and. norm2(B-Bprev).lt.1d-14 .and. norm2(C-Cprev).lt.1d-14) .or. steps.ge.1) then
-                        ! Same unique points or stepp_max reached in tp elm
-                        F         = (A + B + C)/3d0
-                        step_junc = .false.                    
-                    else
-                        ! Compute isogonic point
-                        call get_isogonic(F,step_junc,A,B,C)
-                        Aprev = A
-                        Bprev = B
-                        Cprev = C
-                    endif
+                ! print *, 'stepping: '
+                ! print *, 'Point A: ', A
+                ! print *, 'Point B: ', B
+                ! print *, 'Point C: ', C     
+                call get_isogonic(F,step_junc,A,B,C)
+                if (step_junc.eq..true.) then
+                    F         = (A + B + C)/3d0
+                    step_junc = .false.
                 endif
+
+                
+                ! if (short_tpline) then
+                !     step_junc    = .false.
+                !     short_tpline = .false.
+                ! else
+                !     if ((norm2(A-Aprev).lt.1d-14 .and. norm2(B-Bprev).lt.1d-14 .and. norm2(C-Cprev).lt.1d-14) .or. steps.ge.1) then
+                !         ! Same unique points or stepp_max reached in tp elm
+                !         F         = (A + B + C)/3d0
+                !         step_junc = .false.    
+                !         print *, 'Point F: ', F                
+                !     else
+                !         ! Compute isogonic point
+                !         call get_isogonic(F,step_junc,A,B,C)
+                !         Aprev = A
+                !         Bprev = B
+                !         Cprev = C                        
+                !     endif
+                ! endif
 
             else
                 print *, 'Error. More than three connecting points inside step tp loop'
@@ -1504,7 +1536,7 @@ subroutine get_connecting_lines(line_elm_idx, tp_ie, int_elms, rm_lines, mesh, l
         end if
     end if
 
-    ! Find next line segments connecting to iconnA
+    ! Find next line segments connecting to iconnB
     if (rm_lineB .ne. 0) then
         iconnB_lines = pack(line_elm_idx(1:nseg), count(sqrt((line_ex-iconnB_in(1))**2 + (line_ey-iconnB_in(2))**2) .lt. &
         1.0d-13,2).eq.1)        
