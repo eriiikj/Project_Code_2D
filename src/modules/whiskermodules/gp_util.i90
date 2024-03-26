@@ -5,6 +5,9 @@ module gp_util
 ! E. Jacobsson 2022-03-03
 !    - Implemented gpcoordxtr for extracting coordinates of Gauss points for four node isoparametric element
 
+! OpenMP
+  use omp_lib
+
 ! mf_datatypes
   use mf_datatypes
 
@@ -483,5 +486,20 @@ subroutine setdiff_int_1D(arr1, arr2, diff)
    
 end subroutine setdiff_int_1D
 
+subroutine clock_time(time, omp_run)
+! Start clock with respect to omp run or not
+   implicit none
+
+   real(dp), intent(inout) :: time
+   logical, intent(in)     :: omp_run
+   
+   if (omp_run) then 
+!$ time = OMP_GET_WTIME()
+   else
+     call cpu_time(time)
+   endif 
+
+  return
+end subroutine clock_time
 
 end module gp_util

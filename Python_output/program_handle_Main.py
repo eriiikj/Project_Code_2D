@@ -85,7 +85,7 @@ class MainClass(object):
         # Level set function parameters
         self.input_data.lsrho_bulk             = 1.0
         self.input_data.lsrho_snsn             = 40.0
-        self.input_data.lsrho_lambda           = 10e3   # 8e3
+        self.input_data.lsrho_lambda           = 10e3 # 8e3
         self.input_data.ls_gamma               = 0.625*1e-6
         self.input_data.ls_m                   = 40e-19*(1e3)**3/(1/3600) 
         self.input_data.lskappa                = 2*self.input_data.ls_gamma*self.input_data.ls_m

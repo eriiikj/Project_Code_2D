@@ -143,7 +143,7 @@ subroutine solve_diffusion_problem_global(diffsys,i_IMC,lssys,mesh,pq,input_loca
   integer :: g
   
 ! Obtain global diffusion mesh
-  call generate_global_diffusion_mesh(input_location, diffsys, mesh, lssys, i_IMC)
+  call generate_global_diffusion_mesh(input_location, diffsys, mesh, lssys, i_IMC, omp_run)
 
 ! Solve diffusion problem for all grains seperately
   do g=1,lssys%ngrains
@@ -162,36 +162,41 @@ end subroutine solve_diffusion_problem_global
 
 
 
-subroutine generate_global_diffusion_mesh(input_location, diffsys, mesh, lssys, i_IMC)
+subroutine generate_global_diffusion_mesh(input_location, diffsys, mesh, lssys, i_IMC, omp_run)
 ! --- Routine for generating and partiotioning a global diffusion mesh ---
   implicit none
 
 ! Intent inout
-  type(diffusion_system), intent(inout) :: diffsys 
+  type(diffusion_system), intent(inout)      :: diffsys 
 
 ! Intent in
-  type(mesh_system), intent(in)         :: mesh
-  type(ls_system), intent(in)           :: lssys
-  integer, intent(in)                   :: i_IMC
+  type(mesh_system), intent(in)              :: mesh
+  type(ls_system), intent(in)                :: lssys
+  integer, intent(in)                        :: i_IMC
   character(len=:), allocatable, intent(in)  :: input_location
+  logical, intent(in)                        :: omp_run
 
 ! Subroutine variables
-  character(len=40)                     :: command_line  
-  character(len=80)                     :: diffusion_mesh_script_location 
-  character(len=:),allocatable          :: diffusion_mesh_location  
-  integer                               :: g, ierr, i, g_cols(2), nelm, ii(1), inod
-  integer, allocatable :: elmidx(:), nodidx(:), nodidx2(:), uniqueArr(:), uniqueArr2(:)
-  logical :: ch
+  character(len=40)                          :: command_line
+  character(len=80)                          :: diffusion_mesh_script_location
+  character(len=:),allocatable               :: diffusion_mesh_location
+  integer                                    :: g, ierr, i, g_cols(2), nelm, ii(1), inod
+  integer, allocatable                       :: elmidx(:), nodidx(:), nodidx2(:), uniqueArr(:), uniqueArr2(:)
+  logical                                    :: ch
+  real(dp)                                   :: t1, t2
 
   diffusion_mesh_script_location = '/home/er7128ja/Nextcloud/Projekt/Project_Code_2D/Python_output/phase_mesh_script'  
   diffusion_mesh_location        = '/home/er7128ja/Nextcloud/Projekt/Project_Code_2D/Python_output/single_study/phase_meshes'
 
 ! Generete mesh by running python script
+  call clock_time(t1, omp_run)
   print *, 'Creating triangle mesh...'
   call chdir(diffusion_mesh_script_location)
   write(command_line,'(A28)'), 'python triangle_mesh_Main.py'
   call execute_command_line(trim(command_line))
   print *, 'Finished triangle mesh'
+  call clock_time(t2, omp_run)
+  diffsys%generate_mesh_time = diffsys%generate_mesh_time + (t2 - t1)
 
 ! Read global diffusion mesh
   if (allocated(diffsys%ls)) then

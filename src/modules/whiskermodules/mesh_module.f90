@@ -499,21 +499,4 @@ contains
    end subroutine get_elm_sets_ls
 
 
-   subroutine clock_time(time, omp_run)
-    ! Start clock with respect to omp run or not
-    implicit none
- 
-    real(dp), intent(inout) :: time
-    logical, intent(in)     :: omp_run
-    
-    if (omp_run) then 
-      !$ time = OMP_GET_WTIME() 
-    else 
-      call cpu_time(time)
-    endif 
- 
-   return
-  end subroutine clock_time
-
-
 end module mesh_module

@@ -32,14 +32,13 @@ tvec             = zeros(niterations,1);
 IMC_vol_per_area = zeros(niterations,1);
 
 k = 1;
-for i_IMC=3%1:step_size:IMC_steps
+for i_IMC=34%1:step_size:IMC_steps
 
     disp('--------')
     disp(['IMC step ', num2str(i_IMC)])  
     
     % Load time from level set
     [~,~,~,~,~,~,~,~,~,~,time] = load_level_set(i_IMC,edof_1D);
-
 
     % Load level set
     [a,ed,vp,line_ex,line_ey,line_seg,sep_lines,ngrains,IMC_area,...
@@ -53,6 +52,7 @@ for i_IMC=3%1:step_size:IMC_steps
      newcoord,newex,newey] = load_stress(i_IMC,edof_1D);    
 
     axisbc = [min(newcoord(:,1)),max(newcoord(:,1)),min(newcoord(:,2)),max(newcoord(:,2))];
+%     axisbc(2) = round((axisbc(2)*1e3),2)*1e-3;
     disp(['Time: ', num2str(tvec(k))])
 
     %  --- von Mises stress ---
@@ -227,23 +227,27 @@ cc.Label.String         = ['\bf ', cctitle];
 cc.Label.Interpreter    = 'latex';
 cc.Ruler.Exponent       = 0;
 cc.TickLabelInterpreter = 'latex';
-% cc.FontSize             = 16;
-cc.Label.FontSize       = 16;
+cc.FontSize             = 16;
+% cc.Label.FontSize       = 16;
 
 % Labels and axis
 xlabel('\textbf{Micrometer}','Interpreter','Latex')
 ylabel('\textbf{Micrometer}','Interpreter','Latex')
 % title([' Time: ', num2str(i_IMC), ' (h). Material: ', mat_str, '.'])
 
+
 axis equal
 axis(axisbc*mm_to_um)    
 box on
-ytickformat('%.1f')
-xtickformat('%.1f')
+ytickformat('%.2f')
+xticks([axisbc(1)*mm_to_um,0.5,axisbc(2)*mm_to_um])
+xtickformat('%.2f')
 ax = gca;
 ax.FontSize = 16;
 set(gca, 'TickLabelInterpreter', 'latex');
 box on
+set(gca, 'TickDir', 'both', 'Layer', 'top');
+% set(gca, 'FontWeight', 'bold');
 end
 
 

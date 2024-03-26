@@ -307,7 +307,7 @@ subroutine update_ls_system(lssys,mesh,i_IMC,input_location, omp_run, pq, diffsy
 
 ! 3) --- Interaction-correction step ---
   call interaction_correction(lssys%a, lssys%ngrains, lssys%ed, mesh%enod)
-  
+
   
 ! 4) --- Interpolate interfaces ---
   if (i_IMC.eq.1) then
@@ -409,7 +409,7 @@ subroutine update_ls_system(lssys,mesh,i_IMC,input_location, omp_run, pq, diffsy
   call elm2D4_nodmat_to_gpmat(lssys%sn_hphi_gp_plot2, lssys%sn_hphi_ed_plot, mesh%nelm)
 
 ! Define old IMC gps at first IMC step (3 IMC grains)
-  oldIMCfac = 0.08d0
+  oldIMCfac = 0.12d0
   if (i_IMC.eq.1) then
     lssys%old_IMC_gp_flag = .false.
     where (lssys%hphi_gp(:,:,2).gt.oldIMCfac .or. lssys%hphi_gp(:,:,3).gt.oldIMCfac .or. lssys%hphi_gp(:,:,4).gt.oldIMCfac) &
