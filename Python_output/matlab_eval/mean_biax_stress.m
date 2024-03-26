@@ -13,8 +13,8 @@ close all; clc; clear
     ngrains] = load_level_set_init();
 
 %% Biax stress in Sn
-IMC_steps   = 185;
-step_size   = 5;
+IMC_steps   = 155;
+step_size   = 10;
 niterations = floor((IMC_steps - 1) / step_size);
 biax_Sn_avg = zeros(niterations,1);
 tvec        = zeros(niterations,1);

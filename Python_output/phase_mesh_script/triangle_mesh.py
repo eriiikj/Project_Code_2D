@@ -23,7 +23,7 @@ import pyvtk as vtk
 
 import subprocess
 
-import gmsh
+# import gmsh
 import triangle
 
 # Calfem
@@ -107,15 +107,15 @@ class InputData(object):
         
         
         # Extract xyz data
-        xyz = self.xyz_from_coord(vertices)
+        # xyz = self.xyz_from_coord(vertices)
             
-        # Add triangles to gmsh
-        surf = gmsh.model.addDiscreteEntity(2)
-        gmsh.model.mesh.addNodes(2, surf, range(1, N + 1), xyz)
-        gmsh.model.mesh.addElementsByType(surf, 2, [], tris)
+        # # Add triangles to gmsh
+        # surf = gmsh.model.addDiscreteEntity(2)
+        # gmsh.model.mesh.addNodes(2, surf, range(1, N + 1), xyz)
+        # gmsh.model.mesh.addElementsByType(surf, 2, [], tris)
         
-        # Create the relevant Gmsh data structures from gmsh model
-        gmsh.model.geo.synchronize()
+        # # Create the relevant Gmsh data structures from gmsh model
+        # gmsh.model.geo.synchronize()
         
         return triangulation
     
@@ -541,7 +541,7 @@ class Mesh(object):
         # --- gmsh mesh generation ---
         
         # # Initialize gmsh
-        gmsh.initialize()
+        # gmsh.initialize()
    
         # Create geometry
         triangulation = self.input_data.geometry()
@@ -550,14 +550,14 @@ class Mesh(object):
         # print('Generating mesh in folder: ', os.getcwd())
         
         # Generate mesh
-        gmsh.model.mesh.generate(2)
+        # gmsh.model.mesh.generate(2)
         
         # # Graphical illustration of mesh
         # if 'close' not in sys.argv:
         #     gmsh.fltk.run()
         
         # Finalize Gmsh
-        gmsh.finalize()
+        # gmsh.finalize()
   
         # Extract coord and enod
         coord = triangulation['vertices']

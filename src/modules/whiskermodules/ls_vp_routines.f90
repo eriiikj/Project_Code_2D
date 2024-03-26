@@ -266,8 +266,8 @@ subroutine lvlset2D4_global_vp2(vp_e, coord, ed_e_gr, jgp_e_gr, agp_e_gr, Igrain
 
         ! do k = 1,size(other_grains)
 
-            ! Grain number
-            ! other_grain = other_grains(k)
+        !     ! Grain number
+        !     other_grain = other_grains(k)
 
             ! Material other grain            
             other_material  = lssys%material(other_grain) 
@@ -322,8 +322,15 @@ subroutine lvlset2D4_global_vp2(vp_e, coord, ed_e_gr, jgp_e_gr, agp_e_gr, Igrain
                     call exit(0)
                 endif
 
-                ! if (abs((coord(1,1)-0.000975d0)).lt.1d-5 .and. abs((coord(2,1)-0.000625d0)).lt.1d-5) then
-                !     print *, 'as'
+                ! if (abs((coord(1,1)-0.000524966d0)).lt.1d-6 .and. abs((coord(2,1)-0.000624925d0)).lt.1d-6) then
+                !     print *, 'GP: ', GP_NR
+                !     print *, 'Xcoord: ', coord(1,:)                    
+                !     print *, 'Ycoord: ', coord(2,:)                    
+                !     print *, 'other grain: ', other_grain
+                !     print *, 'cdiff: '          , cdiff
+                !     print *, 'jdiff: '          , jdiff
+                !     print *, 'vel_cont: ', vel_cont
+                !     print *, 'Nj: ', nj
                 ! endif
 
                 ! Decaying function       
