@@ -607,12 +607,22 @@ contains
     call chdir('mat_files')
 
     ! Filename
-    if (i_IMC.lt.10) then
-      write (matfilename, "(A10,I1,A1,I1,A4)") 'diffusion_', i_IMC, '_', g, '.mat'
-    elseif (i_IMC.lt.100) then
-      write (matfilename, "(A10,I2,A1,I1,A4)") 'diffusion_', i_IMC, '_', g, '.mat'
-    elseif (i_IMC.lt.1000) then
-      write (matfilename, "(A10,I3,A1,I1,A4)") 'diffusion_', i_IMC, '_', g, '.mat'
+    if (g.lt.10) then
+      if (i_IMC.lt.10) then
+        write (matfilename, "(A10,I1,A1,I1,A4)") 'diffusion_', i_IMC, '_', g, '.mat'
+      elseif (i_IMC.lt.100) then
+        write (matfilename, "(A10,I2,A1,I1,A4)") 'diffusion_', i_IMC, '_', g, '.mat'
+      elseif (i_IMC.lt.1000) then
+        write (matfilename, "(A10,I3,A1,I1,A4)") 'diffusion_', i_IMC, '_', g, '.mat'
+      endif
+    elseif (g.lt.100) then
+      if (i_IMC.lt.10) then
+        write (matfilename, "(A10,I1,A1,I2,A4)") 'diffusion_', i_IMC, '_', g, '.mat'
+      elseif (i_IMC.lt.100) then
+        write (matfilename, "(A10,I2,A1,I2,A4)") 'diffusion_', i_IMC, '_', g, '.mat'
+      elseif (i_IMC.lt.1000) then
+        write (matfilename, "(A10,I3,A1,I2,A4)") 'diffusion_', i_IMC, '_', g, '.mat'
+      endif
     endif
     
     ! Write to file
@@ -628,7 +638,7 @@ contains
   end subroutine write_diffusion_iter_to_matlab
 
   subroutine write_diffusion_glob_iter_to_matlab(input_location, i_IMC, ls)
-    ! Routine for writing level set to matlab
+    ! Routine for writing triangle level set values to matlab
     implicit none
 
     ! Intent in

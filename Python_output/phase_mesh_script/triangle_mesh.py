@@ -23,11 +23,12 @@ import pyvtk as vtk
 
 import subprocess
 
-# import gmsh
+import gmsh
 import triangle
 
 # Calfem
-import calfem.core as cfc
+# import calfem.core as cfc
+from collections import Counter
 
 
 class InputData(object):
@@ -107,15 +108,15 @@ class InputData(object):
         
         
         # Extract xyz data
-        # xyz = self.xyz_from_coord(vertices)
+        xyz = self.xyz_from_coord(vertices)
             
-        # # Add triangles to gmsh
-        # surf = gmsh.model.addDiscreteEntity(2)
-        # gmsh.model.mesh.addNodes(2, surf, range(1, N + 1), xyz)
-        # gmsh.model.mesh.addElementsByType(surf, 2, [], tris)
+        # Add triangles to gmsh
+        surf = gmsh.model.addDiscreteEntity(2)
+        gmsh.model.mesh.addNodes(2, surf, range(1, N + 1), xyz)
+        gmsh.model.mesh.addElementsByType(surf, 2, [], tris)
         
-        # # Create the relevant Gmsh data structures from gmsh model
-        # gmsh.model.geo.synchronize()
+        # Create the relevant Gmsh data structures from gmsh model
+        gmsh.model.geo.synchronize()
         
         return triangulation
     
@@ -270,6 +271,7 @@ class InputData(object):
         # Unique line coords
         line_coord      = np.unique(line_coord, axis=0)
         self.line_coord = line_coord
+        
             
     
         # --- Extract line connectivity matrix line_conn connecting the 
@@ -291,8 +293,9 @@ class InputData(object):
         # Domain corners
         # corner_coords = np.vstack((self.P1, self.P2, self.P3, self.P4))
         
-        # Domain nodes
+        # Boundary coordinates
         boundary_coord      = self.coord[self.indNodBd,:]
+
         
         # --- Extract boundary connectivity ---
         nboundary_segs = np.size(self.indElemBd)
@@ -305,6 +308,10 @@ class InputData(object):
             nod1 = self.enod[self.indElemBd[iseg],k1]
             nod2 = self.enod[self.indElemBd[iseg],k2]
             boundary_conn[iseg,:] = [nod1,nod2]
+            
+            
+            
+            
             
         
         # Loop thorugh all boundary segs and find which line_coord intersect boundary
@@ -325,16 +332,74 @@ class InputData(object):
             c3 = ymin < line_coord[:,1]
             c4 = line_coord[:,1] < ymax
             a = np.where(np.logical_and(np.logical_and(c1,c2),np.logical_and(c3,c4)))
-            if (np.size(a)>0):
+            if (np.size(a)==1):
                 iBcross[iBseg] = a[0]
                 iBcrosseg.append(iBseg)
+            elif (np.size(a)>1):
+                print('Error. More than one line coord in boundary line seg.')
                 
-        s= 9
-        
-        
-        # Split line segments. OBS now all mesh points must be included
+                
+ 
+        # If the same line_coord present at multiple boundary lines - 
+        # this line_coord is very close too a boundary node:
+        # Change boundary node to line segment crossing node and remove 
+        # boundary node
+
+        # Increase idx
         boundary_conn = boundary_conn + np.shape(self.line_coord)[0]
-        # iBseg = iBcrosseg[0]
+        
+        counted_iBcrossLineCoord = Counter(iBcross[iBcrosseg])
+        duplicates = [item for item, count in counted_iBcrossLineCoord.items() if count > 1]
+        for duplicate in duplicates:
+            segs_sharing_duplicate = np.where(iBcross==duplicate)[0]
+            # A and B seg 1
+            inodA  = boundary_conn[segs_sharing_duplicate[0],0]
+            inodB  = boundary_conn[segs_sharing_duplicate[0],1]
+            # C and D seg 2
+            inodC  = boundary_conn[segs_sharing_duplicate[1],0]
+            inodD  = boundary_conn[segs_sharing_duplicate[1],1]
+            if (inodA==inodC or inodA==inodD):
+                # Change bounadry conn of seg 1 nod B to nodP in line coord
+                seg1 = segs_sharing_duplicate[0]
+                boundary_conn[seg1,boundary_conn[seg1]==inodA] = duplicate
+                seg2 = segs_sharing_duplicate[1]
+                boundary_conn[seg2,boundary_conn[seg2]==inodA] = duplicate
+                
+                # Remove the coordinate from boundary coord
+                PnodLoc = inodB - np.shape(self.line_coord)[0]
+                boundary_coord = np.delete(boundary_coord, PnodLoc, axis=0)
+
+                # Reformulate boundary conn  
+                indices = boundary_conn > inodB
+                boundary_conn[indices] -= 1
+                
+                
+            elif (inodB==inodC or inodB==inodD):
+                # Change bounadry conn of seg 1 nod B to nodP in line coord
+                seg1 = segs_sharing_duplicate[0]
+                boundary_conn[seg1,boundary_conn[seg1]==inodB] = duplicate
+                seg2 = segs_sharing_duplicate[1]
+                boundary_conn[seg2,boundary_conn[seg2]==inodB] = duplicate
+                
+                # Remove the second row (index 1)
+                PnodLoc = inodB - np.shape(self.line_coord)[0]
+                boundary_coord = np.delete(boundary_coord, PnodLoc, axis=0)
+
+                # Remove the coordinate from boundary coord 
+                indices = boundary_conn > inodB
+                boundary_conn[indices] -= 1
+                  
+            
+            
+            # Remove crossing point from list
+            iBcross[iBcross==duplicate] = -1
+        iBcrosseg = np.where(iBcross != -1)[0]
+        print('Number of segment lines crossed: ', np.size(iBcrosseg))
+        
+        
+        
+        
+        # Split boundary segments contining line crossing. OBS now all mesh points must be included
         for iBseg in iBcrosseg:
             inodA  = boundary_conn[iBseg,0]
             inodB  = boundary_conn[iBseg,1]
@@ -348,14 +413,25 @@ class InputData(object):
        
         
        
+        
+        
         # All mesh_points (line_coord + boundary_coords). OBS order important
         self.mesh_points = np.vstack((self.line_coord, boundary_coord))
+        
+        # Check for duplicates
+        for m in self.mesh_points:
+            s = self.mesh_points - m
+            if (np.sum((s[:,0]**2 + s[:,1]**2)<1e-11)>1):
+                print('Duplicate in mesh points!')
+        
         
         # All line connectivity
         self.line_conn      = np.unique(line_conn, axis=0)
         self.boundary_conn  = boundary_conn
         self.boundary_coord = boundary_coord
         self.all_line_conn  = np.vstack((self.line_conn, boundary_conn))
+        
+        s =9
         
    
                 
@@ -541,7 +617,7 @@ class Mesh(object):
         # --- gmsh mesh generation ---
         
         # # Initialize gmsh
-        # gmsh.initialize()
+        gmsh.initialize()
    
         # Create geometry
         triangulation = self.input_data.geometry()
@@ -550,14 +626,14 @@ class Mesh(object):
         # print('Generating mesh in folder: ', os.getcwd())
         
         # Generate mesh
-        # gmsh.model.mesh.generate(2)
+        gmsh.model.mesh.generate(2)
         
-        # # Graphical illustration of mesh
-        # if 'close' not in sys.argv:
-        #     gmsh.fltk.run()
+        # Graphical illustration of mesh
+        if 'close' not in sys.argv:
+            gmsh.fltk.run()
         
         # Finalize Gmsh
-        # gmsh.finalize()
+        gmsh.finalize()
   
         # Extract coord and enod
         coord = triangulation['vertices']

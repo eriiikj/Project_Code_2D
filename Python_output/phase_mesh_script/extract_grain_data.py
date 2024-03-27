@@ -301,7 +301,7 @@ class Mesh(object):
         ls             = self.input_data.ls
         
  
-        # Extract partitioned mesh for each grain
+        # Extract partitioned mesh for the considered grain
         ls_ed      = ls[enod,g]
         line_elms  = np.sum((ls_ed<=0),1)==nodel
         enod_g     = np.asarray(enod[line_elms,:],dtype=np.int32)
@@ -321,7 +321,7 @@ class Mesh(object):
         # --- Topology quantities ---
         nodel_g = np.size(enod_g,axis=1)
         
-        # Boundary nodes - nodes shared with line_coord
+        # Boundary nodes
         g_cols      = [2*g, 2*g + 1]
         line_seg    = line_seg_all[g]
         line_ex     = line_ex_all[:line_seg,g_cols]
@@ -333,7 +333,7 @@ class Mesh(object):
         bnods_logical = np.full(nnod_g,False)
         for k in range(np.shape(line_coord)[0]):
             P = line_coord[k,:]
-            bnods_logical = np.logical_or(bnods_logical,np.linalg.norm(coord_g-P, axis=1)<1e-8)
+            bnods_logical = np.logical_or(bnods_logical,np.linalg.norm(coord_g-P, axis=1)<1e-6)
 
 
         # Boundary nodes

@@ -931,10 +931,10 @@ subroutine tp_reconstruction_spatial(lssys,mesh,i_IMC)
                 !     print *, 'B: ', B
                 !     print *, 'C: ', C
                 ! endif
-                if (step_junc.eq..true.) then
-                    F         = (A + B + C)/3d0
-                    step_junc = .false.
-                endif
+                ! if (step_junc.eq..true.) then
+                !     F         = (A + B + C)/3d0
+                !     step_junc = .false.
+                ! endif
 
                 ! if (step_junc.eq..true.) then
                 !     print *, 'Point A: ', A
@@ -951,11 +951,15 @@ subroutine tp_reconstruction_spatial(lssys,mesh,i_IMC)
                 !     short_tpline = .true.
                 ! endif
 
-                ! ! Add condition - if length of line segment too small - step
-                ! lsegmin = minval([norm2(F-A),norm2(F-B),norm2(F-C)])        
-                ! if (lsegmin.lt.1d-6) then
-                !     step_junc=.true.
-                ! endif
+                ! Add condition - if length of line segment too small - step
+                lsegmin = minval([norm2(F-A),norm2(F-B),norm2(F-C)])        
+                if (lsegmin.lt.1d-6) then
+                    ! print *, 'lseg too short'
+                    ! print *, 'A: ', A
+                    ! print *, 'B: ', B
+                    ! print *, 'C: ', C
+                    step_junc=.true.
+                endif
 
             endif
             
@@ -1214,7 +1218,7 @@ subroutine tp_reconstruction_spatial(lssys,mesh,i_IMC)
         Bprev = 0d0
         Cprev = 0d0
         steps = 1
-        do while (step_junc .and. steps.le.1) ! (step_junc .or. steps.lt.2)
+        do while (step_junc .and. steps.le.1)
 
             ! Find next point along line in lsa
             call get_connecting_lines(line_elm_idx, tp_ie, lssys%int_elms, lsa_rm_lines, mesh, line_exa, line_eya, &
@@ -1260,9 +1264,9 @@ subroutine tp_reconstruction_spatial(lssys,mesh,i_IMC)
                 C = points(unique_points_idx(3),:)
 
                 ! print *, 'stepping: '
-                ! print *, 'Point A: ', A
-                ! print *, 'Point B: ', B
-                ! print *, 'Point C: ', C     
+                ! print *, 'new point A: ', A
+                ! print *, 'new point B: ', B
+                ! print *, 'new point C: ', C     
                 call get_isogonic(F,step_junc,A,B,C)
                 if (step_junc.eq..true.) then
                     F         = (A + B + C)/3d0

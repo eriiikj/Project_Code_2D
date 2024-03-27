@@ -406,13 +406,6 @@ class Solver(object):
         print('nnods:', np.shape(coord))
         
         
-        
-        
-        
-        
-        
-        
-        
         # --- Extract bcnod ---
         
         # -- Lower bc nods
@@ -430,16 +423,16 @@ class Solver(object):
         
         
         
-        # Remove nods of lower left and right corner from bcnods 
-        # (included in MFC)
-        if (self.input_data.mfc):
-            x0 = min(coord[:,0])
-            x1 = max(coord[:,0])
+        # # Remove nods of lower left and right corner from bcnods 
+        # # (included in MFC)
+        # if (self.input_data.mfc):
+        #     x0 = min(coord[:,0])
+        #     x1 = max(coord[:,0])
             
-            remove_bcnods_bool = np.logical_or((abs(coord[bcnods_lower-1,0]-x0)<1e-6), \
-                                (abs(coord[bcnods_lower-1,0]-x1)<1e-6))
+        #     remove_bcnods_bool = np.logical_or((abs(coord[bcnods_lower-1,0]-x0)<1e-6), \
+        #                         (abs(coord[bcnods_lower-1,0]-x1)<1e-6))
             
-            bcnods_lower = bcnods_lower[remove_bcnods_bool==False]
+        #     bcnods_lower = bcnods_lower[remove_bcnods_bool==False]
         
         
         nbc_upper     = np.size(bcnods_upper)

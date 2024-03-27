@@ -32,7 +32,7 @@ tvec             = zeros(niterations,1);
 IMC_vol_per_area = zeros(niterations,1);
 
 k = 1;
-for i_IMC=34%1:step_size:IMC_steps
+for i_IMC=1%1:step_size:IMC_steps
 
     disp('--------')
     disp(['IMC step ', num2str(i_IMC)])  
@@ -71,9 +71,10 @@ for i_IMC=34%1:step_size:IMC_steps
         plot_interface(line_ex(1:line_seg(g),g_cols),...
                        line_ey(1:line_seg(g),g_cols),'w','-')        
     end
-%     filename = '/home/er7128ja/Nextcloud/Projekt/Project_Code/articel_final/results/result_figs/plots_3g/vm2.eps';
-%     exportgraphics(gca,filename,'Resolution',300)
-%     axis tight
+%     % Save
+%     plotfolder = '../single_study/plots';
+%     filename   = 'vm2.eps';    
+%     exportgraphics(gca,fullfile(plotfolder,filename),'Resolution',300)
  
     %  --- von Mises stress in Sn ---
     f2 = figure(2);
@@ -93,8 +94,10 @@ for i_IMC=34%1:step_size:IMC_steps
     end
     clim([0 14.5])
     cc.Ticks = [0,2,4,6,8,10,12,14];
-%     filename = '/home/er7128ja/Nextcloud/Projekt/Project_Code/articel_final/results/result_figs/plots_3g/vmSn2.eps';
-%     exportgraphics(gca,filename,'Resolution',300)
+%     % Save
+%     plotfolder = '../single_study/plots';
+%     filename   = 'vmSn2.eps';    
+%     exportgraphics(gca,fullfile(plotfolder,filename),'Resolution',300);
 
 
 %  --- Biaxial stress in Sn 2 ---

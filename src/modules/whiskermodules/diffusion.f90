@@ -261,9 +261,8 @@ subroutine generate_global_diffusion_mesh(input_location, diffsys, mesh, lssys, 
     ! Post-processing the sign of reinitialized mesh as this is not always true from the last state
     ch = .true.
     do while (ch)
-      ! print *, 'changing signs grain: ', g
       ch = .false.  
-      nodidx2 = pack(nodidx,diffsys%ls(:,g).lt.8d-6)
+      nodidx2 = pack(nodidx,diffsys%ls(:,g).lt.7d-6)
       do i=1,size(nodidx2)
         inod = nodidx2(i)
         ! Find elements containing node
@@ -284,7 +283,6 @@ subroutine generate_global_diffusion_mesh(input_location, diffsys, mesh, lssys, 
           diffsys%ls(inod,g) = -1d0*abs(diffsys%ls(inod,g))
           ch = .true.
         endif
-
       enddo
     enddo
 

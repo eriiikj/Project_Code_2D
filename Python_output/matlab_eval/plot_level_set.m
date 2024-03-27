@@ -39,7 +39,7 @@ tvec             = zeros(niterations,1);
 IMC_vol_per_area = zeros(niterations,1);
 
 k = 1;
-for i_IMC=1:step_size:IMC_steps
+for i_IMC=1%1:step_size:IMC_steps
     
     disp('--------')
     disp(['IMC step ', num2str(i_IMC)])
@@ -51,19 +51,19 @@ for i_IMC=1:step_size:IMC_steps
     % Store IMC vol/area
     IMC_vol_per_area(k) = IMC_area/L;
 
-% %     Plot level set contour 
-%     f1 = figure(1);
-%     clf;
-% %     plot_mesh(ex,ey,'black')    
-%     plot_mesh(newex,newey,'green')
-% %     plot_field(newex,newey,ed(:,:,2),'k')
-%     hold on
-%     plot_speed_gp(newex,newey,vp)
-%     for g = 1:ngrains
-%         g_cols = [2*(g-1) + 1,2*(g-1) + 2];
-%         plot_interface(line_ex(1:line_seg(g),g_cols),...
-%                        line_ey(1:line_seg(g),g_cols),my_colors(g,:),g)
-%     end    
+    % Plot level set contour
+    f1 = figure(1);
+    cla;
+%     plot_mesh(ex,ey,'black')    
+    plot_mesh(newex,newey,'green')
+%     plot_field(newex,newey,ed(:,:,2),'k')
+    hold on
+    plot_speed_gp(newex,newey,vp)
+    for g = 1:ngrains
+        g_cols = [2*(g-1) + 1,2*(g-1) + 2];
+        plot_interface(line_ex(1:line_seg(g),g_cols),...
+                       line_ey(1:line_seg(g),g_cols),my_colors(g,:),g)
+    end    
 
     % Axis and title
     axis equal
@@ -367,7 +367,13 @@ my_colors = [0.8500    0.3250    0.0980
              0.0844    0.8693    0.2399
              0.3998    0.5797    0.1233
              0.2599    0.5499    0.1839
-             0.8001    0.1450    0.2400];
+             0.8001    0.1450    0.2400
+             0         0.4470    0.7410
+             0.8687    0.1361    0.0760
+             0.0844    0.8693    0.2399
+             0         0.4470    0.7410
+             0.8687    0.1361    0.0760
+             0.0844    0.8693    0.2399];
 end
 
 
