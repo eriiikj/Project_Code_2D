@@ -4,7 +4,8 @@
 % Written by Erik Jacobsson 2023-02-16
 % -----------------------------------
 
-clear; clc; close all;
+% clear; clc; close all;
+close all; clear;
 
 
 %% Import data
@@ -55,31 +56,31 @@ for i_IMC=35%1:step_size:IMC_steps
 %     axisbc(2) = round((axisbc(2)*1e3),2)*1e-3;
     disp(['Time: ', num2str(tvec(k))])
 
-    %  --- von Mises stress ---
-    f1 = figure(1);
-    cla;    
-    plot_2D_stress(newex,newey,vm,axisbc,...
-        'von Mises stress (MPa)');
-    hold on
-%     for g = 2:ngrains-5
+%     %  --- von Mises stress ---
+%     f1 = figure(1);
+%     cla;    
+%     plot_2D_stress(newex,newey,vm,axisbc,...
+%         'von Mises stress (MPa)');
+%     hold on
+% %     for g = 2:ngrains-5
+% %         g_cols = [2*(g-1) + 1,2*(g-1) + 2];
+% %         plot_interface(line_ex_1(1:line_seg(g),g_cols),...
+% %                        line_ey_1(1:line_seg(g),g_cols),'w',':')      
+% %     end
+%     for g = 1:ngrains
 %         g_cols = [2*(g-1) + 1,2*(g-1) + 2];
-%         plot_interface(line_ex_1(1:line_seg(g),g_cols),...
-%                        line_ey_1(1:line_seg(g),g_cols),'w',':')      
+%         plot_interface(line_ex(1:line_seg(g),g_cols),...
+%                        line_ey(1:line_seg(g),g_cols),'w','-')        
 %     end
-    for g = 1:ngrains
-        g_cols = [2*(g-1) + 1,2*(g-1) + 2];
-        plot_interface(line_ex(1:line_seg(g),g_cols),...
-                       line_ey(1:line_seg(g),g_cols),'w','-')        
-    end
-    % Save
-    plotfolder = '../single_study/plots';
-    filename   = 'vm1.eps';    
-    exportgraphics(gca,fullfile(plotfolder,filename),'Resolution',300)
+%     % Save
+%     plotfolder = '../single_study/plots';
+%     filename   = 'vm2.eps';    
+%     exportgraphics(gca,fullfile(plotfolder,filename),'Resolution',300)
  
     %  --- von Mises stress in Sn ---
     f2 = figure(2);
     cla;    
-    cc = plot_2D_stress(newex,newey,vm_Sn,axisbc,...
+    plot_2D_stress(newex,newey,vm_Sn,axisbc,...
         'von Mises stress (MPa)');
     hold on
 %     for g = 2:ngrains-5
@@ -93,30 +94,30 @@ for i_IMC=35%1:step_size:IMC_steps
                        line_ey(1:line_seg(g),g_cols),'w','-')        
     end
     clim([0 14.5])
-    cc.Ticks = [0,2,4,6,8,10,12,14];
     % Save
     plotfolder = '../single_study/plots';
-    filename   = 'vmSn1.eps';    
+    filename   = 'vmSn1.png';    
     exportgraphics(gca,fullfile(plotfolder,filename),'Resolution',300);
+%     saveas(gca,fullfile(plotfolder,filename));
 
 
-%  --- Biaxial stress in Sn 2 ---
-    f4 = figure(4);
-    cla;    
-    cc = plot_2D_stress(newex,newey,biax_Sn2,axisbc,...
-        'Biaxial stress (MPa)');
-    hold on
-    for g = 2:ngrains-5
-        g_cols = [2*(g-1) + 1,2*(g-1) + 2];
-        plot_interface(line_ex_1(1:line_seg(g),g_cols),...
-                       line_ey_1(1:line_seg(g),g_cols),'w',':')      
-    end
-    for g = 1:ngrains
-        g_cols = [2*(g-1) + 1,2*(g-1) + 2];
-        plot_interface(line_ex(1:line_seg(g),g_cols),...
-                       line_ey(1:line_seg(g),g_cols),'w','-')        
-    end
-    clim([-25 15])
+% %  --- Biaxial stress in Sn 2 ---
+%     f4 = figure(4);
+%     cla;    
+%     plot_2D_stress(newex,newey,biax_Sn2,axisbc,...
+%         'Biaxial stress (MPa)');
+%     hold on
+%     for g = 2:ngrains-5
+%         g_cols = [2*(g-1) + 1,2*(g-1) + 2];
+%         plot_interface(line_ex_1(1:line_seg(g),g_cols),...
+%                        line_ey_1(1:line_seg(g),g_cols),'w',':')      
+%     end
+%     for g = 1:ngrains
+%         g_cols = [2*(g-1) + 1,2*(g-1) + 2];
+%         plot_interface(line_ex(1:line_seg(g),g_cols),...
+%                        line_ey(1:line_seg(g),g_cols),'w','-')        
+%     end
+%     clim([-25 15])
 
 
     % --- Volume expansion ---
@@ -224,25 +225,25 @@ p.EdgeColor = 'interp';
 
 % Colormap
 colormap("parula");
-cc                      = colorbar;
-cctitle                 = stress_str;
-cc.Label.String         = ['\bf ', cctitle];
-cc.Label.Interpreter    = 'latex';
-cc.Ruler.Exponent       = 0;
-cc.TickLabelInterpreter = 'latex';
-cc.FontSize             = 16;
+% cc                      = colorbar;
+% cctitle                 = stress_str;
+% cc.Label.String         = ['\bf ', cctitle];
+% cc.Label.Interpreter    = 'latex';
+% cc.Ruler.Exponent       = 0;
+% cc.TickLabelInterpreter = 'latex';
+% cc.FontSize             = 16;
 % cc.Label.FontSize       = 16;
+% set(cc,'YTick',[0,2,4,6,8,10,12,14])
 
 % Labels and axis
 xlabel('\textbf{Micrometer}','Interpreter','Latex')
 ylabel('\textbf{Micrometer}','Interpreter','Latex')
 % title([' Time: ', num2str(i_IMC), ' (h). Material: ', mat_str, '.'])
-
-
 axis equal
 axis(axisbc*mm_to_um)    
 box on
-ytickformat('%.2f')
+set(gca,'Yticklabel',[])
+% ytickformat('%.2f')
 % xticks([axisbc(1)*mm_to_um,1,2,3,4,axisbc(2)*mm_to_um])
 xticks([axisbc(1)*mm_to_um,0.5,axisbc(2)*mm_to_um])
 xtickformat('%.2f')
@@ -250,8 +251,10 @@ ax = gca;
 ax.FontSize = 16;
 set(gca, 'TickLabelInterpreter', 'latex');
 box on
+ax.Position = [0.1120 0.1482 0.6676 0.7768];
+% ax.Position = [0.1120 0.0300 0.6676 0.8150];
+% ax.Position = [0.1123 0.1512 0.6695 0.7738];
 set(gca, 'TickDir', 'both', 'Layer', 'top');
-% set(gca, 'FontWeight', 'bold');
 end
 
 
