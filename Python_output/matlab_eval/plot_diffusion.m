@@ -51,7 +51,7 @@ for i_IMC = 1%1:step_size:IMC_steps
     import_triangle_mesh(i_IMC);
 
 %     % Plot triangle mesh
-    plot_mesh(exT,eyT,'k')
+%     plot_mesh(exT,eyT,'k')
 %     axis equal
 
     % Load interpolated level set field

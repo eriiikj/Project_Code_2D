@@ -210,10 +210,12 @@ subroutine generate_global_diffusion_mesh(input_location, diffsys, mesh, lssys, 
   endif  
 
 ! Read in new diffusion mesh
+  print *, 'Read mesh'
   call read_json_diffusion_mesh(diffusion_mesh_location, i_IMC, diffsys%coord, diffsys%enod)    
   diffsys%nnod  = size(diffsys%coord,2)
   diffsys%nelm  = size(diffsys%enod,2)
   diffsys%nodel = size(diffsys%enod,1)
+  print *, 'Done reading mesh'
 
 ! Allocated ls in new mesh
   if (allocated(diffsys%ls)) then
@@ -232,6 +234,7 @@ subroutine generate_global_diffusion_mesh(input_location, diffsys, mesh, lssys, 
   diffsys%ls_ed = 0d0
 
 ! Interpolate old level set values to new mesh
+  print *, 'Interpolating from old to new mesh'  
   do g=1,lssys%ngrains
     call interpolate_scalar_mesh1_to_mesh2(mesh%enod, mesh%newcoord, lssys%ed(:,:,g), diffsys%enod, diffsys%coord, diffsys%ls(:,g))
   enddo
@@ -253,6 +256,7 @@ subroutine generate_global_diffusion_mesh(input_location, diffsys, mesh, lssys, 
   enddo
 
 ! --- Reinitialize triangle mesh ---
+  print *, 'Reinitializing triangle mesh'
   do g = 1,lssys%ngrains
     g_cols = [2*(g-1) + 1, 2*(g-1) + 2]
     call reinit_level_set_spatial2(diffsys%ls(:,g),lssys%line_ex(:,g_cols(1):g_cols(2)),&
@@ -290,6 +294,7 @@ subroutine generate_global_diffusion_mesh(input_location, diffsys, mesh, lssys, 
 ! Update ed
     call extract(diffsys%ls_ed(:,:,g),diffsys%ls(:,g),diffsys%enod,1)
   enddo
+  print *, 'Done reinitializing triangle mesh'
   
 ! Write interpolated ls data to file
   call write_diffusion_glob_iter_to_matlab(input_location, i_IMC, diffsys%ls)
@@ -1354,6 +1359,8 @@ subroutine interpolate_scalar_mesh1_to_mesh2(mesh1_enod, mesh1_coord, mesh1_ed, 
   nnod2 = size(mesh2_coord,2)
   
 ! Interpolate scalar from global mesh to grain_mesh
+!$omp parallel private(inod,ie,x,y,pwt,xecoords,yecoords,x1,x2,x3,x4,y1,y2,y3,y4,pevals,xsi,eta,Nvec) shared(mesh2_a,mesh1_ed)
+!$omp do schedule(guided)
   do inod=1,nnod2
 
 ! Coordinates of point in new mesh
@@ -1425,6 +1432,8 @@ subroutine interpolate_scalar_mesh1_to_mesh2(mesh1_enod, mesh1_coord, mesh1_ed, 
     mesh2_a(inod) = dot_product(Nvec, pevals)
 
   enddo
+!$omp end do
+!$omp end parallel
 
   return
 end subroutine interpolate_scalar_mesh1_to_mesh2

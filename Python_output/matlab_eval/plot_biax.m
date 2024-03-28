@@ -6,13 +6,13 @@ close all; clc; clear;
 %% Load
 
 % MC1
-load(['/home/er7128ja/Nextcloud/Projekt/Project_Code/Python_output/', ...
+load(['/home/er7128ja/Nextcloud/Projekt/Project_Code_2D/Python_output/', ...
       'matlab_eval/mat_eval_files/biax_stressMC1.mat'])
 tvec_MC1 = tvec; biax_Sn_avg_MC1 = biax_Sn_avg;
 
 
 % MC2
-load(['/home/er7128ja/Nextcloud/Projekt/Project_Code/Python_output/', ...
+load(['/home/er7128ja/Nextcloud/Projekt/Project_Code_2D/Python_output/', ...
       'matlab_eval/mat_eval_files/biax_stressMC2.mat'])
 tvec_MC2 = tvec; biax_Sn_avg_MC2 = biax_Sn_avg;
 
@@ -62,7 +62,7 @@ legend boxoff
 
 
 % Save results in plot dir in single_study if not exist
-filename = '/home/er7128ja/Nextcloud/Projekt/Project_Code/articel_final/results/result_figs/biax_avg.eps';
+filename = '/home/er7128ja/Nextcloud/Projekt/Project_Code_2D/Python_output/single_study/plots/biax_avg.eps';
 exportgraphics(gca,filename,'Resolution',300)
 
 

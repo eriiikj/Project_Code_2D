@@ -32,7 +32,7 @@ tvec             = zeros(niterations,1);
 IMC_vol_per_area = zeros(niterations,1);
 
 k = 1;
-for i_IMC=35%1:step_size:IMC_steps
+for i_IMC=160%1:step_size:IMC_steps
 
     disp('--------')
     disp(['IMC step ', num2str(i_IMC)])  
@@ -73,7 +73,7 @@ for i_IMC=35%1:step_size:IMC_steps
     end
     % Save
     plotfolder = '../single_study/plots';
-    filename   = 'vm1.eps';    
+    filename   = 'vm2.eps';    
     exportgraphics(gca,fullfile(plotfolder,filename),'Resolution',300)
  
     %  --- von Mises stress in Sn ---
@@ -96,7 +96,7 @@ for i_IMC=35%1:step_size:IMC_steps
     cc.Ticks = [0,2,4,6,8,10,12,14];
     % Save
     plotfolder = '../single_study/plots';
-    filename   = 'vmSn1.eps';    
+    filename   = 'vmSn2.eps';    
     exportgraphics(gca,fullfile(plotfolder,filename),'Resolution',300);
 
 
@@ -243,8 +243,7 @@ axis equal
 axis(axisbc*mm_to_um)    
 box on
 ytickformat('%.2f')
-% xticks([axisbc(1)*mm_to_um,1,2,3,4,axisbc(2)*mm_to_um])
-xticks([axisbc(1)*mm_to_um,0.5,axisbc(2)*mm_to_um])
+xticks([axisbc(1)*mm_to_um,1,2,3,4,axisbc(2)*mm_to_um])
 xtickformat('%.2f')
 ax = gca;
 ax.FontSize = 16;

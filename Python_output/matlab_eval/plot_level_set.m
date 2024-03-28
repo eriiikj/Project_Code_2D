@@ -10,11 +10,8 @@ clear; close all; clc;
 addpath(genpath("Calfem/"))
 
 % Load level set init
-[coord,enod,nodel,ex,ey,gpx,gpy,nelm,nnod,edof_1D,axisbc,IMC_steps,...
+[coord,enod,nodel,ex,ey,gpx,gpy,nelm,nnod,edof_1D,axisbc,~,...
     ngrains] = load_level_set_init();
-
-% Length
-L = axisbc(2)-axisbc(1);
 
 % Get colors
 my_colors = get_my_colors();
@@ -39,7 +36,7 @@ tvec             = zeros(niterations,1);
 IMC_vol_per_area = zeros(niterations,1);
 
 k = 1;
-for i_IMC=1%1:step_size:IMC_steps
+for i_IMC=1:step_size:IMC_steps
     
     disp('--------')
     disp(['IMC step ', num2str(i_IMC)])
@@ -49,27 +46,28 @@ for i_IMC=1%1:step_size:IMC_steps
     tvec(k),newex,newey,newcoord,hphi_ed] = load_level_set(i_IMC,edof_1D); 
 
     % Store IMC vol/area
+    L = max(newcoord(:,1))-min(newcoord(:,1));
     IMC_vol_per_area(k) = IMC_area/L;
 
-    % Plot level set contour
-    f1 = figure(1);
-    cla;
-%     plot_mesh(ex,ey,'black')    
-    plot_mesh(newex,newey,'green')
-%     plot_field(newex,newey,ed(:,:,2),'k')
-    hold on
-    plot_speed_gp(newex,newey,vp)
-    for g = 1:ngrains
-        g_cols = [2*(g-1) + 1,2*(g-1) + 2];
-        plot_interface(line_ex(1:line_seg(g),g_cols),...
-                       line_ey(1:line_seg(g),g_cols),my_colors(g,:),g)
-    end    
-
-    % Axis and title
-    axis equal
-    box on
-    title(['Time: ', num2str(tvec(k)), ' (h)'])
-    legend
+%     % Plot level set contour
+%     f1 = figure(1);
+%     cla;
+% %     plot_mesh(ex,ey,'black')    
+%     plot_mesh(newex,newey,'green')
+% %     plot_field(newex,newey,ed(:,:,2),'k')
+%     hold on
+%     plot_speed_gp(newex,newey,vp)
+%     for g = 1:ngrains
+%         g_cols = [2*(g-1) + 1,2*(g-1) + 2];
+%         plot_interface(line_ex(1:line_seg(g),g_cols),...
+%                        line_ey(1:line_seg(g),g_cols),my_colors(g,:),g)
+%     end    
+% 
+%     % Axis and title
+%     axis equal
+%     box on
+%     title(['Time: ', num2str(tvec(k)), ' (h)'])
+%     legend
 
     % Update counter
     k = k + 1;

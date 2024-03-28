@@ -95,7 +95,7 @@ program main
 
    ! Initiate level set
    ngrains   = 16
-   IMC_steps = 1
+   IMC_steps = 300
    call allocate_ls_system(lssys,ngrains,mesh%nelm,mesh%nrgp,mesh%nnod,mesh%nodel,mesh%enod)
    call init_ls_system(lssys,mesh,IMC_steps,input_location)
 
